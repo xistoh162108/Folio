@@ -27,8 +27,8 @@ export function NewsletterManager({
   const [isPending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [subject, setSubject] = useState("")
-  const [html, setHtml] = useState("<h1>Hello from jimin.garden</h1><p>Write your campaign here.</p>")
-  const [text, setText] = useState("Hello from jimin.garden")
+  const [html, setHtml] = useState("<h1>Hello from xistoh.log</h1><p>Write your campaign here.</p>")
+  const [text, setText] = useState("Hello from xistoh.log")
   const [selectedTopics, setSelectedTopics] = useState<string[]>(["all-seeds"])
   const [testTarget, setTestTarget] = useState(testEmail)
 

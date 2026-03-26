@@ -8,18 +8,18 @@ export function buildConfirmSubscriptionEmail({
   unsubscribeUrl,
 }: ConfirmSubscriptionTemplateInput) {
   return {
-    subject: "Confirm your jimin.garden subscription",
+    subject: "Confirm your xistoh.log subscription",
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
         <h1 style="font-size:20px;margin-bottom:16px">Confirm your subscription</h1>
-        <p>Finish activating your jimin.garden subscription by confirming the link below.</p>
+        <p>Finish activating your xistoh.log subscription by confirming the link below.</p>
         <p><a href="${confirmUrl}">Confirm subscription</a></p>
         <p>If this was not you, ignore this email.</p>
         <p style="font-size:12px;color:#666">Unsubscribe: <a href="${unsubscribeUrl}">${unsubscribeUrl}</a></p>
       </div>
     `.trim(),
     text: [
-      "Confirm your jimin.garden subscription.",
+      "Confirm your xistoh.log subscription.",
       "",
       `Confirm subscription: ${confirmUrl}`,
       "If this was not you, ignore this email.",

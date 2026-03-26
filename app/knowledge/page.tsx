@@ -7,8 +7,8 @@ import { getPublishedKnowledgePosts } from "@/lib/data/posts"
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Knowledge | jimin.garden",
-  description: "Unified notes and projects index for jimin.garden.",
+  title: "Knowledge | xistoh.log",
+  description: "Unified notes and projects index for xistoh.log.",
   alternates: {
     canonical: "/knowledge",
   },

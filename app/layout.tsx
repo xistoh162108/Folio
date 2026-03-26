@@ -8,7 +8,8 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono" });
 
 export const metadata: Metadata = {
-  title: "jimin.garden",
+  metadataBase: new URL("https://xistoh.com"),
+  title: "xistoh.log",
   description: "Production-backed portfolio, notes, projects, and admin workflows.",
   generator: "codex",
   icons: {

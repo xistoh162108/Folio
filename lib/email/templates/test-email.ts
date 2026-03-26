@@ -9,7 +9,7 @@ function stripHtml(html: string) {
 }
 
 export function buildTestEmail({ subject, html, text }: TestEmailTemplateInput) {
-  const intro = "This is a test email from jimin.garden."
+  const intro = "This is a test email from xistoh.log."
 
   return {
     subject,

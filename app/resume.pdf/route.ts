@@ -40,7 +40,7 @@ function buildPdf(lines: string[]) {
 
 export async function GET() {
   const lines = [
-    "jimin.garden // resume",
+    "xistoh.log // resume",
     "",
     `Role: ${profile.education}`,
     `Bio: ${profile.bio}`,

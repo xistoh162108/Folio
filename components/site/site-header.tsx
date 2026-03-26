@@ -5,7 +5,7 @@ export function SiteHeader() {
     <header className="border-b border-white/10 bg-black/70 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 text-sm text-zinc-200">
         <Link href="/" className="font-mono font-semibold tracking-[0.24em] text-[#D4FF00]">
-          JIMIN.GARDEN
+          XISTOH.LOG
         </Link>
         <nav className="flex items-center gap-4 font-mono text-zinc-400">
           <Link href="/knowledge" className="transition hover:text-white">

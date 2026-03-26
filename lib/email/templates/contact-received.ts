@@ -5,7 +5,7 @@ export interface ContactReceivedTemplateInput {
 
 export function buildContactReceivedEmail({ name, homeUrl }: ContactReceivedTemplateInput) {
   return {
-    subject: "We received your message — jimin.garden",
+    subject: "We received your message — xistoh.log",
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
         <h1 style="font-size:20px;margin-bottom:16px">Message received</h1>

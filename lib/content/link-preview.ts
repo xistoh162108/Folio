@@ -213,7 +213,7 @@ async function requestPinnedUrl(target: ResolvedPreviewTarget): Promise<PinnedRe
         servername: target.hostname,
         headers: {
           Accept: "text/html,application/xhtml+xml",
-          "User-Agent": "jimin.garden-preview-bot/1.0",
+          "User-Agent": "xistoh.log-preview-bot/1.0",
           Host: target.hostname,
         },
       },
@@ -391,7 +391,7 @@ async function fetchGitHubPreview(normalizedUrl: string): Promise<PreviewResult 
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "jimin.garden-preview-bot/1.0",
+        "User-Agent": "xistoh.log-preview-bot/1.0",
       },
       signal: AbortSignal.timeout(PREVIEW_TIMEOUT_MS),
     })
@@ -455,7 +455,7 @@ async function fetchGitHubSpecialPreview(normalizedUrl: string): Promise<Preview
     const apiResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "jimin.garden-preview-bot/1.0",
+        "User-Agent": "xistoh.log-preview-bot/1.0",
       },
       signal: AbortSignal.timeout(PREVIEW_TIMEOUT_MS),
     })
