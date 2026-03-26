@@ -1,15 +1,16 @@
 import type { Metadata } from 'next'
 import { Geist, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { AnalyticsTracker } from '../components/analytics-tracker'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono" });
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: "jimin.garden",
+  description: "Production-backed portfolio, notes, projects, and admin workflows.",
+  generator: "codex",
   icons: {
     icon: [
       {
@@ -36,8 +37,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`font-sans antialiased ${jetbrainsMono.variable}`}>
+      <body className={`min-h-screen bg-black font-sans antialiased ${geist.variable} ${jetbrainsMono.variable}`}>
         {children}
+        <AnalyticsTracker />
         <Analytics />
       </body>
     </html>

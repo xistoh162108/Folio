@@ -1,0 +1,90 @@
+import type { PostCommentDTO } from "@/lib/contracts/community"
+
+export type PostKind = "NOTE" | "PROJECT"
+export type PostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED"
+export type PostAssetKind = "IMAGE" | "FILE"
+export type PostLinkType = "GITHUB" | "WEBSITE" | "YOUTUBE" | "DOCS" | "OTHER"
+export type PreviewFetchStatus = "PENDING" | "READY" | "FAILED"
+
+export interface GenericPreviewMetadata {
+  kind: "GENERIC"
+}
+
+export interface GitHubPreviewMetadata {
+  kind: "GITHUB"
+  owner: string
+  repo: string
+  stars: number | null
+  forks: number | null
+  primaryLanguage: string | null
+  openIssues: number | null
+}
+
+export type PreviewMetadata = GenericPreviewMetadata | GitHubPreviewMetadata
+
+export interface PostLinkDTO {
+  id?: string
+  label: string
+  url: string
+  type: PostLinkType
+  normalizedUrl?: string
+  siteName?: string | null
+  title?: string | null
+  description?: string | null
+  imageUrl?: string | null
+  embedUrl?: string | null
+  previewStatus?: PreviewFetchStatus
+  metadata?: PreviewMetadata | null
+}
+
+export interface PostAssetDTO {
+  id: string
+  kind: PostAssetKind
+  originalName: string
+  mime: string
+  size: number
+  url: string
+  createdAt: string
+  pendingDeleteAt?: string | null
+}
+
+export interface PostCardDTO {
+  id: string
+  slug: string
+  type: PostKind
+  status: PostStatus
+  title: string
+  excerpt: string | null
+  tags: string[]
+  views: number
+  coverImageUrl: string | null
+  publishedAt: string | null
+  updatedAt: string
+}
+
+export interface PostDetailDTO extends PostCardDTO {
+  htmlContent: string
+  content?: unknown
+  links: PostLinkDTO[]
+  assets: PostAssetDTO[]
+  likeCount: number
+  comments: PostCommentDTO[]
+}
+
+export interface PostEditorInput {
+  id?: string
+  title: string
+  slug: string
+  excerpt?: string
+  type: PostKind
+  status: PostStatus
+  tags: string[]
+  coverImageUrl?: string
+  htmlContent: string
+  content: unknown
+  githubUrl?: string
+  demoUrl?: string
+  docsUrl?: string
+  assets: PostAssetDTO[]
+  links: PostLinkDTO[]
+}

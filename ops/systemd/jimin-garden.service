@@ -1,0 +1,15 @@
+[Unit]
+Description=Jimin Garden Next.js app
+After=network.target
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=/srv/jimin-garden/current
+EnvironmentFile=/srv/jimin-garden/shared/.env
+ExecStart=/usr/bin/env pnpm start --port 3000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

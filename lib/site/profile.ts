@@ -1,0 +1,32 @@
+export const profile = {
+  name: "Jimin Bag",
+  role: "KAIST School of Computing undergraduate",
+  bio: "KAIST School of Computing undergraduate building systems, tools, and product experiments across AI, InfoSec, and developer workflows.",
+  education: "KAIST (Korea Advanced Institute of Science & Technology) - B.S. in School of Computing",
+  educationLine: "KAIST (Korea Advanced Institute of Science & Technology) - B.S. in School of Computing",
+  resumeHref: "/resume.pdf",
+  focusAreas: ["AI", "InfoSec", "Developer Tools", "Product Systems"],
+  experience: [
+    {
+      period: "2026",
+      year: "2026",
+      title: "GDGoC Lead",
+      label: "GDGoC Lead",
+      detail: "Led community programming, technical sessions, and cross-student builder initiatives.",
+    },
+    {
+      period: "2025",
+      year: "2025",
+      title: "Madcamp",
+      label: "Madcamp",
+      detail: "Shipped rapid prototypes with intense product iteration and short release cycles.",
+    },
+    {
+      period: "2024",
+      year: "2024",
+      title: "TEDx Organizing",
+      label: "TEDx Organizing",
+      detail: "Operated content and systems work for event production and communication.",
+    },
+  ],
+} as const

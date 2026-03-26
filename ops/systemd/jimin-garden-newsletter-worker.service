@@ -1,0 +1,10 @@
+[Unit]
+Description=Jimin Garden newsletter worker trigger
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/srv/jimin-garden/shared/.env
+TimeoutStartSec=45
+ExecStart=/usr/bin/env bash -lc '/usr/bin/flock -n /run/jimin-garden-newsletter-worker.lock /usr/bin/curl --fail --silent --show-error --max-time 40 -X POST "$APP_URL/api/worker/newsletter" -H "Authorization: Bearer $CRON_SECRET"'

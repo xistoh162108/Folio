@@ -1,0 +1,10 @@
+[Unit]
+Description=Jimin Garden asset cleanup worker trigger
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/srv/jimin-garden/shared/.env
+TimeoutStartSec=60
+ExecStart=/usr/bin/env bash -lc '/usr/bin/flock -n /run/jimin-garden-asset-cleanup-worker.lock /usr/bin/curl --fail --silent --show-error --max-time 55 -X POST "$APP_URL/api/worker/asset-cleanup" -H "Authorization: Bearer $CRON_SECRET"'

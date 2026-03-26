@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useActionState, startTransition, useEffect } from "react"
+import { requestSubscription } from "../lib/actions/subscriber.actions"
 
 interface SubscriptionModuleProps {
   isDarkMode: boolean
@@ -9,6 +10,7 @@ interface SubscriptionModuleProps {
 
 export function SubscriptionModule({ isDarkMode, compact = false }: SubscriptionModuleProps) {
   const [email, setEmail] = useState("")
+  const [honey, setHoney] = useState("")
   const [topics, setTopics] = useState({
     all: true,
     aiInfosec: false,
@@ -32,13 +34,23 @@ export function SubscriptionModule({ isDarkMode, compact = false }: Subscription
     }
   }
 
+  const [state, formAction, pending] = useActionState(
+    async (prevState: any, payload: { email: string, _honey: string, topics: any }) => {
+      return await requestSubscription(payload)
+    },
+    null
+  )
+
+  useEffect(() => {
+    if (state?.success) setIsSubscribed(true)
+  }, [state])
+
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault()
-    if (email) {
-      setIsSubscribed(true)
-      setTimeout(() => setIsSubscribed(false), 3000)
-      setEmail("")
-    }
+    if (!email) return
+    startTransition(() => {
+      formAction({ email, _honey: honey, topics })
+    })
   }
 
   // Compact version for home page
@@ -47,12 +59,22 @@ export function SubscriptionModule({ isDarkMode, compact = false }: Subscription
       <div className="font-mono">
         {isSubscribed ? (
           <p className={`text-xs ${isDarkMode ? "text-green-400" : "text-green-600"}`}>
-            [*] Subscribed.
+            [*] {state?.message ?? "Verification email sent. Check your inbox."}
           </p>
         ) : (
           <form onSubmit={handleSubscribe} className="space-y-2">
             <p className={`text-xs ${mutedText}`}>// newsletter</p>
             <div className="flex gap-2">
+              <input
+                type="text"
+                name="_honey"
+                value={honey}
+                onChange={(e) => setHoney(e.target.value)}
+                style={{ display: "none" }}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+              />
               <input
                 type="email"
                 value={email}
@@ -66,11 +88,13 @@ export function SubscriptionModule({ isDarkMode, compact = false }: Subscription
               />
               <button
                 type="submit"
-                className={`px-2 py-1 text-xs border transition-colors ${borderColor} ${hoverBg}`}
+                disabled={pending}
+                className={`px-2 py-1 text-xs border transition-colors ${pending ? "opacity-50" : ""} ${borderColor} ${hoverBg}`}
               >
-                -&gt;
+                {pending ? "[...]" : "->"}
               </button>
             </div>
+            {state?.error && <p className="text-[#FF3333] text-xs opacity-90 mt-1">[ ERROR: {state.error} ]</p>}
           </form>
         )}
       </div>
@@ -86,11 +110,21 @@ export function SubscriptionModule({ isDarkMode, compact = false }: Subscription
 
       {isSubscribed ? (
         <p className={`text-sm ${isDarkMode ? "text-green-400" : "text-green-600"}`}>
-          [*] Subscribed successfully.
+          [*] {state?.message ?? "Verification email sent. Check your inbox."}
         </p>
       ) : (
         <form onSubmit={handleSubscribe} className="space-y-4">
           <div className="flex gap-2">
+            <input
+              type="text"
+              name="_honey"
+              value={honey}
+              onChange={(e) => setHoney(e.target.value)}
+              style={{ display: "none" }}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+            />
             <input
               type="email"
               value={email}
@@ -104,11 +138,13 @@ export function SubscriptionModule({ isDarkMode, compact = false }: Subscription
             />
             <button
               type="submit"
-              className={`px-4 py-2 text-sm border transition-colors ${borderColor} ${hoverBg}`}
+              disabled={pending}
+              className={`px-4 py-2 text-sm border transition-colors ${pending ? "opacity-50" : ""} ${borderColor} ${hoverBg}`}
             >
-              Subscribe
+              {pending ? "Transmitting..." : "Subscribe"}
             </button>
           </div>
+          {state?.error && <p className="text-[#FF3333] text-xs opacity-90">[ SYS_ERROR: {state.error} ]</p>}
 
           <div className="flex flex-wrap gap-4 text-xs">
             <label className="flex items-center gap-2 cursor-pointer">

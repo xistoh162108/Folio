@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Jimin Garden webhook worker every 2 minutes
+
+[Timer]
+OnCalendar=*:0/2
+Persistent=true
+Unit=jimin-garden-webhook-worker.service
+
+[Install]
+WantedBy=timers.target

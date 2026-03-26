@@ -1,0 +1,373 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  password  String     
+  createdAt DateTime   @default(now())
+  auditLogs AuditLog[]
+}
+
+enum PostType {
+  NOTE
+  PROJECT
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PostAssetKind {
+  IMAGE
+  FILE
+}
+
+enum PostLinkType {
+  GITHUB
+  WEBSITE
+  YOUTUBE
+  DOCS
+  OTHER
+}
+
+enum PreviewFetchStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+enum NewsletterCampaignStatus {
+  DRAFT
+  SENDING
+  COMPLETED
+  FAILED
+}
+
+enum NewsletterDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Post {
+  id             String         @id @default(cuid())
+  slug           String         @unique
+  type           PostType       @default(NOTE)
+  status         PostStatus     @default(DRAFT)
+  
+  title          String
+  excerpt        String?        
+  coverImageUrl  String?        
+  
+  content        Json           
+  contentVersion Int            @default(1)
+  htmlContent    String         
+  
+  tags           Tag[]          @relation("PostTags")
+  githubUrl      String?
+  demoUrl        String?
+  docsUrl        String?
+  
+  views          Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  publishedAt    DateTime?      
+
+  revisions      PostRevision[]
+  assets         PostAsset[]
+  links          PostLink[]
+  likes          PostLike[]
+  comments       PostComment[]
+
+  @@index([status, type, publishedAt, id])
+  @@index([status, updatedAt, id])
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  sessionId String
+  createdAt DateTime @default(now())
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, sessionId])
+  @@index([postId, createdAt])
+  @@index([sessionId])
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  message   String
+  pinHash   String
+  ipHash    String?
+  userAgent String?
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@index([deletedAt, createdAt])
+}
+
+model GuestbookEntry {
+  id        String   @id @default(cuid())
+  message   String
+  ipHash    String?
+  userAgent String?
+  deletedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([deletedAt, createdAt])
+}
+
+model PostRevision {
+  id             String   @id @default(cuid())
+  postId         String
+  title          String
+  excerpt        String?
+  coverImageUrl  String?
+  content        Json
+  contentVersion Int
+  htmlContent    String
+  createdAt      DateTime @default(now())
+
+  post           Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@index([postId, createdAt])
+}
+
+model PostAsset {
+  id           String        @id @default(cuid())
+  postId       String
+  kind         PostAssetKind
+  bucket       String
+  storagePath  String        @unique
+  originalName String
+  mime         String
+  size         Int
+  publicUrl    String?
+  pendingDeleteAt DateTime?
+  deleteAttempts Int           @default(0)
+  lastDeleteError String?
+  createdAt    DateTime      @default(now())
+
+  post         Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, kind, createdAt])
+  @@index([pendingDeleteAt, createdAt])
+}
+
+model PostLink {
+  id            String       @id @default(cuid())
+  postId        String
+  label         String?
+  url           String
+  normalizedUrl String
+  type          PostLinkType @default(OTHER)
+  sortOrder     Int          @default(0)
+  createdAt     DateTime     @default(now())
+
+  post          Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, sortOrder, createdAt])
+  @@index([normalizedUrl])
+}
+
+model LinkPreviewCache {
+  id             String             @id @default(cuid())
+  url            String
+  normalizedUrl  String             @unique
+  title          String?
+  description    String?
+  imageUrl       String?
+  siteName       String?
+  embedUrl       String?
+  metadata       Json?
+  previewStatus  PreviewFetchStatus @default(PENDING)
+  failureReason  String?
+  lastFetchedAt  DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model Tag {
+  id             String @id @default(cuid())
+  name           String 
+  normalizedName String @unique 
+  posts          Post[] @relation("PostTags")
+  @@index([normalizedName])
+}
+
+enum SubscriberRole {
+  DEVELOPER
+  STUDENT
+  DESIGNER
+  OTHER
+}
+
+model Subscriber {
+  id                    String            @id @default(cuid())
+  email                 String            @unique 
+  role                  SubscriberRole    @default(OTHER)
+  
+  isConfirmed           Boolean           @default(false)
+  confirmTokenHash      String?           @unique
+  confirmTokenExpiresAt DateTime?
+  confirmedAt           DateTime?
+  
+  unsubscribeToken      String            @unique @default(cuid())
+  unsubscribedAt        DateTime?
+  
+  topics                NewsletterTopic[] @relation("SubscriberTopics")
+  deliveries            NewsletterDelivery[]
+  createdAt             DateTime          @default(now())
+}
+
+model NewsletterTopic {
+  id             String       @id @default(cuid())
+  name           String
+  normalizedName String       @unique
+  subscribers    Subscriber[] @relation("SubscriberTopics")
+}
+
+model NewsletterCampaign {
+  id              String                   @id @default(cuid())
+  subject         String
+  html            String
+  text            String?
+  targetTopics    String[]                 @default([])
+  status          NewsletterCampaignStatus @default(DRAFT)
+  totalRecipients Int                      @default(0)
+  sentCount       Int                      @default(0)
+  failedCount     Int                      @default(0)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  lastError       String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  deliveries      NewsletterDelivery[]
+
+  @@index([status, createdAt])
+}
+
+model NewsletterDelivery {
+  id           String                   @id @default(cuid())
+  campaignId   String
+  subscriberId String?
+  email        String
+  status       NewsletterDeliveryStatus @default(PENDING)
+  errorMessage String?
+  processingAt DateTime?
+  sentAt       DateTime?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+
+  campaign     NewsletterCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  subscriber   Subscriber?              @relation(fields: [subscriberId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, status, createdAt, id])
+  @@unique([campaignId, email])
+}
+
+enum ContactStatus {
+  PENDING
+  READ
+  REPLIED
+  ARCHIVED
+  SPAM
+}
+
+model ContactMessage {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  status    ContactStatus @default(PENDING)
+  
+  ipHash    String?
+  userAgent String?
+  handledAt DateTime?
+  
+  createdAt DateTime      @default(now())
+}
+
+enum AnalyticsEventType {
+  PAGEVIEW
+  HEARTBEAT
+  PAGELOAD
+  CONTACT_SUBMIT
+  SUBSCRIBE_REQUEST
+}
+
+model Analytics {
+  id        String             @id @default(cuid())
+  sessionId String             
+  eventType AnalyticsEventType 
+  
+  path      String
+  postId    String?
+  referrer  String?  
+  referrerHost String?
+  countryCode String?
+  userAgent String?
+  browser   String?
+  deviceType String?
+  isBot     Boolean            @default(false)
+  duration  Int?     
+  pageLoadMs Int?
+
+  createdAt DateTime @default(now())
+  @@index([sessionId])
+  @@index([path, createdAt])
+  @@index([postId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([createdAt, sessionId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String
+  actionType  String   
+  targetType  String   
+  targetId    String   
+  before      Json?    
+  after       Json?
+  createdAt   DateTime @default(now())
+
+  actor       User     @relation(fields: [actorUserId], references: [id])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+enum WebhookStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+model WebhookDelivery {
+  id          String        @id @default(cuid())
+  eventType   String        
+  destination String
+  payload     Json          
+  status      WebhookStatus @default(PENDING)
+  attempts    Int           @default(0)
+  lastError   String?
+  deliveredAt DateTime?
+  nextRetryAt DateTime?
+  createdAt   DateTime      @default(now())
+}

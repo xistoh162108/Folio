@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Jimin Garden newsletter worker every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+Persistent=true
+Unit=jimin-garden-newsletter-worker.service
+
+[Install]
+WantedBy=timers.target
