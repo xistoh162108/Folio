@@ -6,9 +6,12 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "../db/prisma"
 import { z } from "zod"
 
+import { buildMarkdownWriterPayload } from "@/lib/content/markdown-blocks"
+import { buildLegacyContentDocument } from "@/lib/content/post-content"
 import { isEffectivelyEmptyDraft } from "@/lib/content/draft-state"
 import { fetchLinkPreview, inferLinkType, normalizeExternalUrl, toPostLinkDTO } from "@/lib/content/link-preview"
 import { requireUser } from "@/lib/auth"
+import { POST_BLOCK_CONTENT_VERSION } from "@/lib/contracts/content-blocks"
 import type { PostEditorInput, PostLinkDTO, PostLinkType, PreviewMetadata } from "@/lib/contracts/posts"
 import { isMissingTableError } from "@/lib/db/errors"
 import { slugify } from "@/lib/utils/normalizers"
@@ -21,6 +24,8 @@ const PostSchema = z.object({
   excerpt: z.string().optional().default(""),
   content: z.any().optional(),
   htmlContent: z.string().default(""),
+  markdownSource: z.string().optional().default(""),
+  contentMode: z.enum(["legacy", "block"]).optional().default("legacy"),
   type: z.enum(["NOTE", "PROJECT"]).default("NOTE"),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
   tags: z.array(z.string()).default([]),
@@ -52,7 +57,6 @@ const PostSchema = z.object({
 type PostActionResult =
   | { success: true; id: string }
   | { success: false; error: string }
-
 type PreparedLink = {
   label: string
   url: string
@@ -67,33 +71,6 @@ type PreparedLink = {
   previewStatus: "PENDING" | "READY" | "FAILED"
   failureReason: string | null
   metadata: PreviewMetadata | null
-}
-
-function buildDocument(title: string, htmlContent: string) {
-  if (htmlContent.trim().length === 0) {
-    return {
-      type: "doc",
-      content: [
-        {
-          type: "paragraph",
-        },
-      ],
-    }
-  }
-
-  const paragraphs = htmlContent
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .map((paragraph) => ({
-      type: "paragraph",
-      content: [{ type: "text", text: paragraph.replace(/<[^>]+>/g, "") }],
-    }))
-
-  return {
-    type: "doc",
-    content: paragraphs.length > 0 ? paragraphs : [{ type: "paragraph", content: [{ type: "text", text: title }] }],
-  }
 }
 
 async function connectTags(tx: Prisma.TransactionClient, tags: string[]) {
@@ -340,7 +317,8 @@ export async function createDraftPost(): Promise<PostActionResult> {
         type: "NOTE",
         status: "DRAFT",
         excerpt: "",
-        content: buildDocument("Untitled draft", ""),
+        content: buildLegacyContentDocument("Untitled draft", ""),
+        markdownSource: null,
         htmlContent: "",
       },
     })
@@ -368,8 +346,13 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
     const validated = PostSchema.parse({
       ...payload,
       slug: payload.slug || slugify(payload.title),
-      content: payload.content ?? buildDocument(payload.title, payload.htmlContent),
+      content: payload.content ?? buildLegacyContentDocument(payload.title, payload.htmlContent),
     })
+    const usesBlockWriter = validated.contentMode === "block"
+    const writerPayload = usesBlockWriter ? buildMarkdownWriterPayload(validated.markdownSource ?? "") : null
+    const resolvedContent = writerPayload?.content ?? validated.content ?? buildLegacyContentDocument(validated.title, validated.htmlContent)
+    const resolvedHtmlContent = writerPayload?.htmlContent ?? validated.htmlContent
+    const resolvedMarkdownSource = usesBlockWriter ? writerPayload?.markdownSource ?? "" : ""
     const keepAssetIds = validated.assets
       .map((asset) => asset.id)
       .filter((assetId): assetId is string => typeof assetId === "string" && assetId.length > 0)
@@ -390,8 +373,10 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
             title: validated.title,
             slug: validated.slug,
             excerpt: validated.excerpt || null,
-            content: validated.content ?? buildDocument(validated.title, validated.htmlContent),
-            htmlContent: validated.htmlContent,
+            content: resolvedContent,
+            contentVersion: usesBlockWriter ? POST_BLOCK_CONTENT_VERSION : undefined,
+            markdownSource: resolvedMarkdownSource || null,
+            htmlContent: resolvedHtmlContent,
             type: validated.type,
             status: validated.status,
             coverImageUrl: validated.coverImageUrl || null,
@@ -437,7 +422,7 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
         title: validated.title,
         excerpt: validated.excerpt,
         coverImageUrl: validated.coverImageUrl,
-        content: validated.content,
+        content: resolvedContent,
         activeLinkCount: preparedLinks.length,
       })
 
@@ -450,6 +435,7 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
             coverImageUrl: current.coverImageUrl,
             content: current.content as Prisma.InputJsonValue,
             contentVersion: current.contentVersion,
+            markdownSource: current.markdownSource,
             htmlContent: current.htmlContent,
           },
         })
@@ -475,11 +461,12 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
           title: validated.title,
           slug: validated.slug,
           excerpt: validated.excerpt || null,
-          content: validated.content ?? buildDocument(validated.title, validated.htmlContent),
-          htmlContent: validated.htmlContent,
+          content: resolvedContent,
+          htmlContent: resolvedHtmlContent,
+          markdownSource: resolvedMarkdownSource || null,
           type: validated.type,
           status: validated.status,
-          contentVersion: nextVersion,
+          contentVersion: usesBlockWriter ? POST_BLOCK_CONTENT_VERSION : nextVersion,
           coverImageUrl: assetSync.coverImageUrl,
           githubUrl: findFirstLinkByType(preparedLinks, "GITHUB"),
           demoUrl: findWebsiteFallback(preparedLinks),
@@ -521,9 +508,16 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
     return { success: true, id: result.id }
   } catch (error) {
     console.error("[savePost]", error)
+    const normalizedError =
+      error instanceof z.ZodError
+        ? error.issues[0]?.message ?? "Validation failed."
+        : error instanceof Error
+          ? error.message
+          : "Failed to save post."
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to save post.",
+      error: normalizedError,
     }
   }
 }

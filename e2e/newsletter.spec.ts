@@ -35,8 +35,8 @@ test("newsletter create, test send, start, fail injection, and retry work end-to
   await loginAsAdmin(page)
   await page.goto("/admin/newsletter")
 
-  await page.getByPlaceholder("Campaign subject").fill(`${marker} subject`)
-  await page.getByRole("button", { name: "Send test" }).click()
+  await page.getByPlaceholder("Subject: Your newsletter title...").fill(`${marker} subject`)
+  await page.getByRole("button", { name: /\[\s*send test to self\s*\]/i }).click()
 
   await expect
     .poll(async () => {
@@ -45,10 +45,8 @@ test("newsletter create, test send, start, fail injection, and retry work end-to
     })
     .toBe(true)
 
-  await page.getByRole("button", { name: "Create campaign" }).click()
+  await page.getByRole("button", { name: /Launch Campaign \(1\)/i }).click()
   await expect(page.getByText(`${marker} subject`)).toBeVisible()
-
-  await page.locator("div.rounded-3xl").filter({ hasText: `${marker} subject` }).getByRole("button", { name: "Start" }).click()
 
   await expect
     .poll(async () => {
@@ -101,7 +99,7 @@ test("newsletter create, test send, start, fail injection, and retry work end-to
   })
 
   await page.reload()
-  await page.getByRole("button", { name: "Retry delivery" }).click()
+  await page.getByRole("button", { name: /\[retry\]/i }).click()
 
   await expect
     .poll(async () => {

@@ -4,6 +4,10 @@ import type { CampaignEmailInput, EmailMessageInput, EmailProvider, EmailSendRes
 import { env } from "@/lib/env"
 import { appendJsonLine, TEST_EMAIL_OUTBOX_PATH } from "@/lib/testing/sinks"
 
+function isProductionTestHarness() {
+  return process.env.__JIMIN_GARDEN_TEST_ENV_LOADED === "1"
+}
+
 function shouldFailTestEmail(recipient: string) {
   const forcedRecipients =
     env.EMAIL_TEST_FAIL_RECIPIENTS
@@ -15,7 +19,7 @@ function shouldFailTestEmail(recipient: string) {
 }
 
 async function sendSingle(input: EmailMessageInput): Promise<EmailSendResult> {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && !isProductionTestHarness()) {
     return {
       success: false,
       provider: "test",

@@ -1,10 +1,13 @@
 export const profile = {
-  name: "Jimin Bag",
+  name: "Jimin Park",
   role: "KAIST School of Computing undergraduate",
   bio: "KAIST School of Computing undergraduate building systems, tools, and product experiments across AI, InfoSec, and developer workflows.",
   education: "KAIST (Korea Advanced Institute of Science & Technology) - B.S. in School of Computing",
   educationLine: "KAIST (Korea Advanced Institute of Science & Technology) - B.S. in School of Computing",
   resumeHref: "/resume.pdf",
+  emailAddress: "xistoh162108@kaist.ac.kr",
+  githubHref: "https://github.com/xistoh162108",
+  linkedinHref: null,
   focusAreas: ["AI", "InfoSec", "Developer Tools", "Product Systems"],
   experience: [
     {

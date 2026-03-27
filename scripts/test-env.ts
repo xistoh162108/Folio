@@ -60,7 +60,7 @@ export function loadTestEnvironment() {
   runtimeEnv.EMAIL_DRIVER ||= "test"
   runtimeEnv.STORAGE_DRIVER ||= "test"
   runtimeEnv.OPS_WEBHOOK_URL ||= "test://ops-webhook"
-  runtimeEnv.EMAIL_FROM ||= runtimeEnv.ADMIN_EMAIL ?? "e2e-admin@jimin.garden"
+  runtimeEnv.EMAIL_FROM ||= runtimeEnv.ADMIN_EMAIL ?? "e2e-admin@xistoh.com"
   runtimeEnv.APP_URL ||= runtimeEnv.NEXTAUTH_URL
   runtimeEnv.__JIMIN_GARDEN_TEST_ENV_LOADED = "1"
 }

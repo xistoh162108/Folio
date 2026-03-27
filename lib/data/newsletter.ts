@@ -1,12 +1,13 @@
 import "server-only"
 
-import type { CampaignSummaryDTO, DeliveryRowDTO } from "@/lib/contracts/newsletter"
+import type { CampaignSummaryDTO, DeliveryRowDTO, NewsletterSubscriberRowDTO } from "@/lib/contracts/newsletter"
 import { isMissingTableError } from "@/lib/db/errors"
 import { prisma } from "@/lib/db/prisma"
 
 export interface NewsletterDashboardData {
   topics: { id: string; name: string; normalizedName: string }[]
   activeSubscriberCount: number
+  subscribers: NewsletterSubscriberRowDTO[]
   campaigns: CampaignSummaryDTO[]
   deliveries: DeliveryRowDTO[]
   migrationReady: boolean
@@ -26,6 +27,27 @@ export async function getNewsletterDashboardData(): Promise<NewsletterDashboardD
     where: {
       isConfirmed: true,
       unsubscribedAt: null,
+    },
+  })
+
+  const subscribers = await prisma.subscriber.findMany({
+    where: {
+      isConfirmed: true,
+      unsubscribedAt: null,
+    },
+    orderBy: [{ confirmedAt: "desc" }, { createdAt: "desc" }],
+    take: 50,
+    select: {
+      id: true,
+      email: true,
+      confirmedAt: true,
+      createdAt: true,
+      topics: {
+        select: {
+          name: true,
+        },
+        orderBy: { name: "asc" },
+      },
     },
   })
 
@@ -63,6 +85,12 @@ export async function getNewsletterDashboardData(): Promise<NewsletterDashboardD
     return {
       topics,
       activeSubscriberCount,
+      subscribers: subscribers.map((subscriber) => ({
+        id: subscriber.id,
+        email: subscriber.email,
+        topics: subscriber.topics.map((topic) => topic.name),
+        subscribedAt: (subscriber.confirmedAt ?? subscriber.createdAt).toISOString(),
+      })),
       migrationReady: true,
       campaigns: campaigns.map((campaign) => ({
         id: campaign.id,
@@ -92,6 +120,12 @@ export async function getNewsletterDashboardData(): Promise<NewsletterDashboardD
     return {
       topics,
       activeSubscriberCount,
+      subscribers: subscribers.map((subscriber) => ({
+        id: subscriber.id,
+        email: subscriber.email,
+        topics: subscriber.topics.map((topic) => topic.name),
+        subscribedAt: (subscriber.confirmedAt ?? subscriber.createdAt).toISOString(),
+      })),
       migrationReady: false,
       campaigns: [],
       deliveries: [],

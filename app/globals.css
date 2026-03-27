@@ -8,6 +8,52 @@
   }
 }
 
+@layer components {
+  .v0-control-inline-input {
+    @apply h-8 border bg-transparent px-3 text-xs leading-none outline-none;
+  }
+
+  .v0-control-inline-button {
+    @apply inline-flex h-8 items-center justify-center border px-3 text-xs leading-none transition-colors;
+  }
+
+  .v0-control-field {
+    @apply h-9 w-full border bg-transparent px-3 text-sm leading-5 outline-none;
+  }
+
+  .v0-control-field-compact {
+    @apply h-7 border bg-transparent px-2 text-xs leading-4 outline-none;
+  }
+
+  .v0-control-area {
+    @apply w-full border bg-transparent px-3 py-2 text-sm leading-6 outline-none resize-none;
+  }
+
+  .v0-control-button {
+    @apply inline-flex h-9 items-center justify-center border px-4 text-xs leading-none transition-colors;
+  }
+
+  .v0-control-button-compact {
+    @apply inline-flex h-7 items-center justify-center border px-2 text-xs leading-none transition-colors;
+  }
+
+  .v0-control-toggle {
+    @apply inline-flex h-3 w-3 items-center justify-center border text-[10px] leading-none align-middle;
+  }
+
+  .v0-control-tab {
+    @apply inline-flex h-8 items-center justify-center px-4 text-xs leading-none transition-colors;
+  }
+
+  .v0-terminal-input {
+    @apply w-full border-b bg-transparent px-0 py-0 text-sm leading-8 outline-none;
+  }
+
+  .v0-terminal-textarea {
+    @apply w-full border-b bg-transparent px-0 pb-1 pt-0 text-sm leading-6 outline-none resize-none;
+  }
+}
+
 @layer base {
   :root {
     --font-sans: var(--font-geist-sans);

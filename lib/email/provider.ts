@@ -49,6 +49,10 @@ function resolveEmailDriver(): EmailDriver {
   return env.EMAIL_DRIVER === "test" ? "test" : "resend"
 }
 
+function isProductionTestHarness() {
+  return process.env.__JIMIN_GARDEN_TEST_ENV_LOADED === "1"
+}
+
 export function getEmailBaseUrl() {
   return getCanonicalAppUrl()
 }
@@ -57,7 +61,9 @@ export function getEmailConfigError() {
   const driver = resolveEmailDriver()
 
   if (driver === "test") {
-    return process.env.NODE_ENV === "production" ? "Test email driver is not allowed in production." : null
+    return process.env.NODE_ENV === "production" && !isProductionTestHarness()
+      ? "Test email driver is not allowed in production."
+      : null
   }
 
   const missing: string[] = []

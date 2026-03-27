@@ -3,6 +3,9 @@ import "server-only"
 import { Prisma } from "@prisma/client"
 import { notFound } from "next/navigation"
 
+import { deriveMarkdownSource } from "@/lib/content/markdown-blocks"
+import { inferLinkType } from "@/lib/content/link-preview"
+import { collectBlockDocumentResources, resolvePostContentMode } from "@/lib/content/post-content"
 import { parsePreviewMetadata } from "@/lib/content/preview-metadata"
 import type { PostCommentDTO } from "@/lib/contracts/community"
 import type { PostAssetDTO, PostCardDTO, PostDetailDTO, PostEditorInput, PostKind, PostLinkDTO } from "@/lib/contracts/posts"
@@ -52,6 +55,38 @@ function mapPostCard(post: {
     coverImageUrl: post.coverImageUrl,
     publishedAt: post.publishedAt?.toISOString() ?? null,
     updatedAt: post.updatedAt.toISOString(),
+  }
+}
+
+export type PublishedProjectIndexItem = PostCardDTO & {
+  links: Array<{
+    label: string
+    url: string
+  }>
+}
+
+function mapProjectIndexEntry(post: {
+  id: string
+  slug: string
+  type: PostKind
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED"
+  title: string
+  excerpt: string | null
+  tags: { name: string }[]
+  views: number
+  coverImageUrl: string | null
+  publishedAt: Date | null
+  updatedAt: Date
+  githubUrl: string | null
+  demoUrl: string | null
+  docsUrl: string | null
+}): PublishedProjectIndexItem {
+  return {
+    ...mapPostCard(post),
+    links: mapLegacyLinks(post).map((link) => ({
+      label: link.label,
+      url: link.url,
+    })),
   }
 }
 
@@ -164,6 +199,51 @@ function mapStoredLinks(links: PostLinkRecord[], previews: Map<string, LinkPrevi
   })
 }
 
+function buildPreviewBackedLink(normalizedUrl: string, preview?: LinkPreviewRecord | null): PostLinkDTO {
+  return {
+    label: preview?.title ?? preview?.siteName ?? normalizedUrl,
+    url: normalizedUrl,
+    type: inferLinkType(normalizedUrl),
+    normalizedUrl,
+    siteName: preview?.siteName ?? null,
+    title: preview?.title ?? null,
+    description: preview?.description ?? null,
+    imageUrl: preview?.imageUrl ?? null,
+    embedUrl: preview?.embedUrl ?? null,
+    previewStatus: preview?.previewStatus ?? "PENDING",
+    metadata: parsePreviewMetadata(preview?.metadata),
+  }
+}
+
+function mergeDetailLinks(input: {
+  content: unknown
+  post: {
+    githubUrl: string | null
+    demoUrl: string | null
+    docsUrl: string | null
+  }
+  storedLinks: PostLinkRecord[]
+  previews: Map<string, LinkPreviewRecord>
+}) {
+  const mappedLinks = input.storedLinks.length > 0 ? mapStoredLinks(input.storedLinks, input.previews) : mapLegacyLinks(input.post)
+  const seen = new Set(
+    mappedLinks
+      .map((link) => link.normalizedUrl ?? link.url)
+      .filter((value): value is string => typeof value === "string" && value.length > 0),
+  )
+
+  for (const normalizedUrl of collectBlockDocumentResources(input.content).linkUrls) {
+    if (seen.has(normalizedUrl)) {
+      continue
+    }
+
+    mappedLinks.push(buildPreviewBackedLink(normalizedUrl, input.previews.get(normalizedUrl)))
+    seen.add(normalizedUrl)
+  }
+
+  return mappedLinks
+}
+
 function mapPostDetail(post: {
   id: string
   slug: string
@@ -176,6 +256,8 @@ function mapPostDetail(post: {
   coverImageUrl: string | null
   publishedAt: Date | null
   updatedAt: Date
+  contentVersion: number
+  markdownSource: string | null
   htmlContent: string
   content: unknown
   githubUrl: string | null
@@ -202,6 +284,13 @@ function mapPostDetail(post: {
 }): PostDetailDTO {
   return {
     ...mapPostCard(post),
+    contentVersion: post.contentVersion,
+    contentMode: resolvePostContentMode({
+      contentVersion: post.contentVersion,
+      markdownSource: post.markdownSource,
+      content: post.content,
+    }),
+    markdownSource: post.markdownSource,
     htmlContent: post.htmlContent,
     content: post.content,
     links: post.links,
@@ -268,10 +357,11 @@ export async function getPublishedPostsByType(type: PostKind) {
   return posts.map(mapPostCard)
 }
 
-export async function getPublishedKnowledgePosts() {
+export async function getPublishedProjectIndexItems() {
   const posts = await prisma.post.findMany({
     where: {
       status: "PUBLISHED",
+      type: "PROJECT",
     },
     select: {
       id: true,
@@ -287,11 +377,14 @@ export async function getPublishedKnowledgePosts() {
       coverImageUrl: true,
       publishedAt: true,
       updatedAt: true,
+      githubUrl: true,
+      demoUrl: true,
+      docsUrl: true,
     },
     orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
   })
 
-  return posts.map(mapPostCard)
+  return posts.map(mapProjectIndexEntry)
 }
 
 export async function getPublishedPostDetail(type: PostKind, slug: string) {
@@ -320,6 +413,8 @@ export async function getPublishedPostDetail(type: PostKind, slug: string) {
           likes: true,
         },
       },
+      contentVersion: true,
+      markdownSource: true,
       htmlContent: true,
       content: true,
       githubUrl: true,
@@ -376,12 +471,15 @@ export async function getPublishedPostDetail(type: PostKind, slug: string) {
 
   let previewMap = new Map<string, LinkPreviewRecord>()
 
-  if (storedLinks.length > 0) {
+  const blockResources = collectBlockDocumentResources(post.content)
+  const previewUrls = new Set([...storedLinks.map((link) => link.normalizedUrl), ...blockResources.linkUrls])
+
+  if (previewUrls.size > 0) {
     try {
       const previews = await prisma.linkPreviewCache.findMany({
         where: {
           normalizedUrl: {
-            in: storedLinks.map((link) => link.normalizedUrl),
+            in: [...previewUrls],
           },
         },
         select: {
@@ -407,7 +505,12 @@ export async function getPublishedPostDetail(type: PostKind, slug: string) {
   return mapPostDetail({
     ...post,
     assets,
-    links: storedLinks.length > 0 ? mapStoredLinks(storedLinks, previewMap) : mapLegacyLinks(post),
+    links: mergeDetailLinks({
+      content: post.content,
+      post,
+      storedLinks,
+      previews: previewMap,
+    }),
     likeCount: post._count.likes,
     comments: await prisma.postComment.findMany({
       where: {
@@ -515,6 +618,8 @@ export async function getAdminPostEditorState(postId: string) {
       status: true,
       title: true,
       excerpt: true,
+      contentVersion: true,
+      markdownSource: true,
       htmlContent: true,
       content: true,
       coverImageUrl: true,
@@ -610,6 +715,19 @@ export async function getAdminPostEditorState(postId: string) {
     status: post.status,
     title: post.title,
     excerpt: post.excerpt ?? "",
+    contentVersion: post.contentVersion,
+    contentMode: resolvePostContentMode({
+      contentVersion: post.contentVersion,
+      markdownSource: post.markdownSource,
+      content: post.content,
+    }),
+    markdownSource: deriveMarkdownSource({
+      markdownSource: post.markdownSource,
+      content: post.content,
+      htmlContent: post.htmlContent,
+      excerpt: post.excerpt,
+      title: post.title,
+    }),
     htmlContent: post.htmlContent,
     content: post.content,
     tags: post.tags.map((tag) => tag.name),

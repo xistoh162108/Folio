@@ -1,4 +1,4 @@
-import { profile } from "@/lib/site/profile"
+import { getPrimaryProfileRuntimeSnapshot } from "@/lib/data/profile"
 
 function escapePdfText(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")
@@ -39,17 +39,32 @@ function buildPdf(lines: string[]) {
 }
 
 export async function GET() {
+  const profile = await getPrimaryProfileRuntimeSnapshot()
+  const educationLines =
+    profile.education.length > 0
+      ? profile.education.map((item) =>
+          item.degree
+            ? `${item.institution} - ${item.degree}${item.period ? ` (${item.period})` : ""}`
+            : `${item.institution}${item.period ? ` (${item.period})` : ""}`,
+        )
+      : ["No education records."]
+  const experienceLines =
+    profile.experience.length > 0
+      ? profile.experience.map((item) => `${item.period} - ${item.title}: ${item.detail}`)
+      : ["No experience records."]
+
   const lines = [
     "xistoh.log // resume",
     "",
-    `Role: ${profile.education}`,
-    `Bio: ${profile.bio}`,
+    `Name: ${profile.displayName}`,
+    `Role: ${profile.role}`,
+    `Bio: ${profile.summary}`,
     "",
     "Education",
-    profile.education,
+    ...educationLines,
     "",
     "Experience",
-    ...profile.experience.map((item) => `${item.period} - ${item.title}: ${item.detail}`),
+    ...experienceLines,
   ]
 
   return new Response(buildPdf(lines), {

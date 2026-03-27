@@ -40,6 +40,14 @@ enum PostLinkType {
   OTHER
 }
 
+enum ProfileLinkKind {
+  GITHUB
+  LINKEDIN
+  EMAIL
+  WEBSITE
+  OTHER
+}
+
 enum PreviewFetchStatus {
   PENDING
   READY
@@ -71,6 +79,7 @@ model Post {
   
   content        Json           
   contentVersion Int            @default(1)
+  markdownSource String?
   htmlContent    String         
   
   tags           Tag[]          @relation("PostTags")
@@ -141,6 +150,7 @@ model PostRevision {
   coverImageUrl  String?
   content        Json
   contentVersion Int
+  markdownSource String?
   htmlContent    String
   createdAt      DateTime @default(now())
 
@@ -208,6 +218,89 @@ model Tag {
   normalizedName String @unique 
   posts          Post[] @relation("PostTags")
   @@index([normalizedName])
+}
+
+model Profile {
+  id            String              @id @default(cuid())
+  slug          String              @unique @default("primary")
+  displayName   String
+  role          String
+  summary       String
+  emailAddress  String
+  resumeHref    String?
+  githubHref    String?
+  linkedinHref  String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  education     ProfileEducation[]
+  experience    ProfileExperience[]
+  awards        ProfileAward[]
+  links         ProfileLink[]
+}
+
+model ProfileEducation {
+  id           String   @id @default(cuid())
+  profileId    String
+  institution  String
+  degree       String
+  period       String
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, sortOrder])
+}
+
+model ProfileExperience {
+  id           String   @id @default(cuid())
+  profileId    String
+  title        String
+  label        String
+  detail       String
+  period       String
+  year         String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, sortOrder])
+}
+
+model ProfileAward {
+  id           String   @id @default(cuid())
+  profileId    String
+  title        String
+  issuer       String?
+  detail       String?
+  year         String?
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, sortOrder])
+}
+
+model ProfileLink {
+  id           String          @id @default(cuid())
+  profileId    String
+  label        String
+  url          String
+  kind         ProfileLinkKind @default(OTHER)
+  isVerified   Boolean         @default(false)
+  sortOrder    Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  profile      Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId, sortOrder])
 }
 
 enum SubscriberRole {

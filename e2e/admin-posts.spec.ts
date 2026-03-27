@@ -46,42 +46,40 @@ test("admin posts uses the canonical /admin/posts flow for listing and editing",
     ],
   })
 
-  await page.goto("/admin/content")
+  await page.goto("/admin/posts")
   await expect(page).toHaveURL(/\/admin\/login/)
 
   await loginAsAdmin(page)
-  await page.goto("/admin/content")
+  await page.goto("/admin/posts")
   await expect(page).toHaveURL("/admin/posts")
 
-  await page.getByPlaceholder("Title, slug, or excerpt").fill(publishedSlug)
+  await page.getByRole("textbox", { name: "Search" }).fill(publishedSlug)
   await Promise.all([
     page.waitForURL(new RegExp(`/admin/posts\\?q=${publishedSlug}`)),
     page.getByRole("button", { name: "Apply" }).click(),
   ])
-  await expect(page.getByRole("link", { name: `${marker} published` })).toBeVisible()
+  await expect(page.getByText(`${marker} published`)).toBeVisible()
 
-  await page.getByLabel("Status").selectOption("PUBLISHED")
   await Promise.all([
     page.waitForURL(new RegExp(`/admin/posts\\?q=${publishedSlug}.*status=PUBLISHED`)),
-    page.getByRole("button", { name: "Apply" }).click(),
+    page.getByRole("link", { name: "Status published" }).click(),
   ])
-  await expect(page.getByRole("link", { name: `${marker} published` })).toBeVisible()
+  await expect(page.getByText(`${marker} published`)).toBeVisible()
   await expect(page.getByText(`${marker} archived`)).toHaveCount(0)
 
-  await page.getByLabel("Type").selectOption("PROJECT")
   await Promise.all([
     page.waitForURL(new RegExp(`/admin/posts\\?q=${publishedSlug}.*status=PUBLISHED.*type=PROJECT`)),
-    page.getByRole("button", { name: "Apply" }).click(),
+    page.getByRole("link", { name: "Type project" }).click(),
   ])
-  await expect(page.getByRole("link", { name: `${marker} published` })).toBeVisible()
+  await expect(page.getByText(`${marker} published`)).toBeVisible()
 
   await page.goto(`/admin/posts?q=${marker}-page&page=2`)
-  await expect(page.getByRole("link", { name: "Previous" })).toBeVisible()
+  await expect(page.getByRole("link", { name: "Prev" })).toBeVisible()
 
   await page.goto("/admin/posts")
   await Promise.all([
     page.waitForURL(/\/admin\/posts\/[^/]+$/),
-    page.getByRole("button", { name: "Create draft" }).click(),
+    page.getByRole("button", { name: /\[\+\]\s*new draft/i }).click(),
   ])
 
   const currentUrl = new URL(page.url())
@@ -91,11 +89,32 @@ test("admin posts uses the canonical /admin/posts flow for listing and editing",
   }
 
   await page.getByLabel("Title").fill(`${marker} draft`)
+  await page.getByLabel("Markdown body").fill(`# ${marker} draft\n\nBody content`)
+  await page.getByText("[meta]").click()
+  await expect(page.getByLabel("Slug")).toBeVisible()
   await page.getByLabel("Slug").fill(`${marker}-draft`)
-  await page.getByRole("button", { name: "Save" }).click()
+  await page.getByRole("button", { name: "Save Draft" }).click()
   await expect(page.getByText("Saved.")).toBeVisible()
   await expect(page).toHaveURL(`/admin/posts/${draftId}`)
 
   await page.goto(`/admin/posts?q=${draftSearch}`)
-  await expect(page.getByRole("link", { name: `${marker} draft` })).toBeVisible()
+  await expect(page.getByText(`${marker} draft`)).toBeVisible()
+
+  const savedDraft = await testPrisma.post.findUniqueOrThrow({
+    where: { id: draftId },
+    select: {
+      markdownSource: true,
+      contentVersion: true,
+      content: true,
+      htmlContent: true,
+    },
+  })
+
+  expect(savedDraft.markdownSource).toContain(`# ${marker} draft`)
+  expect(savedDraft.contentVersion).toBeGreaterThanOrEqual(100)
+  expect(savedDraft.htmlContent).toContain(`<h1>${marker} draft</h1>`)
+  expect(savedDraft.content).toMatchObject({
+    type: "doc",
+    version: expect.any(Number),
+  })
 })

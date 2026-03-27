@@ -22,6 +22,11 @@ const RESET_TABLES = [
   "PostRevision",
   "_PostTags",
   "Tag",
+  "ProfileLink",
+  "ProfileAward",
+  "ProfileExperience",
+  "ProfileEducation",
+  "Profile",
   "Post",
   "User",
 ] as const

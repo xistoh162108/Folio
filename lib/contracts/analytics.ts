@@ -16,6 +16,7 @@ export interface TopContentRow {
   slug: string
   type: "NOTE" | "PROJECT"
   views: number
+  avgDwellSeconds?: number | null
 }
 
 export interface ReferrerBreakdownRow {
@@ -30,6 +31,7 @@ export interface DeviceBreakdownRow {
 
 export interface AnalyticsDashboardSummary {
   pageviews: number
+  uniqueVisitors: number
   avgDwellSeconds: number
   realtimeVisitors: number
   p95LatencyMs: number

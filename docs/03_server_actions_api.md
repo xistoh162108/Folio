@@ -1,31 +1,83 @@
 # 03. Actions, APIs, and Workers
 
-This app uses Server Actions for authenticated mutations and Route Handlers for analytics, uploads, signed downloads, auth, and worker execution.
+This app uses Server Actions for authenticated or form-bound mutations and Route Handlers for uploads, analytics, signed downloads, auth, public community APIs, and worker execution.
 
 ## Server Actions
 
 ### Posts
 
-- `createDraftPost()`: creates a fresh `DRAFT` post and audit log entry
-- `savePost(input)`: creates or updates a post, snapshots `PostRevision`, resyncs tags and links, and records audit
-- `archivePost(id)`: moves a post to `ARCHIVED` and records audit
+- `createDraftPost()`
+  - creates a fresh `DRAFT` post and audit log entry
+- `savePost(input)`
+  - creates or updates a post
+  - snapshots `PostRevision`
+  - syncs tags, links, and retained assets
+  - marks removed assets for cleanup
+  - records audit
+- `archivePost(id)`
+  - moves a post to `ARCHIVED`
+  - records audit
+
+Callers:
+
+- admin post list
+- admin post editor
 
 ### Subscribers
 
-- `requestSubscription(payload)`: creates or updates a subscriber, attaches topics, and sends a confirmation email
-- `confirmSubscription(token)`: validates the hashed confirm token and marks the subscriber as confirmed
-- `unsubscribeSubscription(token)`: marks a subscriber as unsubscribed
+- `requestSubscription(payload)`
+  - validates email, honeypot, and topic selection
+  - upserts the subscriber
+  - sends a confirmation email through `EmailProvider`
+- `confirmSubscription(token)`
+  - validates the hashed confirm token and confirms the subscriber
+- `unsubscribeSubscription(token)`
+  - unsubscribes the subscriber and attempts to send a confirmation email
+
+Callers:
+
+- `components/v0/public/subscription-module.tsx`
+- `/subscribe/confirm`
+- `/unsubscribe`
 
 ### Contact
 
-- `submitContactMessage(payload)`: inserts `ContactMessage`, queues `WebhookDelivery`, and attempts to trigger the webhook worker
+- `submitContactMessage(payload)`
+  - validates form and honeypot
+  - inserts `ContactMessage`
+  - inserts `WebhookDelivery`
+  - attempts to trigger the webhook worker
+  - attempts to send a transactional acknowledgement email
+
+Caller:
+
+- `components/contact-form.tsx`
 
 ### Newsletter
 
-- `createCampaign(input)`: creates the campaign and delivery fan-out only
-- `startCampaign(input)`: flips a campaign to `SENDING` and dispatches the newsletter worker
-- `sendTestCampaign(input)`: sends a single test email through the configured provider
-- `retryDelivery(deliveryId)`: resets a failed delivery to `PENDING`, reopens the campaign, and dispatches the worker
+- `createCampaign(input)`
+  - creates the campaign and delivery fan-out only
+- `startCampaign(input)`
+  - flips the campaign to `SENDING` and dispatches the newsletter worker
+- `sendTestCampaign(input)`
+  - sends a single test email through the configured provider
+- `retryDelivery(deliveryId)`
+  - resets a failed delivery row to `PENDING`
+  - reopens the campaign
+  - dispatches the newsletter worker
+
+Caller:
+
+- `components/v0/admin/newsletter-manager.tsx`
+
+### Community moderation
+
+- `softDeleteComment(commentId)`
+- `softDeleteGuestbookEntry(entryId)`
+
+Caller:
+
+- `/admin/community`
 
 ## Route Handlers
 
@@ -37,38 +89,105 @@ This app uses Server Actions for authenticated mutations and Route Handlers for 
 ### Analytics
 
 - `POST /api/analytics`
-- Single write path for raw analytics events
-- Skips `/admin` paths
-- Returns `400` for invalid payloads, `429` for rate limiting, `503` for schema drift, and `500` for unexpected failures
+- single write path for raw analytics events
+- skips `/admin` paths intentionally
+- returns:
+  - `200` for success
+  - `200` with `skipped` for intentional admin-path skip
+  - `400` for invalid payloads
+  - `429` for rate limiting
+  - `503` for schema/config drift
+  - `500` for unexpected failures
+
+Caller:
+
+- `components/analytics-tracker.tsx`
 
 ### Uploads and downloads
 
 - `POST /api/admin/uploads`
-- Requires admin session
-- Upload policy:
-  - images: `image/jpeg`, `image/png`, `image/webp`, max 8 MB
-  - files: `application/pdf`, `text/plain`, max 20 MB
+  - requires admin session
+  - upload policy:
+    - images: `image/jpeg`, `image/png`, `image/webp`, max 8 MB
+    - files: `application/pdf`, `text/plain`, max 20 MB
 - `GET /api/files/[assetId]`
-- Rejects assets already marked with `pendingDeleteAt`
-- Checks whether the requester can access the asset, then returns a 10-minute signed Supabase download URL
+  - rejects assets already marked with `pendingDeleteAt`
+  - checks requester access
+  - returns a 10-minute signed Supabase download URL
+
+Caller:
+
+- admin post editor
+- public and admin post detail download links
+
+### Community APIs
+
+- `POST /api/guestbook`
+  - creates guestbook entries
+- `POST /api/posts/[postId]/comments`
+  - creates comments
+- `POST /api/comments/[commentId]/delete`
+  - deletes comment by PIN flow
+- `POST /api/posts/[postId]/like`
+  - toggles a session like row
+- `POST /api/admin/comments/[commentId]`
+  - admin comment soft delete
+- `POST /api/admin/guestbook/[entryId]`
+  - admin guestbook soft delete
+
+Callers:
+
+- `components/v0/public/guestbook-screen.tsx`
+- `components/v0/public/comments-log.tsx`
+- `components/v0/public/post-like-button.tsx`
+- admin community UI
 
 ### Workers
 
 - `POST /api/worker/webhook`
-- Processes pending webhook queue rows in batches with exponential backoff
+  - processes pending webhook rows in batches with backoff
 - `POST /api/worker/asset-cleanup`
-- Marks retention candidates when needed, deletes Supabase objects and `PostAsset` rows in `pendingDeleteAt ASC, createdAt ASC, id ASC` order, and treats missing objects as successful cleanup
+  - marks or deletes stale assets
+  - deletes in `pendingDeleteAt ASC, createdAt ASC, id ASC` order
+  - treats missing storage objects as successful cleanup
 - `POST /api/worker/newsletter`
-- Claims pending deliveries in `createdAt ASC, id ASC` order, sends up to 20 deliveries per run, refreshes campaign aggregates, and self-dispatches again when more rows remain
+  - claims pending deliveries in `createdAt ASC, id ASC`
+  - sends up to 20 deliveries per run
+  - refreshes campaign aggregates
+  - self-dispatches when more work remains
 
-`GET` is still accepted for both worker routes, but automation and systemd or cron examples should use `POST`.
+`GET` is still accepted for worker routes, but automation, systemd, cron, and smoke checks should use `POST`.
+
+### Test-only support
+
+- `GET /api/test-storage`
+  - helper route used by the test storage driver during local QA and E2E
+
+## Email provider integration
+
+`lib/email/provider.ts` is the abstraction boundary. It exposes:
+
+- `sendTransactionalEmail()`
+- `sendTestEmail()`
+- `sendCampaignEmails()`
+
+Drivers:
+
+- production default: Resend
+- local/test: test driver sink
+
+Production must fail closed if:
+
+- `APP_URL` is missing
+- `EMAIL_FROM` is missing
+- `RESEND_API_KEY` is missing
 
 ## Worker dispatch model
 
-Interactive flows do not wait for worker completion. Instead they call `kickWorkerRoute()`:
+Interactive flows do not wait for worker completion. They call `kickWorkerRoute()` instead:
 
 - contact submit -> `/api/worker/webhook`
 - post save with removed assets -> `/api/worker/asset-cleanup`
-- start campaign or retry delivery -> `/api/worker/newsletter`
+- campaign start or retry -> `/api/worker/newsletter`
 
-In production, self-dispatch uses `APP_URL` and should fail closed if it is missing. In local development and test environments, `NEXTAUTH_URL` may be used as a fallback.
+In production, self-dispatch uses `APP_URL` and fails closed if it is missing. Development and test may fall back to local values.

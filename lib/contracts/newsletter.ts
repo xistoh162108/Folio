@@ -36,3 +36,10 @@ export interface DeliveryRowDTO {
   createdAt: string
   sentAt?: string | null
 }
+
+export interface NewsletterSubscriberRowDTO {
+  id: string
+  email: string
+  topics: string[]
+  subscribedAt: string
+}

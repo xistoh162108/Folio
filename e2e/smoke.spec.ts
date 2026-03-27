@@ -1,11 +1,73 @@
 import { expect, test } from "@playwright/test"
 
+import { prisma } from "../lib/db/prisma"
+
+async function ensurePublishedDetailPath() {
+  const note = await prisma.post.findFirst({
+    where: {
+      status: "PUBLISHED",
+      type: "NOTE",
+    },
+    select: {
+      slug: true,
+    },
+  })
+
+  if (note?.slug) {
+    return `/notes/${note.slug}`
+  }
+
+  const project = await prisma.post.findFirst({
+    where: {
+      status: "PUBLISHED",
+      type: "PROJECT",
+    },
+    select: {
+      slug: true,
+    },
+  })
+
+  if (project?.slug) {
+    return `/projects/${project.slug}`
+  }
+
+  const marker = `playwright-smoke-${Date.now()}`
+  const created = await prisma.post.create({
+    data: {
+      slug: `${marker}-note`,
+      type: "NOTE",
+      status: "PUBLISHED",
+      title: `${marker} title`,
+      excerpt: `${marker} excerpt`,
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: `${marker} detail body` }],
+          },
+        ],
+      },
+      htmlContent: `<p>${marker} detail body</p>`,
+      publishedAt: new Date(),
+    },
+    select: {
+      slug: true,
+    },
+  })
+
+  return `/notes/${created.slug}`
+}
+
 test("public pages and admin auth boundary are reachable", async ({ page }) => {
   await page.goto("/")
-  await expect(page.getByRole("heading", { name: "Jimin Bag" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Jimin Park" })).toBeVisible()
 
-  await page.goto("/knowledge")
-  await expect(page.getByRole("heading", { name: "Unified notes and projects" })).toBeVisible()
+  await page.goto("/notes")
+  await expect(page.getByRole("heading", { name: "Notes & Seeds" })).toBeVisible()
+
+  await page.goto("/projects")
+  await expect(page.getByRole("heading", { name: "Featured Work" })).toBeVisible()
 
   await page.goto("/guestbook")
   await expect(page.getByRole("heading", { name: "System logs from visitors" })).toBeVisible()
@@ -16,11 +78,8 @@ test("public pages and admin auth boundary are reachable", async ({ page }) => {
   await page.goto("/admin/posts")
   await expect(page).toHaveURL(/\/admin\/login/)
 
-  await page.goto("/notes")
-  await expect(page.getByRole("heading", { name: "Published notes" })).toBeVisible()
-
-  await page.goto("/projects")
-  await expect(page.getByRole("heading", { name: "Published projects" })).toBeVisible()
+  await page.goto("/contact")
+  await expect(page.getByRole("heading", { name: "Get in Touch" })).toBeVisible()
 })
 
 test("analytics endpoint accepts a basic beacon payload", async ({ request }) => {
@@ -42,7 +101,7 @@ test("analytics endpoint accepts a page-load payload", async ({ request }) => {
     data: {
       eventType: "PAGELOAD",
       sessionId: "playwright-pageload-session",
-      path: "/knowledge",
+      path: "/notes",
       pageLoadMs: 187,
     },
   })
@@ -79,23 +138,19 @@ test("guestbook endpoint accepts a valid log and rejects honeypot spam", async (
 })
 
 test("comment create and PIN delete flow works on a published post", async ({ page }) => {
-  await page.goto("/knowledge")
-
-  const firstKnowledgeLink = page.locator('a[href^="/notes/"], a[href^="/projects/"]').first()
-  await expect(firstKnowledgeLink).toBeVisible()
-  await firstKnowledgeLink.click()
+  await page.goto(await ensurePublishedDetailPath())
 
   const marker = `playwright-comment-${Date.now()}`
   const commentBox = page.getByPlaceholder('git commit -m "write your log_"')
   await commentBox.fill(marker)
   await page.getByPlaceholder("PIN_").fill("2468")
-  await page.getByRole("button", { name: /\[ write log \]/i }).click()
+  await page.getByRole("button", { name: /\[\s*write log\s*\]/i }).click()
 
   await expect(page.getByText(marker)).toBeVisible()
 
-  const commentCard = page.locator("div.rounded-2xl").filter({ hasText: marker }).first()
-  await commentCard.getByPlaceholder("PIN to delete").fill("2468")
-  await commentCard.getByRole("button", { name: /\[ delete with pin \]/i }).click()
+  const commentRow = page.locator("[data-comment-row]").filter({ hasText: marker }).first()
+  await commentRow.getByPlaceholder("PIN_").fill("2468")
+  await commentRow.getByRole("button", { name: /\[\s*delete\s*\]/i }).click()
 
   await expect(page.getByText(marker)).toHaveCount(0)
 })

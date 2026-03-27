@@ -64,4 +64,21 @@ describe("isEffectivelyEmptyDraft", () => {
       }),
     ).toBe(false)
   })
+
+  it("treats block-doc embeds as meaningful content", () => {
+    expect(
+      isEffectivelyEmptyDraft({
+        status: "DRAFT",
+        title: "Untitled draft",
+        excerpt: "",
+        coverImageUrl: "",
+        activeLinkCount: 0,
+        content: {
+          type: "doc",
+          version: 100,
+          blocks: [{ id: "block-1", type: "embed", provider: "GENERIC", url: "https://example.com/embed" }],
+        },
+      }),
+    ).toBe(false)
+  })
 })

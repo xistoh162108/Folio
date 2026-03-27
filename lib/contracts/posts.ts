@@ -1,4 +1,5 @@
 import type { PostCommentDTO } from "@/lib/contracts/community"
+import type { BlockDocument, PostContentMode } from "@/lib/contracts/content-blocks"
 
 export type PostKind = "NOTE" | "PROJECT"
 export type PostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED"
@@ -63,8 +64,11 @@ export interface PostCardDTO {
 }
 
 export interface PostDetailDTO extends PostCardDTO {
+  contentVersion: number
+  contentMode: PostContentMode
+  markdownSource: string | null
   htmlContent: string
-  content?: unknown
+  content?: BlockDocument | unknown
   links: PostLinkDTO[]
   assets: PostAssetDTO[]
   likeCount: number
@@ -78,10 +82,13 @@ export interface PostEditorInput {
   excerpt?: string
   type: PostKind
   status: PostStatus
+  contentVersion?: number
+  contentMode?: PostContentMode
+  markdownSource?: string
   tags: string[]
   coverImageUrl?: string
   htmlContent: string
-  content: unknown
+  content: BlockDocument | unknown
   githubUrl?: string
   demoUrl?: string
   docsUrl?: string

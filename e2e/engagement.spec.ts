@@ -13,8 +13,9 @@ test("subscription confirm/unsubscribe and contact webhook flow work end-to-end"
   const contactEmail = `${marker}-contact@example.com`
 
   await page.goto("/")
-  await page.locator('input[placeholder="you@email.com"]').first().fill(email)
-  await page.getByRole("button", { name: "Subscribe" }).click()
+  const subscriptionInput = page.locator('input[placeholder="you@email.com"]').first()
+  await subscriptionInput.fill(email)
+  await subscriptionInput.locator("xpath=ancestor::form[1]").locator("button").click()
   await expect(page.getByText(/verification email/i)).toBeVisible()
 
   await expect
@@ -36,7 +37,7 @@ test("subscription confirm/unsubscribe and contact webhook flow work end-to-end"
   }
 
   await page.goto(confirmUrl)
-  await page.getByRole("button", { name: "Confirm subscription" }).click()
+  await page.getByRole("button", { name: /\[confirm subscription\]/i }).click()
   await expect(page.getByRole("heading", { name: "Subscription confirmed" })).toBeVisible()
 
   const subscriber = await testPrisma.subscriber.findUniqueOrThrow({
@@ -49,15 +50,15 @@ test("subscription confirm/unsubscribe and contact webhook flow work end-to-end"
   expect(subscriber.isConfirmed).toBe(true)
 
   await page.goto(`/unsubscribe?token=${subscriber.unsubscribeToken}`)
-  await page.getByRole("button", { name: "Unsubscribe" }).click()
+  await page.getByRole("button", { name: /\[unsubscribe\]/i }).click()
   await expect(page.getByRole("heading", { name: "Subscription cancelled" })).toBeVisible()
 
-  await page.goto("/")
+  await page.goto("/contact")
   await page.getByPlaceholder("Name_").fill("QA Contact")
   await page.getByPlaceholder("Email_").fill(contactEmail)
   await page.getByPlaceholder("Message_").fill(`Message from ${marker}`)
   await page.getByRole("button", { name: /\[\s*submit\s*\]/i }).click()
-  await expect(page.getByText(/\[ secure channel established \]/i)).toBeVisible()
+  await expect(page.getByText(/\[\s*ok:\s*message queued/i)).toBeVisible()
 
   await expect
     .poll(async () => {

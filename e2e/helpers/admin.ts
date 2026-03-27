@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test"
 
 import { testPrisma } from "./db"
 
-export const E2E_ADMIN_EMAIL = "e2e-admin@jimin.garden"
+export const E2E_ADMIN_EMAIL = "e2e-admin@xistoh.com"
 export const E2E_ADMIN_PASSWORD = "codex-admin-1234"
 
 export async function ensureAdminUser() {
@@ -24,5 +24,5 @@ export async function loginAsAdmin(page: Page) {
   await page.getByPlaceholder("Identify_").fill(E2E_ADMIN_EMAIL)
   await page.getByPlaceholder("Passphrase_").fill(E2E_ADMIN_PASSWORD)
   await page.getByRole("button", { name: /\[\s*initiate override_\s*\]/i }).click()
-  await page.waitForURL(/\/admin\/posts/)
+  await page.waitForURL(/\/admin\/(analytics|posts)/)
 }

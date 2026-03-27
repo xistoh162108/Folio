@@ -1,27 +1,41 @@
-import { PostDetailView } from "@/components/site/post-detail-view"
-import { SiteHeader } from "@/components/site/site-header"
-import { getSession } from "@/lib/auth"
+import type { Metadata } from "next"
+
+import { DetailNoteScreenBound } from "@/components/v0/public/detail-note-screen-bound"
 import { getPublishedPostDetail } from "@/lib/data/posts"
+import { buildArticleMetadata, buildPostStructuredData, getPostSeoDescription, getPostSeoImages } from "@/lib/seo/metadata"
 
 export const dynamic = "force-dynamic"
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const post = await getPublishedPostDetail("NOTE", slug)
+
+  return buildArticleMetadata({
+    title: post.title,
+    description: getPostSeoDescription(post),
+    path: `/notes/${post.slug}`,
+    publishedTime: post.publishedAt ?? post.updatedAt,
+    modifiedTime: post.updatedAt,
+    tags: post.tags,
+    images: getPostSeoImages(post),
+  })
+}
+
 export default async function NoteDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const [session, post] = await Promise.all([getSession(), getPublishedPostDetail("NOTE", slug)])
+  const post = await getPublishedPostDetail("NOTE", slug)
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <SiteHeader />
-      <main className="mx-auto max-w-4xl px-6 py-12">
-        <PostDetailView
-          post={post}
-          kindLabel="Note"
-          backHref="/notes"
-          backLabel="Back to notes"
-          attachmentTitle="Attachments"
-          canModerate={Boolean(session?.user?.id)}
-        />
-      </main>
-    </div>
+    <>
+      <DetailNoteScreenBound slug={slug} post={post} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildPostStructuredData(post)) }}
+      />
+    </>
   )
 }

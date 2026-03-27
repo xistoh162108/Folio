@@ -1,5 +1,4 @@
-import { PostEditor } from "@/components/admin/post-editor"
-import { getAdminPostEditorState } from "@/lib/data/posts"
+import { EditorScreenBound } from "@/components/v0/admin/editor-screen-bound"
 
 export default async function AdminPostEditorPage({
   params,
@@ -7,7 +6,6 @@ export default async function AdminPostEditorPage({
   params: Promise<{ postId: string }>
 }) {
   const { postId } = await params
-  const post = await getAdminPostEditorState(postId)
 
-  return <PostEditor initialPost={post} />
+  return <EditorScreenBound postId={postId} />
 }

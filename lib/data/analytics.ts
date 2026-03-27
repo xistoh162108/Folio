@@ -57,6 +57,7 @@ export async function getAnalyticsDashboardSummary(): Promise<AnalyticsDashboard
     orderBy: [{ views: "desc" }, { publishedAt: "desc" }],
     take: 5,
     select: {
+      id: true,
       title: true,
       slug: true,
       type: true,
@@ -68,6 +69,7 @@ export async function getAnalyticsDashboardSummary(): Promise<AnalyticsDashboard
     sessionId: string
     eventType: "PAGEVIEW" | "HEARTBEAT" | "PAGELOAD" | "CONTACT_SUBMIT" | "SUBSCRIBE_REQUEST"
     referrer: string | null
+    postId?: string | null
     referrerHost?: string | null
     userAgent: string | null
     browser?: string | null
@@ -91,6 +93,7 @@ export async function getAnalyticsDashboardSummary(): Promise<AnalyticsDashboard
         sessionId: true,
         eventType: true,
         referrer: true,
+        postId: true,
         referrerHost: true,
         userAgent: true,
         browser: true,
@@ -118,6 +121,7 @@ export async function getAnalyticsDashboardSummary(): Promise<AnalyticsDashboard
         sessionId: true,
         eventType: true,
         referrer: true,
+        postId: true,
         userAgent: true,
         duration: true,
         createdAt: true,
@@ -130,6 +134,7 @@ export async function getAnalyticsDashboardSummary(): Promise<AnalyticsDashboard
   const humanEvents = events.filter((event) => !event.isBot)
   const humanPageviews = humanEvents.filter((event) => event.eventType === "PAGEVIEW")
   const pageviews = humanPageviews.length
+  const uniqueVisitors = new Set(humanEvents.map((event) => event.sessionId)).size
   const durations = events
     .filter((event) => !event.isBot && event.eventType === "HEARTBEAT" && typeof event.duration === "number")
     .map((event) => event.duration as number)
@@ -163,12 +168,36 @@ export async function getAnalyticsDashboardSummary(): Promise<AnalyticsDashboard
   const avgDwellSeconds =
     durations.length > 0 ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length) : 0
 
+  const dwellDurationsByPost = new Map<string, number[]>()
+  for (const event of humanEvents) {
+    if (event.eventType !== "HEARTBEAT" || typeof event.duration !== "number" || !event.postId) {
+      continue
+    }
+
+    const current = dwellDurationsByPost.get(event.postId) ?? []
+    current.push(event.duration)
+    dwellDurationsByPost.set(event.postId, current)
+  }
+
   return {
     pageviews,
+    uniqueVisitors,
     avgDwellSeconds,
     realtimeVisitors,
     p95LatencyMs,
-    topContent: topPosts,
+    topContent: topPosts.map((post) => {
+      const dwellSamples = dwellDurationsByPost.get(post.id) ?? []
+      return {
+        title: post.title,
+        slug: post.slug,
+        type: post.type,
+        views: post.views,
+        avgDwellSeconds:
+          dwellSamples.length > 0
+            ? Math.round(dwellSamples.reduce((sum, value) => sum + value, 0) / dwellSamples.length)
+            : null,
+      }
+    }),
     referrers,
     browsers,
     devices,

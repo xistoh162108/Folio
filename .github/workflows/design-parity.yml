@@ -1,0 +1,120 @@
+name: Design Parity
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  design-parity:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install root dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install v0 reference dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: v0app
+
+      - name: Prepare test environment
+        run: |
+          cp .env.test.example .env.test.local
+          python - <<'PY'
+          from pathlib import Path
+          path = Path(".env.test.local")
+          text = path.read_text()
+          text = text.replace("http://127.0.0.1:3001", "http://127.0.0.1:3311")
+          text = text.replace("replace-with-a-long-random-secret", "codex-ci-nextauth-secret")
+          text = text.replace("replace-with-a-long-random-cron-secret", "codex-ci-cron-secret")
+          path.write_text(text)
+          PY
+
+      - name: Prepare database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -p 54329 -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'jimin_garden_test'" | grep -q 1 || \
+            psql -h 127.0.0.1 -p 54329 -U postgres -c "CREATE DATABASE jimin_garden_test"
+          pnpm test:db:prepare
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build current app
+        run: pnpm build
+
+      - name: Build v0 reference
+        run: pnpm build
+        working-directory: v0app
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Start current app
+        run: pnpm exec next start -p 3311 > /tmp/current-app.log 2>&1 &
+
+      - name: Start v0 reference app
+        run: pnpm exec next start -p 3410 > /tmp/v0-app.log 2>&1 &
+        working-directory: v0app
+
+      - name: Wait for servers
+        run: |
+          for url in http://127.0.0.1:3311 http://127.0.0.1:3410; do
+            for _ in $(seq 1 60); do
+              if curl -fsS "$url" > /dev/null; then
+                break
+              fi
+              sleep 1
+            done
+          done
+
+      - name: Capture parity evidence
+        env:
+          CURRENT_BASE_URL: http://127.0.0.1:3311
+          V0_BASE_URL: http://127.0.0.1:3410
+        run: pnpm parity:capture
+
+      - name: Smoke checks
+        env:
+          APP_URL: http://127.0.0.1:3311
+          CRON_SECRET: codex-ci-cron-secret
+        run: pnpm ops:smoke
+
+      - name: Focused E2E checks
+        run: pnpm test:e2e e2e/smoke.spec.ts e2e/contact-guestbook.spec.ts e2e/detail-reader.spec.ts e2e/seo.spec.ts e2e/admin-posts.spec.ts e2e/admin-settings.spec.ts e2e/admin-community.spec.ts e2e/engagement.spec.ts
+
+      - name: Upload parity artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: design-parity-artifacts
+          path: docs/migration/parity
+          if-no-files-found: error

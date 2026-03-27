@@ -19,7 +19,7 @@ export async function loginAsAdmin(page: Page) {
   await page.getByPlaceholder("Identify_").fill(E2E_ADMIN_EMAIL)
   await page.getByPlaceholder("Passphrase_").fill(E2E_ADMIN_PASSWORD)
   await page.getByRole("button", { name: /\[\s*initiate override_\s*\]/i }).click()
-  await page.waitForURL(/\/admin\/posts/)
+  await page.waitForURL(/\/admin\/(analytics|posts)/)
 }
 
 export async function seedCommunityFixtures(): Promise<CommunityFixtures> {

@@ -22,16 +22,14 @@ test("admin moderation soft-deletes comments and guestbook entries end-to-end", 
     await loginAsAdmin(page)
     await page.goto("/admin/community")
 
-    const commentCard = page.locator("div.rounded-2xl").filter({ hasText: fixtures.commentMessage }).first()
-    const guestbookCard = page.locator("div.rounded-2xl").filter({ hasText: fixtures.guestbookMessage }).first()
+    await expect(page.getByText(fixtures.commentMessage)).toBeVisible()
+    await expect(page.getByText(fixtures.guestbookMessage)).toBeVisible()
 
-    await expect(commentCard).toBeVisible()
-    await expect(guestbookCard).toBeVisible()
-
-    await commentCard.getByRole("button", { name: /soft delete/i }).click()
+    const deleteButtons = page.getByRole("button", { name: /\[delete\]/i })
+    await deleteButtons.first().click()
     await expect(page.getByText(fixtures.commentMessage)).toHaveCount(0)
 
-    await guestbookCard.getByRole("button", { name: /soft delete/i }).click()
+    await deleteButtons.first().click()
     await expect(page.getByText(fixtures.guestbookMessage)).toHaveCount(0)
 
     await page.goto("/guestbook")
