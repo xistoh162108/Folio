@@ -47,11 +47,44 @@ describe("getAdminReadinessDashboard", () => {
       detail: expect.stringContaining("Test storage driver"),
     })
 
+    expect(dashboard.cards.find((card) => card.key === "post-media")).toMatchObject({
+      status: "ready",
+      value: "public",
+      detail: expect.stringContaining("post-media is public"),
+    })
+
+    expect(dashboard.cards.find((card) => card.key === "post-files")).toMatchObject({
+      status: "ready",
+      value: "private",
+      detail: expect.stringContaining("post-files is private"),
+    })
+
     expect(dashboard.cards.find((card) => card.key === "email")).toMatchObject({
       status: "ready",
       detail: expect.stringContaining("Test email driver"),
     })
 
     expect(dashboard.lastWorkerActivity).toBeNull()
+  })
+
+  it("fails closed when test storage is configured in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+
+    try {
+      const dashboard = await getAdminReadinessDashboard()
+
+      expect(dashboard.cards.find((card) => card.key === "storage")).toMatchObject({
+        status: "not_ready",
+        value: "Test driver",
+        detail: expect.stringContaining("not allowed in production"),
+      })
+
+      expect(dashboard.cards.find((card) => card.key === "post-media")).toMatchObject({
+        status: "not_ready",
+        value: "missing",
+      })
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })

@@ -2,6 +2,7 @@ import "server-only"
 
 import { Prisma } from "@prisma/client"
 import { notFound } from "next/navigation"
+import { cache } from "react"
 
 import { deriveMarkdownSource } from "@/lib/content/markdown-blocks"
 import { inferLinkType } from "@/lib/content/link-preview"
@@ -387,7 +388,7 @@ export async function getPublishedProjectIndexItems() {
   return posts.map(mapProjectIndexEntry)
 }
 
-export async function getPublishedPostDetail(type: PostKind, slug: string) {
+const getPublishedPostDetailCached = cache(async (type: PostKind, slug: string) => {
   const post = await prisma.post.findFirst({
     where: {
       type,
@@ -533,6 +534,10 @@ export async function getPublishedPostDetail(type: PostKind, slug: string) {
       throw error
     }),
   })
+})
+
+export async function getPublishedPostDetail(type: PostKind, slug: string) {
+  return getPublishedPostDetailCached(type, slug)
 }
 
 export async function getAdminPosts(input: AdminPostsQueryInput = {}): Promise<AdminPostsResult> {

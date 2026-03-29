@@ -1,6 +1,8 @@
 "use client"
 
-import { forwardRef, Fragment, useImperativeHandle, useMemo, useRef, type ReactNode } from "react"
+import { forwardRef, useImperativeHandle, useMemo, useRef, type ReactNode } from "react"
+
+import { getV0RouteAccentPalette } from "@/lib/site/v0-route-palette"
 
 export interface V0MarkdownEditorHandle {
   insertSnippet: (snippet: string, options?: { selectOffset?: number }) => void
@@ -14,11 +16,11 @@ interface V0MarkdownEditorProps {
   placeholder?: string
 }
 
-function renderInlineTokens(text: string, isDarkMode: boolean) {
-  const accent = isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"
+function renderInlineTokens(text: string, accentColor: string, isDarkMode: boolean) {
   const muted = isDarkMode ? "text-white/45" : "text-black/45"
+  const accentStyle = { color: accentColor }
   const nodes: ReactNode[] = []
-  const pattern = /(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*\n]+\*|\$[^$\n]+\$)/g
+  const pattern = /(\[[^\]]+\]\((?:https?:\/\/|asset:\/\/)[^\s)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*\n]+\*|\$[^$\n]+\$)/g
   let lastIndex = 0
   let match: RegExpExecArray | null
 
@@ -30,7 +32,7 @@ function renderInlineTokens(text: string, isDarkMode: boolean) {
     const token = match[0]
     if (token.startsWith("[")) {
       nodes.push(
-        <span key={`${match.index}-link`} className={accent}>
+        <span key={`${match.index}-link`} style={accentStyle}>
           {token}
         </span>,
       )
@@ -42,7 +44,7 @@ function renderInlineTokens(text: string, isDarkMode: boolean) {
       )
     } else if (token.startsWith("$")) {
       nodes.push(
-        <span key={`${match.index}-math`} className={accent}>
+        <span key={`${match.index}-math`} style={accentStyle}>
           {token}
         </span>,
       )
@@ -64,7 +66,7 @@ function renderInlineTokens(text: string, isDarkMode: boolean) {
   return nodes
 }
 
-function renderMirror(source: string, placeholder: string, isDarkMode: boolean) {
+function renderMirror(source: string, placeholder: string, isDarkMode: boolean, accentColor: string) {
   if (source.length === 0) {
     return <span className={isDarkMode ? "text-white/25" : "text-black/25"}>{placeholder}</span>
   }
@@ -82,26 +84,25 @@ function renderMirror(source: string, placeholder: string, isDarkMode: boolean) 
       className = isDarkMode ? "text-white/45" : "text-black/45"
     } else if (trimmed === "$$") {
       inMathFence = !inMathFence
-      className = isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"
+      className = ""
     } else if (inCodeFence) {
       className = isDarkMode ? "text-white/70" : "text-black/70"
     } else if (inMathFence || /^\$\$.*\$\$$/.test(trimmed)) {
-      className = isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"
+      className = ""
     } else if (/^#{1,6}\s/.test(line)) {
       className = "font-semibold"
     } else if (/^>\s?/.test(line)) {
       className = isDarkMode ? "text-white/60" : "text-black/60"
     } else if (/^(-|\*|\d+[.)])\s/.test(line)) {
       className = isDarkMode ? "text-white/85" : "text-black/85"
-    } else if (/^!\[.*\]\(https?:\/\/[^\s)]+/.test(trimmed) || /^https?:\/\/\S+$/.test(trimmed)) {
-      className = isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"
+    } else if (/^!\[.*\]\((?:https?:\/\/|asset:\/\/)[^\s)]+/.test(trimmed) || /^https?:\/\/\S+$/.test(trimmed)) {
+      className = ""
     }
 
     return (
-      <Fragment key={`line-${index}`}>
-        <div className={className}>{renderInlineTokens(line, isDarkMode)}</div>
-        {index < lines.length - 1 ? "\n" : null}
-      </Fragment>
+      <span key={`line-${index}`} className={`block ${className}`} style={className ? undefined : { color: accentColor }}>
+        {line.length > 0 ? renderInlineTokens(line, accentColor, isDarkMode) : "\u200b"}
+      </span>
     )
   })
 }
@@ -120,7 +121,8 @@ export const V0MarkdownEditor = forwardRef<V0MarkdownEditorHandle, V0MarkdownEdi
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20"
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
-  const mirror = useMemo(() => renderMirror(value, placeholder, isDarkMode), [isDarkMode, placeholder, value])
+  const accentColor = useMemo(() => getV0RouteAccentPalette("default", isDarkMode).color, [isDarkMode])
+  const mirror = useMemo(() => renderMirror(value, placeholder, isDarkMode, accentColor), [accentColor, isDarkMode, placeholder, value])
 
   const syncScroll = () => {
     if (!textareaRef.current || !mirrorRef.current) {
@@ -198,14 +200,14 @@ export const V0MarkdownEditor = forwardRef<V0MarkdownEditorHandle, V0MarkdownEdi
         <div
           ref={mirrorRef}
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 overflow-auto whitespace-pre-wrap break-words px-4 py-3 text-sm leading-6 ${
-            isDarkMode ? "text-white" : "text-black"
-          }`}
+          data-v0-editor-mirror
+          className={`v0-editor-surface pointer-events-none absolute inset-0 ${isDarkMode ? "text-white" : "text-black"}`}
         >
           {mirror}
         </div>
         <textarea
           ref={textareaRef}
+          data-v0-editor-textarea
           aria-label="Markdown body"
           value={value}
           onChange={(event) => onChange(event.target.value)}
@@ -218,7 +220,8 @@ export const V0MarkdownEditor = forwardRef<V0MarkdownEditorHandle, V0MarkdownEdi
           onScroll={syncScroll}
           spellCheck={false}
           placeholder={placeholder}
-          className={`absolute inset-0 h-full w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 outline-none ${
+          wrap="soft"
+          className={`v0-editor-surface absolute inset-0 h-full w-full resize-none bg-transparent outline-none ${
             isDarkMode ? "caret-white text-transparent selection:bg-white/20" : "caret-black text-transparent selection:bg-black/10"
           }`}
         />

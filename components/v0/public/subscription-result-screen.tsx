@@ -43,8 +43,8 @@ export function SubscriptionResultScreen({
       onToggleTheme={toggleTheme}
       runtimeDescriptor={runtimeDescriptor}
     >
-      <div className="h-full overflow-y-auto">
-        <main className="px-8 py-6 max-w-3xl">
+      <div className="min-h-full md:h-full md:overflow-y-auto">
+        <main className="max-w-3xl px-4 py-6 sm:px-6 md:px-8">
           <div className="max-w-2xl space-y-4">
             <p className={`text-xs ${mutedText}`}>// {eyebrow}</p>
             <h1 className="text-xl">{title}</h1>

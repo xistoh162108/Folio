@@ -9,6 +9,7 @@ import type { V0RuntimeDescriptor } from "@/components/v0/runtime/v0-experience-
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller"
 import { submitContactMessage } from "@/lib/actions/contact.actions"
 import type { GuestbookEntryDTO } from "@/lib/contracts/community"
+import { getV0RouteAccentPalette } from "@/lib/site/v0-route-palette"
 
 interface ContactScreenProps {
   isDarkMode?: boolean
@@ -17,8 +18,6 @@ interface ContactScreenProps {
   githubHref?: string | null
   linkedinHref?: string | null
   initialGuestbookEntries?: GuestbookEntryDTO[]
-  canModerate?: boolean
-  focusSection?: "contact" | "guestbook"
 }
 
 const initialForm = {
@@ -35,8 +34,6 @@ export function ContactScreen({
   githubHref = null,
   linkedinHref = null,
   initialGuestbookEntries = [],
-  canModerate = false,
-  focusSection = "contact",
 }: ContactScreenProps) {
   const { isDarkMode, toggleTheme } = useV0ThemeController(initialIsDarkMode)
   const [contactForm, setContactForm] = useState(initialForm)
@@ -55,15 +52,16 @@ export function ContactScreen({
   )
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20"
+  const accentColor = getV0RouteAccentPalette("contact", isDarkMode).color
   const contactIntensity = Math.min(1, (contactForm.name.length + contactForm.email.length + contactForm.message.length) / 100)
   const runtimeDescriptor: V0RuntimeDescriptor = useMemo(
     () => ({
       mode: "life",
-      variant: focusSection === "guestbook" ? "guestbook" : "contact",
+      variant: "contact",
       intensity: Math.max(0.18, contactIntensity),
-      scrambleText: focusSection === "guestbook" ? "[GUEST_LOG_STREAM]" : "[CONNECTION_ESTABLISHED]",
+      scrambleText: "[CONNECTION_ESTABLISHED]",
     }),
-    [contactIntensity, focusSection],
+    [contactIntensity],
   )
 
   return (
@@ -74,16 +72,16 @@ export function ContactScreen({
       onToggleTheme={toggleTheme}
       runtimeDescriptor={runtimeDescriptor}
     >
-      <div className="h-full overflow-y-auto">
-        <div className="px-8 py-6">
-          <div className="min-h-[calc(100vh-11rem)] flex flex-col justify-center">
-            <div className="space-y-8 max-w-md">
+      <div className="min-h-full md:h-full md:overflow-y-auto">
+        <div className="flex min-h-full flex-col px-4 py-6 sm:px-6 md:px-8">
+        <div className="flex flex-1 flex-col justify-center">
+            <div data-v0-contact-column className="max-w-lg space-y-8">
               <section className="space-y-3">
                 <p className={`text-xs ${mutedText}`}>// contact</p>
                 <h2 className="text-lg">Get in Touch</h2>
               </section>
 
-              <p className={`text-sm ${isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"}`}>
+              <p className="text-sm" style={{ color: accentColor }}>
                 [*] Open to new opportunities &amp; collaborations
               </p>
 
@@ -144,8 +142,7 @@ export function ContactScreen({
             hoverBg={isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"}
             mutedText={mutedText}
             initialEntries={initialGuestbookEntries}
-            canModerate={canModerate}
-            autoFocus={focusSection === "guestbook"}
+            mode="preview"
           />
         </div>
       </div>

@@ -9,6 +9,39 @@ import { archivePost, savePost } from "@/lib/actions/post.actions"
 import { buildMarkdownWriterPayload, deriveMarkdownSource } from "@/lib/content/markdown-blocks"
 import { TiptapEditor } from "@/components/admin/tiptap-editor"
 
+function escapeMarkdownText(value: string) {
+  return value.replace(/([\\[\]()"'])/g, "\\$1")
+}
+
+function buildAssetSnippet(input: {
+  assetId: string
+  kind: "image" | "file"
+  originalName: string
+}) {
+  const label = escapeMarkdownText(input.originalName.replace(/\.[^/.]+$/, "") || input.originalName)
+
+  if (input.kind === "image") {
+    return `\n![${label}](asset://${input.assetId} "${label}")\n`
+  }
+
+  return `\n[${label}](asset://${input.assetId})\n`
+}
+
+function stripAssetReferences(markdownSource: string, assetId: string) {
+  const escapedAssetId = assetId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const patterns = [
+    new RegExp(`!\\[[^\\]]*\\]\\(asset://${escapedAssetId}(?:\\s+"[^"]*")?\\)`, "g"),
+    new RegExp(`\\[[^\\]]+\\]\\(asset://${escapedAssetId}\\)`, "g"),
+  ]
+
+  const nextSource = patterns.reduce((current, pattern) => current.replace(pattern, ""), markdownSource)
+  return nextSource
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n[ \t]+\n/g, "\n\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd()
+}
+
 export function PostEditor({
   initialPost,
   variant = "default",
@@ -42,7 +75,7 @@ export function PostEditor({
       return initialPost
     }
 
-    const payload = buildMarkdownWriterPayload(initialMarkdownSource)
+    const payload = buildMarkdownWriterPayload(initialMarkdownSource, initialPost.assets)
     return {
       ...initialPost,
       contentMode: "block",
@@ -144,10 +177,8 @@ export function PostEditor({
         return
       }
 
-      setForm((current) => ({
-        ...current,
-        coverImageUrl: kind === "image" ? result.url ?? current.coverImageUrl : current.coverImageUrl,
-        assets: [
+      setForm((current) => {
+        const nextAssets: PostEditorInput["assets"] = [
           ...current.assets.filter((asset) => asset.id !== result.assetId),
           {
             id: result.assetId,
@@ -158,9 +189,22 @@ export function PostEditor({
             url: result.url ?? `/api/files/${result.assetId}`,
             createdAt: new Date().toISOString(),
           },
-        ],
-      }))
-      setMessage(kind === "image" ? "Image uploaded and linked as cover." : "File uploaded.")
+        ]
+
+        return {
+          ...current,
+          assets: nextAssets,
+        }
+      })
+      const snippet = buildAssetSnippet({
+        assetId: result.assetId,
+        kind,
+        originalName: result.originalName,
+      })
+      requestAnimationFrame(() => {
+        insertMarkdownSnippet(snippet)
+      })
+      setMessage(kind === "image" ? "Image uploaded and inserted into the body." : "File uploaded.")
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed.")
     } finally {
@@ -187,10 +231,17 @@ export function PostEditor({
       const nextAssets = current.assets.filter((item) => item.id !== assetId)
       const shouldClearCover =
         Boolean(asset?.url) && asset?.kind === "IMAGE" && current.coverImageUrl === asset.url
+      const nextMarkdownSource = stripAssetReferences(current.markdownSource ?? "", assetId)
+      const payload = buildMarkdownWriterPayload(nextMarkdownSource, nextAssets)
 
       return {
         ...current,
+        contentMode: "block",
         coverImageUrl: shouldClearCover ? "" : current.coverImageUrl,
+        markdownSource: payload.markdownSource,
+        content: payload.content,
+        htmlContent: payload.htmlContent,
+        contentVersion: payload.contentVersion,
         assets: nextAssets,
       }
     })
@@ -218,7 +269,7 @@ export function PostEditor({
   }
 
   const syncMarkdownSource = (nextMarkdownSource: string) => {
-    const payload = buildMarkdownWriterPayload(nextMarkdownSource)
+    const payload = buildMarkdownWriterPayload(nextMarkdownSource, form.assets)
     setForm((current) => ({
       ...current,
       contentMode: "block",
@@ -239,7 +290,6 @@ export function PostEditor({
     const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
     const fieldClass = `v0-control-field ${borderColor} ${isDarkMode ? "text-white focus:border-white/40" : "text-black focus:border-black/40"}`
     const compactFieldClass = `v0-control-field-compact ${borderColor} ${isDarkMode ? "text-white focus:border-white/40" : "text-black focus:border-black/40"}`
-    const areaClass = `v0-control-area ${borderColor} ${isDarkMode ? "text-white focus:border-white/40" : "text-black focus:border-black/40"}`
     const buttonClass = `v0-control-button ${borderColor} ${hoverBg}`
     const compactButtonClass = `v0-control-button-compact ${borderColor} ${hoverBg}`
     const supportBlockClass = `border ${borderColor} px-4 py-4`
@@ -357,6 +407,7 @@ export function PostEditor({
           <div className="space-y-1">
             <p className={`text-sm ${mutedText}`}>{isUploading ? "[ uploading_ ]" : "Drag & Drop Image Upload"}</p>
             <p className={`text-xs ${mutedText}`}>or click to browse files</p>
+            <p className={`text-xs ${mutedText}`}>uploaded assets insert `asset://` tokens at the cursor</p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
             <label className={`${buttonClass} cursor-pointer`}>
@@ -435,35 +486,6 @@ export function PostEditor({
           <span className={`text-xs ${mutedText}`}>[{form.type.toLowerCase()} :: {form.status.toLowerCase()}]</span>
         </div>
 
-        <details className={supportBlockClass}>
-          <summary className={`cursor-pointer text-xs ${mutedText}`}>[meta]</summary>
-          <div className="grid gap-4 pt-4 md:grid-cols-2">
-            <label className="space-y-2">
-              <span className={`text-xs ${mutedText}`}>Slug</span>
-              <input
-                value={form.slug}
-                onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))}
-                className={compactFieldClass}
-              />
-            </label>
-            <div className="space-y-2">
-              <span className={`text-xs ${mutedText}`}>State</span>
-              <div className={`border ${borderColor} px-2 py-1 text-xs ${isDarkMode ? "text-white" : "text-black"}`}>
-                [{form.status.toLowerCase()}] via primary actions
-              </div>
-            </div>
-            <label className="space-y-2 md:col-span-2">
-              <span className={`text-xs ${mutedText}`}>Excerpt</span>
-              <textarea
-                value={form.excerpt ?? ""}
-                onChange={(event) => setForm((current) => ({ ...current, excerpt: event.target.value }))}
-                rows={3}
-                className={areaClass}
-              />
-            </label>
-          </div>
-        </details>
-
         {supportLinks.length > 0 || form.type !== "PROJECT" ? (
           <details className={supportBlockClass}>
             <summary className={`cursor-pointer text-xs ${mutedText}`}>[links]</summary>
@@ -534,9 +556,7 @@ export function PostEditor({
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          insertMarkdownSnippet(`\n![${asset.originalName}](${asset.url} "${form.title || asset.originalName}")\n`)
-                        }
+                        onClick={() => insertMarkdownSnippet(buildAssetSnippet({ assetId: asset.id, kind: "image", originalName: asset.originalName }))}
                         className={compactButtonClass}
                       >
                         [insert]
@@ -560,7 +580,7 @@ export function PostEditor({
                     <div className="flex items-center gap-3 text-xs">
                       <button
                         type="button"
-                        onClick={() => insertMarkdownSnippet(`\n[${asset.originalName}](${asset.url})\n`)}
+                        onClick={() => insertMarkdownSnippet(buildAssetSnippet({ assetId: asset.id, kind: "file", originalName: asset.originalName }))}
                         className={compactButtonClass}
                       >
                         [insert]

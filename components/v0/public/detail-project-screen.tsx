@@ -50,23 +50,33 @@ export function DetailProjectScreen({
     : []
 
   const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href)
-    setActionState("copied")
-    setTimeout(() => setActionState("idle"), 2000)
+    if (!navigator.clipboard) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setActionState("copied")
+      setTimeout(() => setActionState("idle"), 2000)
+    } catch {}
   }
 
   const handleShare = async () => {
-    if (navigator.share) {
-      await navigator.share({
-        title: post?.title ?? sampleProjectContent.title,
-        url: window.location.href,
-      })
-    } else {
-      await navigator.clipboard.writeText(window.location.href)
-    }
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: post?.title ?? sampleProjectContent.title,
+          url: window.location.href,
+        })
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href)
+      } else {
+        return
+      }
 
-    setActionState("shared")
-    setTimeout(() => setActionState("idle"), 2000)
+      setActionState("shared")
+      setTimeout(() => setActionState("idle"), 2000)
+    } catch {}
   }
 
   return (
@@ -77,9 +87,9 @@ export function DetailProjectScreen({
       onToggleTheme={toggleTheme}
       runtimeDescriptor={runtimeDescriptor}
     >
-      <div className="h-full overflow-y-auto">
-        <main className="px-8 py-6 max-w-3xl">
-          <div className="space-y-6 max-w-2xl">
+      <div className="min-h-full md:h-full md:overflow-y-auto">
+        <main className="w-full max-w-3xl px-4 py-6 sm:px-6 md:px-8">
+          <div className="w-full max-w-2xl space-y-6">
             <Link href={backHref} className={`inline-block text-xs ${mutedText} ${hoverBg} px-1`}>
               [&larr;] back to projects
             </Link>
@@ -147,17 +157,16 @@ export function DetailProjectScreen({
                         href={urlData.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`block border ${borderColor} p-4 ${hoverBg} transition-colors`}
+                        className={`block border-y py-3 transition-colors ${borderColor} ${hoverBg}`}
                       >
-                        <div className="flex items-start gap-4">
-                          <div className={`w-10 h-10 border ${borderColor} flex items-center justify-center text-xs shrink-0`}>
-                            {urlData.favicon}
+                        <div className="min-w-0 space-y-1">
+                          <div className={`flex flex-wrap items-center gap-3 text-xs ${mutedText}`}>
+                            <span>// link</span>
+                            <span>[explicit]</span>
                           </div>
-                          <div className="space-y-1 min-w-0">
-                            <p className="text-sm truncate">{urlData.title}</p>
-                            <p className={`text-xs ${mutedText} line-clamp-2`}>{urlData.description}</p>
-                            <p className={`text-xs ${mutedText}`}>{urlData.domain} -&gt;</p>
-                          </div>
+                          <p className="break-words text-sm">{urlData.title}</p>
+                          <p className={`break-words text-xs ${mutedText}`}>{urlData.description}</p>
+                          <p className={`text-xs ${mutedText}`}>{urlData.domain} -&gt;</p>
                         </div>
                       </a>
                     ))}

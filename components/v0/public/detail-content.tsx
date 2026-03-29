@@ -353,16 +353,12 @@ function DetailCodeBlock({
 function DetailEmbedBlock({
   block,
   link,
-  expanded,
-  onToggle,
   borderColor,
   hoverBg,
   mutedText,
 }: {
   block: EmbedBlock
   link: PostLinkDTO | null
-  expanded: boolean
-  onToggle: () => void
   borderColor: string
   hoverBg: string
   mutedText: string
@@ -372,37 +368,53 @@ function DetailEmbedBlock({
   const domain = link?.siteName ?? formatHost(link?.url ?? block.url)
 
   if (block.provider === "YOUTUBE") {
-    const embedUrl = resolveYouTubeEmbedUrl(block.url, link?.embedUrl)
-    const thumbnailUrl = resolveYouTubeThumbnailUrl(block.url, link?.imageUrl)
+    const videoId = link?.metadata?.kind === "YOUTUBE" ? link.metadata.videoId : extractYouTubeVideoId(block.url)
+    const embedUrl =
+      link?.embedUrl?.trim() || (videoId ? `https://www.youtube.com/embed/${videoId}` : resolveYouTubeEmbedUrl(block.url, link?.embedUrl))
+    const thumbnailUrl =
+      link?.imageUrl?.trim() || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : resolveYouTubeThumbnailUrl(block.url, link?.imageUrl))
 
     return (
-      <div className={`space-y-3 border p-4 ${borderColor}`}>
-        <div className="flex items-start gap-4">
-          <div className={`w-24 shrink-0 overflow-hidden border ${borderColor}`}>
-            {thumbnailUrl ? (
-              <img src={thumbnailUrl} alt={title} className="h-16 w-full object-cover" />
-            ) : (
-              <div className={`flex h-16 items-center justify-center text-xs ${mutedText}`}>YT</div>
-            )}
-          </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="truncate text-sm">{title}</p>
-            <p className={`text-xs ${mutedText}`}>{domain}</p>
-            {description ? <p className={`text-xs ${mutedText}`}>{description}</p> : null}
-            <div className="flex flex-wrap gap-3 text-xs">
-              {embedUrl ? (
-                <button type="button" onClick={onToggle} className={`${hoverBg} px-2 py-1`}>
-                  {expanded ? "[collapse]" : "[expand]"}
-                </button>
-              ) : null}
-              <a href={block.url} target="_blank" rel="noreferrer" className={`${hoverBg} px-2 py-1`}>
-                [open]
-              </a>
-            </div>
-          </div>
-        </div>
-        {expanded && embedUrl ? (
-          <div className={`overflow-hidden border ${borderColor}`}>
+      <details data-v0-embed-block="youtube" className={`group border-y py-3 ${borderColor}`}>
+        <summary data-v0-embed-summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
+          <span className="flex flex-col gap-3 sm:flex-row sm:items-start">
+            <span className={`w-full overflow-hidden sm:w-24 sm:shrink-0 ${borderColor}`}>
+              {thumbnailUrl ? (
+                <img src={thumbnailUrl} alt={title} className="h-32 w-full object-cover sm:h-16" />
+              ) : (
+                <span className={`flex h-32 items-center justify-center text-xs sm:h-16 ${mutedText}`}>YT</span>
+              )}
+            </span>
+            <span className="min-w-0 flex-1 space-y-1">
+              <span className={`flex flex-wrap items-center gap-3 text-xs ${mutedText}`}>
+                <span>// youtube</span>
+                <span>[preview-first]</span>
+              </span>
+              <span className="block break-words text-sm sm:truncate">{title}</span>
+              <span className={`block text-xs ${mutedText}`}>{domain} -&gt;</span>
+              {description ? <span className={`block text-xs ${mutedText} break-words`}>{description}</span> : null}
+              <span className="flex flex-wrap gap-2 text-xs">
+                {embedUrl ? (
+                  <span className={`${hoverBg} px-2 py-1`}>
+                    <span className="group-open:hidden">[expand]</span>
+                    <span className="hidden group-open:inline">[collapse]</span>
+                  </span>
+                ) : null}
+                <a
+                  href={block.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${hoverBg} px-2 py-1`}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  [open]
+                </a>
+              </span>
+            </span>
+          </span>
+        </summary>
+        {embedUrl ? (
+          <div className={`mt-3 overflow-hidden border-t pt-3 ${borderColor}`}>
             <iframe
               src={embedUrl}
               title={title}
@@ -412,27 +424,48 @@ function DetailEmbedBlock({
             />
           </div>
         ) : null}
-      </div>
+      </details>
     )
   }
 
   if (block.provider === "GITHUB") {
     const metadata = link?.metadata?.kind === "GITHUB" ? link.metadata : null
+    const repoMetadata =
+      metadata && metadata.subtype !== "ISSUE" && metadata.subtype !== "PR" ? metadata : null
+    const issueMetadata = metadata?.subtype === "ISSUE" ? metadata : null
+    const pullRequestMetadata = metadata?.subtype === "PR" ? metadata : null
     return (
-      <a href={block.url} target="_blank" rel="noreferrer" className={`block border p-4 transition-colors ${borderColor} ${hoverBg}`}>
-        <div className="space-y-2">
+      <a
+        href={block.url}
+        target="_blank"
+        rel="noreferrer"
+        data-v0-embed-block="github"
+        className={`block border-y py-3 transition-colors ${borderColor} ${hoverBg}`}
+      >
+        <div className="min-w-0 space-y-2">
           <div className="flex items-center justify-between gap-4 text-xs">
             <span className={mutedText}>// github</span>
             <span className={mutedText}>{formatGitHubKind(block.url)}</span>
           </div>
-          <p className="text-sm">{title}</p>
-          {description ? <p className={`text-xs ${mutedText}`}>{description}</p> : null}
+          <p className="break-words text-sm">{title}</p>
+          {description ? <p className={`text-xs ${mutedText} break-words`}>{description}</p> : null}
           <div className={`flex flex-wrap gap-3 text-xs ${mutedText}`}>
             <span>{metadata ? `[repo ${metadata.owner}/${metadata.repo}]` : "[repo]"}</span>
-            {metadata?.stars !== null && metadata?.stars !== undefined ? <span>[★ {metadata.stars}]</span> : null}
-            {metadata?.forks !== null && metadata?.forks !== undefined ? <span>[forks {metadata.forks}]</span> : null}
-            {metadata?.openIssues !== null && metadata?.openIssues !== undefined ? <span>[issues {metadata.openIssues}]</span> : null}
-            {metadata?.primaryLanguage ? <span>[lang {metadata.primaryLanguage}]</span> : null}
+            {repoMetadata?.stars !== null && repoMetadata?.stars !== undefined ? <span>[★ {repoMetadata.stars}]</span> : null}
+            {repoMetadata?.forks !== null && repoMetadata?.forks !== undefined ? <span>[forks {repoMetadata.forks}]</span> : null}
+            {repoMetadata?.openIssues !== null && repoMetadata?.openIssues !== undefined ? <span>[issues {repoMetadata.openIssues}]</span> : null}
+            {repoMetadata?.primaryLanguage ? <span>[lang {repoMetadata.primaryLanguage}]</span> : null}
+            {issueMetadata ? <span>[issue #{issueMetadata.number}]</span> : null}
+            {issueMetadata?.state ? <span>[state {issueMetadata.state}]</span> : null}
+            {issueMetadata?.comments !== null && issueMetadata?.comments !== undefined ? <span>[comments {issueMetadata.comments}]</span> : null}
+            {issueMetadata?.author ? <span>[author {issueMetadata.author}]</span> : null}
+            {pullRequestMetadata ? <span>[pr #{pullRequestMetadata.number}]</span> : null}
+            {pullRequestMetadata?.state ? <span>[state {pullRequestMetadata.state}]</span> : null}
+            {pullRequestMetadata?.comments !== null && pullRequestMetadata?.comments !== undefined ? (
+              <span>[comments {pullRequestMetadata.comments}]</span>
+            ) : null}
+            {pullRequestMetadata?.author ? <span>[author {pullRequestMetadata.author}]</span> : null}
+            {pullRequestMetadata?.merged === true ? <span>[merged]</span> : null}
           </div>
         </div>
       </a>
@@ -440,10 +473,20 @@ function DetailEmbedBlock({
   }
 
   return (
-    <a href={block.url} target="_blank" rel="noreferrer" className={`block border p-4 transition-colors ${borderColor} ${hoverBg}`}>
-      <div className="space-y-1">
-        <p className="text-sm">{title}</p>
-        {description ? <p className={`text-xs ${mutedText}`}>{description}</p> : null}
+    <a
+      href={block.url}
+      target="_blank"
+      rel="noreferrer"
+      data-v0-embed-block="generic"
+      className={`block border-y py-3 transition-colors ${borderColor} ${hoverBg}`}
+    >
+      <div className="min-w-0 space-y-1">
+        <div className={`flex flex-wrap items-center gap-3 text-xs ${mutedText}`}>
+          <span>// link</span>
+          <span>[generic fallback]</span>
+        </div>
+        <p className="break-words text-sm">{title}</p>
+        {description ? <p className={`text-xs ${mutedText} break-words`}>{description}</p> : null}
         <p className={`text-xs ${mutedText}`}>{domain} -&gt;</p>
       </div>
     </a>
@@ -456,8 +499,6 @@ function renderBlock(
   options: {
     links: PostLinkDTO[]
     assets: PostAssetDTO[]
-    expandedEmbeds: Set<string>
-    toggleEmbed: (id: string) => void
     copiedCode: number | null
     copyToClipboard: (code: string, index: number) => Promise<void>
     isDarkMode: boolean
@@ -466,7 +507,7 @@ function renderBlock(
     mutedText: string
   },
 ) {
-  const { links, assets, expandedEmbeds, toggleEmbed, copiedCode, copyToClipboard, isDarkMode, borderColor, hoverBg, mutedText } = options
+  const { links, assets, copiedCode, copyToClipboard, isDarkMode, borderColor, hoverBg, mutedText } = options
 
   switch (block.type) {
     case "heading":
@@ -476,7 +517,13 @@ function renderBlock(
         </h2>
       )
     case "paragraph":
-      return <p key={block.id} className={mutedText} dangerouslySetInnerHTML={{ __html: renderInlineMarkdownHtml(block.text) }} />
+      return (
+        <p
+          key={block.id}
+          className={`${mutedText} break-words`}
+          dangerouslySetInnerHTML={{ __html: renderInlineMarkdownHtml(block.text, assets) }}
+        />
+      )
     case "quote":
       return (
         <blockquote
@@ -484,7 +531,11 @@ function renderBlock(
           className={`border-l-2 pl-4 italic ${mutedText} ${isDarkMode ? "border-[#D4FF00]/30" : "border-[#3F5200]/30"}`}
         >
           {block.text.split("\n").map((line, lineIndex) => (
-            <p key={`${block.id}:line:${lineIndex}`} dangerouslySetInnerHTML={{ __html: renderInlineMarkdownHtml(line) }} />
+            <p
+              key={`${block.id}:line:${lineIndex}`}
+              className="break-words"
+              dangerouslySetInnerHTML={{ __html: renderInlineMarkdownHtml(line, assets) }}
+            />
           ))}
         </blockquote>
       )
@@ -496,7 +547,11 @@ function renderBlock(
           className={`space-y-1 pl-5 text-sm ${mutedText} ${block.style === "ordered" ? "list-decimal" : "list-disc"}`}
         >
           {block.items.map((item, itemIndex) => (
-            <li key={`${block.id}:item:${itemIndex}`} dangerouslySetInnerHTML={{ __html: renderInlineMarkdownHtml(item) }} />
+            <li
+              key={`${block.id}:item:${itemIndex}`}
+              className="break-words"
+              dangerouslySetInnerHTML={{ __html: renderInlineMarkdownHtml(item, assets) }}
+            />
           ))}
         </ListTag>
       )
@@ -537,7 +592,7 @@ function renderBlock(
       return (
         <figure key={block.id} className="space-y-2">
           <div className={`overflow-hidden border p-2 ${borderColor}`}>
-            <img src={src} alt={alt} className="h-auto w-full" />
+            <img src={src} alt={alt} className="mx-auto h-auto max-h-[32rem] max-w-full w-full object-contain" />
           </div>
           {caption ? <figcaption className={`text-xs ${mutedText}`}>{caption}</figcaption> : null}
         </figure>
@@ -549,8 +604,6 @@ function renderBlock(
           key={block.id}
           block={block}
           link={resolveLink(block.url, links)}
-          expanded={expandedEmbeds.has(block.id)}
-          onToggle={() => toggleEmbed(block.id)}
           borderColor={borderColor}
           hoverBg={hoverBg}
           mutedText={mutedText}
@@ -581,33 +634,29 @@ export function V0DetailContent({
   assets?: PostAssetDTO[]
 }) {
   const [copiedCode, setCopiedCode] = useState<number | null>(null)
-  const [expandedEmbedIds, setExpandedEmbedIds] = useState<string[]>([])
 
   const blockDocument = useMemo(() => (isBlockDocument(content) ? content : null), [content])
   const legacyNodes = useMemo(() => (hasLegacyNodes(content) ? content.content : []), [content])
-  const expandedEmbeds = useMemo(() => new Set(expandedEmbedIds), [expandedEmbedIds])
 
   const copyToClipboard = async (code: string, index: number) => {
-    await navigator.clipboard.writeText(code)
-    setCopiedCode(index)
-    setTimeout(() => setCopiedCode(null), 2000)
-  }
+    if (!navigator.clipboard) {
+      return
+    }
 
-  const toggleEmbed = (blockId: string) => {
-    setExpandedEmbedIds((current) =>
-      current.includes(blockId) ? current.filter((candidate) => candidate !== blockId) : [...current, blockId],
-    )
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopiedCode(index)
+      setTimeout(() => setCopiedCode(null), 2000)
+    } catch {}
   }
 
   if (blockDocument) {
     return (
-      <article className="prose-terminal space-y-4 font-[var(--font-jetbrains-mono),monospace] text-sm leading-relaxed">
+      <article data-v0-detail-body className="prose-terminal min-w-0 max-w-none space-y-4 break-words font-[var(--font-jetbrains-mono),monospace] text-sm leading-relaxed">
         {blockDocument.blocks.map((block, index) =>
           renderBlock(block, index, {
             links,
             assets,
-            expandedEmbeds,
-            toggleEmbed,
             copiedCode,
             copyToClipboard,
             isDarkMode,
@@ -622,7 +671,7 @@ export function V0DetailContent({
 
   if (legacyNodes.length > 0) {
     return (
-      <article className="prose-terminal space-y-4 font-[var(--font-jetbrains-mono),monospace] text-sm leading-relaxed">
+      <article data-v0-detail-body className="prose-terminal min-w-0 max-w-none space-y-4 break-words font-[var(--font-jetbrains-mono),monospace] text-sm leading-relaxed">
         {legacyNodes.map((node, index) => {
           switch (node.type) {
             case "heading":
@@ -681,7 +730,7 @@ export function V0DetailContent({
   const fallbackBlocks = extractFallbackBlocks(fallbackHtml ?? "")
 
   return (
-    <article className="prose-terminal space-y-4 font-[var(--font-jetbrains-mono),monospace] text-sm leading-relaxed">
+    <article data-v0-detail-body className="prose-terminal min-w-0 max-w-none space-y-4 break-words font-[var(--font-jetbrains-mono),monospace] text-sm leading-relaxed">
       {fallbackBlocks.map((block, index) => {
         if (block.type === "heading") {
           return (

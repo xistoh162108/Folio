@@ -9,12 +9,18 @@
 }
 
 @layer components {
+  .v0-control-inline-label {
+    @apply inline-flex h-8 items-center text-xs leading-8;
+  }
+
   .v0-control-inline-input {
-    @apply h-8 border bg-transparent px-3 text-xs leading-none outline-none;
+    @apply h-8 border bg-transparent px-3 text-xs leading-8 outline-none;
+    box-sizing: border-box;
   }
 
   .v0-control-inline-button {
-    @apply inline-flex h-8 items-center justify-center border px-3 text-xs leading-none transition-colors;
+    @apply inline-flex h-8 items-center justify-center border px-3 text-xs leading-8 transition-colors;
+    box-sizing: border-box;
   }
 
   .v0-control-field {
@@ -46,11 +52,26 @@
   }
 
   .v0-terminal-input {
-    @apply w-full border-b bg-transparent px-0 py-0 text-sm leading-8 outline-none;
+    @apply h-8 w-full border-b bg-transparent px-0 py-0 text-sm leading-8 outline-none;
+    box-sizing: border-box;
   }
 
   .v0-terminal-textarea {
     @apply w-full border-b bg-transparent px-0 pb-1 pt-0 text-sm leading-6 outline-none resize-none;
+    box-sizing: border-box;
+  }
+
+  .v0-editor-surface {
+    @apply box-border overflow-auto px-4 py-3 font-mono text-sm leading-6 tracking-normal;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: normal;
+    overflow-x: auto;
+    overflow-y: auto;
+    tab-size: 2;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 

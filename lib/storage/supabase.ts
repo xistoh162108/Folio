@@ -10,7 +10,6 @@ import {
   resolveTestStoragePath,
   writeTestStorageObject,
 } from "@/lib/testing/sinks"
-import { getCanonicalAppUrl } from "@/lib/runtime/origin"
 import { slugify } from "@/lib/utils/normalizers"
 
 export const IMAGE_UPLOAD_POLICY = {
@@ -24,6 +23,46 @@ export const FILE_UPLOAD_POLICY = {
   allowedMimes: ["application/pdf", "text/plain"],
   maxBytes: 20 * 1024 * 1024,
 } as const
+
+export const STORAGE_BUCKET_RULES = [
+  {
+    bucket: IMAGE_UPLOAD_POLICY.bucket,
+    label: "post-media bucket",
+    public: true,
+    allowedMimes: [...IMAGE_UPLOAD_POLICY.allowedMimes],
+    maxBytes: IMAGE_UPLOAD_POLICY.maxBytes,
+  },
+  {
+    bucket: FILE_UPLOAD_POLICY.bucket,
+    label: "post-files bucket",
+    public: false,
+    allowedMimes: [...FILE_UPLOAD_POLICY.allowedMimes],
+    maxBytes: FILE_UPLOAD_POLICY.maxBytes,
+  },
+] as const
+
+export interface StorageBucketSnapshot {
+  bucket: string
+  label: string
+  exists: boolean
+  visibility: "public" | "private" | "unknown"
+  expectedVisibility: "public" | "private"
+  detail: string
+}
+
+export interface StorageBootstrapSnapshot {
+  driver: "supabase" | "test" | "unconfigured"
+  configured: boolean
+  buckets: StorageBucketSnapshot[]
+}
+
+type StorageBucketRule = (typeof STORAGE_BUCKET_RULES)[number]
+
+type SupabaseBucketRecord = {
+  id?: unknown
+  name?: unknown
+  public?: unknown
+}
 
 const DANGEROUS_EXTENSIONS = new Set([
   "exe",
@@ -48,11 +87,19 @@ let supabaseAdmin:
   | undefined
 
 function getStorageBaseUrl() {
-  return getCanonicalAppUrl()
+  return env.APP_URL || env.NEXTAUTH_URL || "http://127.0.0.1:3000"
+}
+
+function isForbiddenTestStorageDriver() {
+  return env.STORAGE_DRIVER === "test" && process.env.NODE_ENV === "production"
 }
 
 function usingTestStorageDriver() {
-  return env.STORAGE_DRIVER === "test"
+  return env.STORAGE_DRIVER === "test" && !isForbiddenTestStorageDriver()
+}
+
+export function isTestStorageDriverActive() {
+  return usingTestStorageDriver()
 }
 
 function buildTestStorageUrl(bucket: string, storagePath: string) {
@@ -63,11 +110,11 @@ function buildTestStorageUrl(bucket: string, storagePath: string) {
 }
 
 function requireSupabaseAdminClient() {
-  if (usingTestStorageDriver()) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("Test storage driver is not allowed in production.")
-    }
+  if (isForbiddenTestStorageDriver()) {
+    throw new Error("Test storage driver is not allowed in production.")
+  }
 
+  if (usingTestStorageDriver()) {
     throw new Error("Supabase client requested while test storage driver is active.")
   }
 
@@ -83,6 +130,218 @@ function requireSupabaseAdminClient() {
   })
 
   return supabaseAdmin
+}
+
+function asExpectedVisibility(isPublic: boolean): "public" | "private" {
+  return isPublic ? "public" : "private"
+}
+
+function normalizeStorageErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error
+  }
+
+  return "Storage request failed."
+}
+
+function isMissingBucketMessage(message: string) {
+  const normalized = message.toLowerCase()
+  return normalized.includes("bucket") && normalized.includes("not found")
+}
+
+function createBucketSnapshot(input: {
+  bucket: string
+  label: string
+  exists: boolean
+  visibility: "public" | "private" | "unknown"
+  expectedVisibility: "public" | "private"
+  detail: string
+}): StorageBucketSnapshot {
+  return {
+    bucket: input.bucket,
+    label: input.label,
+    exists: input.exists,
+    visibility: input.visibility,
+    expectedVisibility: input.expectedVisibility,
+    detail: input.detail,
+  }
+}
+
+async function listConfiguredBuckets() {
+  const client = requireSupabaseAdminClient()
+  const { data, error } = await client.storage.listBuckets()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return (Array.isArray(data) ? data : []) as SupabaseBucketRecord[]
+}
+
+function findBucketRecord(records: SupabaseBucketRecord[], bucket: string) {
+  return (
+    records.find((record) => {
+      const id = typeof record.id === "string" ? record.id : null
+      const name = typeof record.name === "string" ? record.name : null
+      return id === bucket || name === bucket
+    }) ?? null
+  )
+}
+
+function toBucketSnapshot(rule: StorageBucketRule, record: SupabaseBucketRecord | null): StorageBucketSnapshot {
+  const expectedVisibility = asExpectedVisibility(rule.public)
+
+  if (!record) {
+    return createBucketSnapshot({
+      bucket: rule.bucket,
+      label: rule.label,
+      exists: false,
+      visibility: "unknown",
+      expectedVisibility,
+      detail: `Bucket ${rule.bucket} is missing; expected ${expectedVisibility} visibility.`,
+    })
+  }
+
+  const visibility = Boolean(record.public) ? "public" : "private"
+
+  return createBucketSnapshot({
+    bucket: rule.bucket,
+    label: rule.label,
+    exists: true,
+    visibility,
+    expectedVisibility,
+    detail:
+      visibility === expectedVisibility
+        ? `${rule.bucket} is ${visibility}.`
+        : `${rule.bucket} is ${visibility}; expected ${expectedVisibility}.`,
+  })
+}
+
+export function mapStorageServiceError(error: unknown, bucket?: string) {
+  const message = normalizeStorageErrorMessage(error)
+
+  if (isMissingBucketMessage(message)) {
+    if (bucket) {
+      return `Storage bucket '${bucket}' is missing. Run pnpm storage:bootstrap and verify bucket visibility in /admin/analytics.`
+    }
+
+    return "A required storage bucket is missing. Run pnpm storage:bootstrap and verify bucket visibility in /admin/analytics."
+  }
+
+  if (message === "Supabase storage is not configured.") {
+    return "Supabase storage is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or use STORAGE_DRIVER=test."
+  }
+
+  if (message === "Test storage driver is not allowed in production.") {
+    return "STORAGE_DRIVER=test is not allowed in production. Switch to Supabase storage before deploy."
+  }
+
+  return message
+}
+
+export async function inspectStorageBootstrapState(): Promise<StorageBootstrapSnapshot> {
+  if (isForbiddenTestStorageDriver()) {
+    return {
+      driver: "test",
+      configured: false,
+      buckets: STORAGE_BUCKET_RULES.map((rule) =>
+        createBucketSnapshot({
+          bucket: rule.bucket,
+          label: rule.label,
+          exists: false,
+          visibility: "unknown",
+          expectedVisibility: asExpectedVisibility(rule.public),
+          detail: "Test storage driver is configured but forbidden in production.",
+        }),
+      ),
+    }
+  }
+
+  if (usingTestStorageDriver()) {
+    return {
+      driver: "test",
+      configured: true,
+      buckets: STORAGE_BUCKET_RULES.map((rule) =>
+        createBucketSnapshot({
+          bucket: rule.bucket,
+          label: rule.label,
+          exists: true,
+          visibility: asExpectedVisibility(rule.public),
+          expectedVisibility: asExpectedVisibility(rule.public),
+          detail: `${rule.bucket} is ${asExpectedVisibility(rule.public)}.`,
+        }),
+      ),
+    }
+  }
+
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    return {
+      driver: "unconfigured",
+      configured: false,
+      buckets: STORAGE_BUCKET_RULES.map((rule) =>
+        createBucketSnapshot({
+          bucket: rule.bucket,
+          label: rule.label,
+          exists: false,
+          visibility: "unknown",
+          expectedVisibility: asExpectedVisibility(rule.public),
+          detail: "Supabase credentials are missing, so bucket state cannot be verified.",
+        }),
+      ),
+    }
+  }
+
+  const records = await listConfiguredBuckets()
+
+  return {
+    driver: "supabase",
+    configured: true,
+    buckets: STORAGE_BUCKET_RULES.map((rule) => toBucketSnapshot(rule, findBucketRecord(records, rule.bucket))),
+  }
+}
+
+export async function bootstrapStorageBuckets(): Promise<StorageBootstrapSnapshot> {
+  if (isForbiddenTestStorageDriver()) {
+    throw new Error("Test storage driver is not allowed in production.")
+  }
+
+  if (usingTestStorageDriver()) {
+    return inspectStorageBootstrapState()
+  }
+
+  const client = requireSupabaseAdminClient()
+  const existing = await listConfiguredBuckets()
+
+  for (const rule of STORAGE_BUCKET_RULES) {
+    const record = findBucketRecord(existing, rule.bucket)
+    const bucketOptions = {
+      public: rule.public,
+      allowedMimeTypes: [...rule.allowedMimes],
+      fileSizeLimit: rule.maxBytes,
+    }
+
+    if (!record) {
+      const { error } = await client.storage.createBucket(rule.bucket, bucketOptions)
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      continue
+    }
+
+    const { error } = await client.storage.updateBucket(rule.bucket, bucketOptions)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  }
+
+  return inspectStorageBootstrapState()
 }
 
 export function sanitizeOriginalName(originalName: string) {
@@ -132,7 +391,7 @@ export async function uploadAssetToSupabase(input: {
   })
 
   if (error) {
-    throw new Error(error.message)
+    throw new Error(mapStorageServiceError(error, input.bucket))
   }
 }
 
@@ -152,7 +411,7 @@ export async function deleteAssetFromSupabase(bucket: string, storagePath: strin
       return
     }
 
-    throw new Error(error.message)
+    throw new Error(mapStorageServiceError(error, bucket))
   }
 }
 
@@ -175,7 +434,7 @@ export async function createSignedDownloadUrl(bucket: string, storagePath: strin
   const { data, error } = await client.storage.from(bucket).createSignedUrl(storagePath, expiresInSeconds)
 
   if (error || !data?.signedUrl) {
-    throw new Error(error?.message ?? "Failed to create a signed download URL.")
+    throw new Error(mapStorageServiceError(error?.message ?? "Failed to create a signed download URL.", bucket))
   }
 
   return data.signedUrl

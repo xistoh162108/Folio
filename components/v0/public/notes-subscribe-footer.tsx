@@ -69,10 +69,10 @@ export function V0NotesSubscribeFooter({
           event.preventDefault()
           startTransition(() => formAction({ email, _honey: honey, topics }))
         }}
-        className="max-w-lg space-y-2"
+        className="max-w-lg space-y-2 lg:max-w-none"
       >
         <div className="flex items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-4">
             <p className={`text-xs ${mutedText}`}>// stay in the loop</p>
             <input
               type="text"
@@ -101,8 +101,8 @@ export function V0NotesSubscribeFooter({
               {pending ? "[...]" : "Subscribe"}
             </button>
           </div>
-          <div className="flex gap-3 text-xs">
-            <label className="flex items-center gap-1 cursor-pointer">
+          <div className="flex flex-wrap gap-3 text-xs md:flex-nowrap md:gap-4 md:whitespace-nowrap">
+            <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
               <button
                 type="button"
                 onClick={() => toggleTopic("all")}
@@ -114,7 +114,7 @@ export function V0NotesSubscribeFooter({
               </button>
               <span className={mutedText}>All</span>
             </label>
-            <label className="flex items-center gap-1 cursor-pointer">
+            <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
               <button
                 type="button"
                 onClick={() => toggleTopic("aiInfosec")}
@@ -126,7 +126,7 @@ export function V0NotesSubscribeFooter({
               </button>
               <span className={mutedText}>AI</span>
             </label>
-            <label className="flex items-center gap-1 cursor-pointer">
+            <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
               <button
                 type="button"
                 onClick={() => toggleTopic("projectsLogs")}

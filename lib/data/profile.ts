@@ -1,7 +1,7 @@
 import "server-only"
 
 import { prisma } from "@/lib/db/prisma"
-import { isMissingTableError } from "@/lib/db/errors"
+import { isMissingTableError, isUniqueConstraintError } from "@/lib/db/errors"
 import { buildStaticProfileBootstrap, buildStaticProfileSnapshot, PRIMARY_PROFILE_SLUG } from "@/lib/profile/bootstrap"
 import type { ProfileEditorInput, ProfileLinkDTO, ProfileLinkKind, ProfileSnapshotDTO } from "@/lib/contracts/profile"
 
@@ -101,17 +101,21 @@ export function getVerifiedProfileLink(snapshot: ProfileSnapshotDTO, kind: Profi
   return snapshot.links.find((link) => link.kind === kind && link.isVerified) ?? null
 }
 
+async function findPrimaryProfileRecord() {
+  return prisma.profile.findUnique({
+    where: { slug: PRIMARY_PROFILE_SLUG },
+    include: {
+      education: { orderBy: { sortOrder: "asc" } },
+      experience: { orderBy: { sortOrder: "asc" } },
+      awards: { orderBy: { sortOrder: "asc" } },
+      links: { orderBy: { sortOrder: "asc" } },
+    },
+  })
+}
+
 export async function getPrimaryProfileSnapshot(): Promise<ProfileSnapshotDTO> {
   try {
-    const snapshot = await prisma.profile.findUnique({
-      where: { slug: PRIMARY_PROFILE_SLUG },
-      include: {
-        education: { orderBy: { sortOrder: "asc" } },
-        experience: { orderBy: { sortOrder: "asc" } },
-        awards: { orderBy: { sortOrder: "asc" } },
-        links: { orderBy: { sortOrder: "asc" } },
-      },
-    })
+    const snapshot = await findPrimaryProfileRecord()
 
     return snapshot ? mapProfileSnapshot(snapshot) : buildStaticProfileSnapshot()
   } catch (error) {
@@ -124,59 +128,70 @@ export async function getPrimaryProfileSnapshot(): Promise<ProfileSnapshotDTO> {
 }
 
 export async function getPrimaryProfileRuntimeSnapshot(): Promise<ProfileSnapshotDTO> {
+  return getPrimaryProfileSettingsSnapshot()
+}
+
+export async function getPrimaryProfileSettingsSnapshot(): Promise<ProfileSnapshotDTO> {
+  const snapshot = await getPrimaryProfileSnapshot()
+
+  if (snapshot.source === "database") {
+    return snapshot
+  }
+
   return ensurePrimaryProfileBootstrap()
 }
 
 export async function ensurePrimaryProfileBootstrap(): Promise<ProfileSnapshotDTO> {
   try {
-    const bootstrap = buildStaticProfileBootstrap()
-
-    const existing = await prisma.profile.findUnique({
-      where: { slug: PRIMARY_PROFILE_SLUG },
-      include: {
-        education: { orderBy: { sortOrder: "asc" } },
-        experience: { orderBy: { sortOrder: "asc" } },
-        awards: { orderBy: { sortOrder: "asc" } },
-        links: { orderBy: { sortOrder: "asc" } },
-      },
-    })
-
+    const existing = await findPrimaryProfileRecord()
     if (existing) {
       return mapProfileSnapshot(existing)
     }
 
-    const created = await prisma.profile.create({
-      data: {
-        slug: bootstrap.slug,
-        displayName: bootstrap.displayName,
-        role: bootstrap.role,
-        summary: bootstrap.summary,
-        emailAddress: bootstrap.emailAddress,
-        resumeHref: bootstrap.resumeHref,
-        githubHref: bootstrap.githubHref,
-        linkedinHref: bootstrap.linkedinHref,
-        education: {
-          create: bootstrap.education,
+    const bootstrap = buildStaticProfileBootstrap()
+    try {
+      const snapshot = await prisma.profile.create({
+        data: {
+          slug: bootstrap.slug,
+          displayName: bootstrap.displayName,
+          role: bootstrap.role,
+          summary: bootstrap.summary,
+          emailAddress: bootstrap.emailAddress,
+          resumeHref: bootstrap.resumeHref,
+          githubHref: bootstrap.githubHref,
+          linkedinHref: bootstrap.linkedinHref,
+          education: {
+            create: bootstrap.education,
+          },
+          experience: {
+            create: bootstrap.experience,
+          },
+          awards: {
+            create: bootstrap.awards,
+          },
+          links: {
+            create: bootstrap.links,
+          },
         },
-        experience: {
-          create: bootstrap.experience,
+        include: {
+          education: { orderBy: { sortOrder: "asc" } },
+          experience: { orderBy: { sortOrder: "asc" } },
+          awards: { orderBy: { sortOrder: "asc" } },
+          links: { orderBy: { sortOrder: "asc" } },
         },
-        awards: {
-          create: bootstrap.awards,
-        },
-        links: {
-          create: bootstrap.links,
-        },
-      },
-      include: {
-        education: { orderBy: { sortOrder: "asc" } },
-        experience: { orderBy: { sortOrder: "asc" } },
-        awards: { orderBy: { sortOrder: "asc" } },
-        links: { orderBy: { sortOrder: "asc" } },
-      },
-    })
+      })
 
-    return mapProfileSnapshot(created)
+      return mapProfileSnapshot(snapshot)
+    } catch (error) {
+      if (isUniqueConstraintError(error, "slug")) {
+        const snapshot = await findPrimaryProfileRecord()
+        if (snapshot) {
+          return mapProfileSnapshot(snapshot)
+        }
+      }
+
+      throw error
+    }
   } catch (error) {
     if (isMissingTableError(error, "Profile")) {
       return buildStaticProfileSnapshot()

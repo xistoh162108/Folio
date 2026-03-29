@@ -21,7 +21,7 @@ export function NewsletterScreen({
   const { isDarkMode, toggleTheme } = useV0ThemeController(initialIsDarkMode)
   return (
     <AdminShell currentSection="newsletter" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <div className="h-full p-6 overflow-y-auto">
+      <div className="min-h-full p-4 sm:p-6 md:h-full md:overflow-y-auto">
         <V0NewsletterManager
           activeSubscriberCount={dashboard.activeSubscriberCount}
           campaigns={dashboard.campaigns}

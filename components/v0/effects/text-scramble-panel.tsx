@@ -6,18 +6,23 @@ interface TextScramblePanelProps {
   targetText: string
   duration?: number
   isDarkMode: boolean
+  accentColor?: string
 }
 
 export function TextScramblePanel({
   targetText,
   duration = 1500,
   isDarkMode,
+  accentColor,
 }: TextScramblePanelProps) {
   const [displayText, setDisplayText] = useState("")
   const [isComplete, setIsComplete] = useState(false)
   const chars = "!@#$%^&*()_+-=[]{}|;:,.<>?0123456789ABCDEF"
 
   useEffect(() => {
+    setDisplayText("")
+    setIsComplete(false)
+
     let frame = 0
     const totalFrames = Math.floor(duration / 30)
 
@@ -52,17 +57,16 @@ export function TextScramblePanel({
   }, [targetText, duration])
 
   return (
-    <div className="text-center space-y-2">
+    <div className="space-y-2 text-center">
       <p
         className={`text-sm font-mono tracking-wider transition-all duration-300 ${
           isComplete
-            ? isDarkMode
-              ? "text-[#D4FF00]"
-              : "text-[#3F5200]"
+            ? ""
             : isDarkMode
               ? "text-white/70"
               : "text-black/70"
         }`}
+        style={isComplete ? { color: accentColor } : undefined}
       >
         {displayText ||
           chars

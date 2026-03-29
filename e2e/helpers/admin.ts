@@ -20,9 +20,34 @@ export async function ensureAdminUser() {
 }
 
 export async function loginAsAdmin(page: Page) {
-  await page.goto("/admin/login")
-  await page.getByPlaceholder("Identify_").fill(E2E_ADMIN_EMAIL)
-  await page.getByPlaceholder("Passphrase_").fill(E2E_ADMIN_PASSWORD)
-  await page.getByRole("button", { name: /\[\s*initiate override_\s*\]/i }).click()
+  const request = page.context().request
+  const csrfResponse = await request.get("/api/auth/csrf")
+
+  if (!csrfResponse.ok()) {
+    throw new Error(`Failed to load NextAuth CSRF token (${csrfResponse.status()}).`)
+  }
+
+  const csrfPayload = (await csrfResponse.json()) as { csrfToken?: string }
+  if (!csrfPayload.csrfToken) {
+    throw new Error("Missing NextAuth CSRF token.")
+  }
+
+  const loginResponse = await request.post("/api/auth/callback/credentials?json=true", {
+    form: {
+      csrfToken: csrfPayload.csrfToken,
+      email: E2E_ADMIN_EMAIL,
+      password: E2E_ADMIN_PASSWORD,
+      callbackUrl: "/admin/analytics",
+      json: "true",
+    },
+    failOnStatusCode: false,
+  })
+
+  const loginBody = await loginResponse.text()
+  if (!loginResponse.ok() || loginBody.includes("CredentialsSignin")) {
+    throw new Error(`Admin test sign-in failed (${loginResponse.status()}).`)
+  }
+
+  await page.goto("/admin/analytics")
   await page.waitForURL(/\/admin\/(analytics|posts)/)
 }

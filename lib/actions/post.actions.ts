@@ -349,7 +349,16 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
       content: payload.content ?? buildLegacyContentDocument(payload.title, payload.htmlContent),
     })
     const usesBlockWriter = validated.contentMode === "block"
-    const writerPayload = usesBlockWriter ? buildMarkdownWriterPayload(validated.markdownSource ?? "") : null
+    const writerAssets = validated.assets.filter(
+      (
+        asset,
+      ): asset is {
+        id: string
+        kind?: string | null
+        url?: string | null
+      } => typeof asset.id === "string" && asset.id.length > 0,
+    )
+    const writerPayload = usesBlockWriter ? buildMarkdownWriterPayload(validated.markdownSource ?? "", writerAssets) : null
     const resolvedContent = writerPayload?.content ?? validated.content ?? buildLegacyContentDocument(validated.title, validated.htmlContent)
     const resolvedHtmlContent = writerPayload?.htmlContent ?? validated.htmlContent
     const resolvedMarkdownSource = usesBlockWriter ? writerPayload?.markdownSource ?? "" : ""

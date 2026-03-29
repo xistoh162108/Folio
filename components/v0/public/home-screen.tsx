@@ -76,7 +76,7 @@ export function HomeScreen({
 
   return (
     <PublicShell currentPage="home" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <div className="h-full px-8 py-6 flex flex-col justify-center">
+      <div className="flex min-h-full flex-col justify-start px-4 py-6 sm:px-6 md:h-full md:justify-center md:px-8">
         <div className="space-y-6 max-w-md">
             <section className="space-y-3">
               <p className={`text-xs ${mutedText}`}>// profile</p>

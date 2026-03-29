@@ -1,8 +1,8 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { useLayoutEffect, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
 
 import {
   getDefaultAdminRuntimeDescriptor,
@@ -11,6 +11,7 @@ import {
   useRegisterV0Experience,
 } from "@/components/v0/runtime/v0-experience-runtime"
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller"
+import { completeAdminNavigation, recordAdminNavigationStart } from "@/lib/ops/admin-performance-client"
 
 export type V0AdminSection = "overview" | "content" | "manage-posts" | "newsletter" | "settings" | "community"
 type V0AdminSidebarSection = V0AdminSection
@@ -37,6 +38,41 @@ const adminItems: Array<{ key: V0AdminSidebarSection; label: string }> = [
   { key: "community", label: "Community" },
 ]
 
+function getAdminSectionHref(section: V0AdminSection) {
+  return section === "overview"
+    ? "/admin/analytics"
+    : section === "content"
+      ? "/admin/content"
+      : section === "manage-posts"
+        ? "/admin/posts"
+        : section === "newsletter"
+          ? "/admin/newsletter"
+          : section === "settings"
+            ? "/admin/settings"
+            : section === "community"
+              ? "/admin/community"
+              : "/admin/posts"
+}
+
+function getAdminIdlePrefetchTargets(currentSection: V0AdminSection | null): V0AdminSection[] {
+  switch (currentSection) {
+    case "overview":
+      return ["manage-posts", "settings"]
+    case "content":
+      return ["manage-posts", "settings"]
+    case "manage-posts":
+      return ["content", "settings"]
+    case "newsletter":
+      return ["overview", "settings"]
+    case "settings":
+      return ["overview", "manage-posts"]
+    case "community":
+      return ["overview", "manage-posts"]
+    default:
+      return ["overview", "manage-posts"]
+  }
+}
+
 export function AdminShell({
   children,
   currentSection,
@@ -45,11 +81,11 @@ export function AdminShell({
   loadingText = "",
   brandLabel = "xistoh.log",
   onNavigateSection,
-  onPublicClick,
   onToggleTheme,
   runtimeDescriptor,
 }: AdminShellProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const theme = useV0ThemeController(isDarkMode)
   const rightPanelRef = useRef<HTMLDivElement>(null)
   const [runtimeFrame, setRuntimeFrame] = useState<V0RuntimeFrame | null>(null)
@@ -64,35 +100,49 @@ export function AdminShell({
     () => runtimeDescriptor ?? getDefaultAdminRuntimeDescriptor(currentSection),
     [currentSection, runtimeDescriptor],
   )
+  const idlePrefetchTargets = useMemo(
+    () => getAdminIdlePrefetchTargets(currentSection).map((section) => getAdminSectionHref(section)),
+    [currentSection],
+  )
   const navigateSection =
     onNavigateSection ??
     ((section: V0AdminSection) => {
-      const href =
-        section === "overview"
-          ? "/admin/analytics"
-          : section === "content"
-            ? "/admin/content"
-          : section === "manage-posts"
-            ? "/admin/posts"
-            : section === "newsletter"
-              ? "/admin/newsletter"
-              : section === "settings"
-                ? "/admin/settings"
-                : section === "community"
-                  ? "/admin/community"
-                  : "/admin/posts"
-      router.push(href)
+      router.push(getAdminSectionHref(section))
     })
-  const openPublic = onPublicClick ?? (() => router.push("/"))
   const toggleTheme = onToggleTheme ?? theme.toggleTheme
 
-  useLayoutEffect(() => {
-    const measureFrame = () => {
-      const element = rightPanelRef.current
-      if (!element) {
-        return
-      }
+  useEffect(() => {
+    completeAdminNavigation(pathname)
+  }, [pathname])
 
+  useEffect(() => {
+    if (onNavigateSection) {
+      return
+    }
+
+    const prefetchTargets = [...new Set(idlePrefetchTargets)]
+    const prefetch = () => {
+      for (const href of prefetchTargets) {
+        router.prefetch(href)
+      }
+    }
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const callbackId = window.requestIdleCallback(prefetch, { timeout: 1500 })
+      return () => window.cancelIdleCallback(callbackId)
+    }
+
+    const timeoutId = globalThis.setTimeout(prefetch, 900)
+    return () => globalThis.clearTimeout(timeoutId)
+  }, [idlePrefetchTargets, onNavigateSection, router])
+
+  useLayoutEffect(() => {
+    const element = rightPanelRef.current
+    if (!element) {
+      return
+    }
+
+    const measureFrame = () => {
       const rect = element.getBoundingClientRect()
       setRuntimeFrame({
         top: rect.top,
@@ -103,34 +153,32 @@ export function AdminShell({
     }
 
     measureFrame()
+    const resizeObserver = new ResizeObserver(measureFrame)
+    resizeObserver.observe(element)
     window.addEventListener("resize", measureFrame)
 
-    return () => window.removeEventListener("resize", measureFrame)
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", measureFrame)
+    }
   }, [])
 
   useRegisterV0Experience({
     layout: "admin",
     descriptor: resolvedRuntimeDescriptor,
     frame: runtimeFrame,
+    slot: rightPanelRef.current,
     isDarkMode: resolvedIsDarkMode,
   })
 
   return (
-    <div className={`relative h-screen overflow-hidden ${bgColor} ${textColor}`}>
-      <header className={`flex items-center justify-between px-8 py-4 border-b ${borderColor} font-mono relative z-20`}>
+    <div className={`relative flex h-[100svh] min-h-[100svh] flex-col overflow-hidden ${bgColor} ${textColor}`}>
+      <header
+        className={`relative z-20 flex items-center justify-between border-b px-4 py-4 font-mono sm:px-6 md:px-8 ${borderColor}`}
+      >
         <h1 className="text-sm">{brandLabel}</h1>
 
-        <div className="flex items-center gap-6">
-          <div className="flex text-xs">
-            <button
-              onClick={openPublic}
-              className={`px-3 py-1 border-l border-t border-b ${borderColor} transition-colors ${hoverBg}`}
-            >
-              public
-            </button>
-            <button className={`px-3 py-1 border ${borderColor} transition-colors ${activeBg}`}>admin</button>
-          </div>
-
+        <div className="flex items-center gap-3 sm:gap-6">
           <button
             onClick={toggleTheme}
             className={`text-xs ${hoverBg} px-2 py-1 transition-colors`}
@@ -141,28 +189,58 @@ export function AdminShell({
         </div>
       </header>
 
-      <div className="flex font-mono h-[calc(100vh-57px)]">
-        <aside className={`w-52 border-r ${borderColor} p-4 space-y-1 shrink-0`}>
-          <p className={`text-xs ${mutedText} mb-4`}>// admin</p>
-          {adminItems.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => navigateSection(item.key)}
-              className={`w-full text-left px-3 py-2 text-xs transition-colors ${
-                currentSection === item.key ? activeBg : hoverBg
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-          {isPageLoading ? (
-            <p className={`text-xs mt-4 ${resolvedIsDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"}`}>{loadingText}</p>
-          ) : null}
+      <div className="flex min-h-0 flex-1 flex-col font-mono md:flex-row">
+        <aside className={`shrink-0 border-b px-4 py-3 sm:px-6 md:w-52 md:border-b-0 md:border-r md:px-4 md:py-4 ${borderColor}`}>
+          <div className="flex min-w-0 items-center gap-3 md:block">
+            <p className={`shrink-0 text-xs md:mb-4 ${mutedText}`}>// admin</p>
+            <div data-v0-admin-strip className="flex min-w-0 flex-1 gap-1 overflow-x-auto md:flex-col md:gap-1 md:overflow-visible">
+              {adminItems.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => {
+                    const href = getAdminSectionHref(item.key)
+                    recordAdminNavigationStart(href)
+                    navigateSection(item.key)
+                  }}
+                  onMouseEnter={() => {
+                    if (!onNavigateSection) {
+                      router.prefetch(getAdminSectionHref(item.key))
+                    }
+                  }}
+                  onFocus={() => {
+                    if (!onNavigateSection) {
+                      router.prefetch(getAdminSectionHref(item.key))
+                    }
+                  }}
+                  className={`shrink-0 px-3 py-2 text-left text-xs transition-colors md:w-full ${
+                    currentSection === item.key ? activeBg : hoverBg
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {isPageLoading ? (
+              <p className={`shrink-0 text-xs md:mt-4 ${resolvedIsDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"}`}>
+                {loadingText}
+              </p>
+            ) : null}
+          </div>
         </aside>
 
-        <div className="flex flex-1 min-w-0">
-          <div className="w-1/2 min-w-0 h-full relative z-20">{children}</div>
-          <div ref={rightPanelRef} className="w-1/2 shrink-0" aria-hidden="true" />
+        <div className="flex min-h-0 flex-1 min-w-0 flex-col md:flex-row">
+          <div
+            data-v0-shell-primary
+            className="relative order-2 z-20 min-h-0 min-w-0 flex-1 overflow-y-auto md:order-1 md:h-full md:flex-none md:w-[56%] md:overflow-hidden lg:w-1/2"
+          >
+            {children}
+          </div>
+          <div
+            ref={rightPanelRef}
+            data-v0-jitter-slot
+            className={`relative order-1 h-40 min-h-[10rem] w-full shrink-0 overflow-hidden border-b sm:h-52 md:order-2 md:h-full md:min-h-0 md:flex-none md:w-[44%] md:border-b-0 lg:w-1/2 ${borderColor}`}
+            aria-hidden="true"
+          />
         </div>
       </div>
     </div>

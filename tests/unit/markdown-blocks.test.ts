@@ -66,4 +66,25 @@ https://github.com/openai/openai
       provider: "YOUTUBE",
     })
   })
+
+  it("normalizes asset protocol images and file links while resolving derived html", () => {
+    const payload = buildMarkdownWriterPayload(
+      `![Diagram](asset://image-asset "caption")
+
+[Download](asset://file-asset)`,
+      [
+        { id: "image-asset", kind: "IMAGE", url: "https://cdn.example.com/diagram.png" },
+        { id: "file-asset", kind: "FILE", url: "https://cdn.example.com/download.pdf" },
+      ],
+    )
+
+    expect(payload.content.blocks[0]).toMatchObject({
+      type: "image",
+      assetId: "image-asset",
+      url: "https://cdn.example.com/diagram.png",
+      caption: "caption",
+    })
+    expect(payload.htmlContent).toContain('src="https://cdn.example.com/diagram.png"')
+    expect(payload.htmlContent).toContain('href="/api/files/file-asset"')
+  })
 })

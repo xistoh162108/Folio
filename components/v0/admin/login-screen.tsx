@@ -35,15 +35,14 @@ export function LoginScreen({
   const borderColor = resolvedIsDarkMode ? "border-white/20" : "border-black/20"
   const mutedText = resolvedIsDarkMode ? "text-white/50" : "text-black/50"
   const hoverBg = resolvedIsDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"
-  const activeBg = resolvedIsDarkMode ? "bg-white/10" : "bg-black/10"
 
   useLayoutEffect(() => {
-    const measureFrame = () => {
-      const element = rightPanelRef.current
-      if (!element) {
-        return
-      }
+    const element = rightPanelRef.current
+    if (!element) {
+      return
+    }
 
+    const measureFrame = () => {
       const rect = element.getBoundingClientRect()
       setRuntimeFrame({
         top: rect.top,
@@ -54,42 +53,40 @@ export function LoginScreen({
     }
 
     measureFrame()
+    const resizeObserver = new ResizeObserver(measureFrame)
+    resizeObserver.observe(element)
     window.addEventListener("resize", measureFrame)
 
-    return () => window.removeEventListener("resize", measureFrame)
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", measureFrame)
+    }
   }, [])
 
   useRegisterV0Experience({
     layout: "admin-access",
     descriptor: ADMIN_ACCESS_RUNTIME_DESCRIPTOR,
     frame: runtimeFrame,
+    slot: rightPanelRef.current,
     isDarkMode: resolvedIsDarkMode,
   })
 
   return (
-    <div className={`relative h-screen overflow-hidden ${bgColor} ${textColor}`}>
-      <header className={`flex items-center justify-between px-8 py-4 border-b ${borderColor} font-mono relative z-20`}>
+    <div className={`relative flex h-[100svh] min-h-[100svh] flex-col overflow-hidden ${bgColor} ${textColor}`}>
+      <header
+        className={`relative z-20 flex items-center justify-between border-b px-4 py-4 font-mono sm:px-6 md:px-8 ${borderColor}`}
+      >
         <h1 className="text-sm">{brandLabel}</h1>
 
-        <div className="flex items-center gap-6">
-          <div className="flex text-xs">
-            <button
-              onClick={() => router.push("/")}
-              className={`px-3 py-1 border-l border-t border-b ${borderColor} transition-colors ${hoverBg}`}
-            >
-              public
-            </button>
-            <button className={`px-3 py-1 border ${borderColor} transition-colors ${activeBg}`}>admin</button>
-          </div>
-
+        <div className="flex items-center gap-3 sm:gap-6">
           <button onClick={toggleTheme} className={`text-xs ${hoverBg} px-2 py-1 transition-colors`} aria-label="Toggle theme">
             {resolvedIsDarkMode ? "[light]" : "[dark]"}
           </button>
         </div>
       </header>
 
-      <div className="flex font-mono h-[calc(100vh-57px)]">
-        <div className="w-1/2 min-w-0 px-8 py-6 flex flex-col justify-center relative z-20">
+      <div className="flex min-h-0 flex-1 flex-col font-mono md:flex-row">
+        <div className="relative order-2 z-20 flex min-h-0 min-w-0 flex-1 flex-col justify-center px-4 py-6 sm:px-6 md:order-1 md:h-full md:flex-none md:w-[56%] md:px-8 lg:w-1/2">
           <div className="space-y-8 max-w-md">
             <section className="space-y-3">
               <p className={`text-xs ${mutedText}`}>// admin</p>
@@ -143,7 +140,12 @@ export function LoginScreen({
             </form>
           </div>
         </div>
-        <div ref={rightPanelRef} className="w-1/2 shrink-0" aria-hidden="true" />
+        <div
+          ref={rightPanelRef}
+          data-v0-jitter-slot
+          className={`relative order-1 h-40 min-h-[10rem] w-full shrink-0 overflow-hidden border-b sm:h-52 md:order-2 md:h-full md:min-h-0 md:flex-none md:w-[44%] md:border-b-0 lg:w-1/2 ${borderColor}`}
+          aria-hidden="true"
+        />
       </div>
     </div>
   )

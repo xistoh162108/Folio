@@ -29,7 +29,7 @@ export function CommunityScreen({
 
   return (
     <AdminShell currentSection="community" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <main className="flex-1 p-6 overflow-y-auto">
+      <main className="flex-1 min-h-full p-4 sm:p-6 md:h-full md:overflow-y-auto">
         <div className="space-y-8 max-w-4xl">
           <div>
             <p className={`text-xs ${mutedText}`}>// community</p>

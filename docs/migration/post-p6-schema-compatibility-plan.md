@@ -3,139 +3,97 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-03-28
+- Last updated: 2026-03-29
 - Canonical schema and compatibility authority: this file
 
 ## Purpose
 
 This document governs:
-- database schema changes
-- contract changes
-- mixed old/new content compatibility
-- migration order
-- fallback rules
-- removal sequencing
+- schema-affecting changes
+- compatibility behavior during mixed old/new rollout
+- writer and reader rules
+- storage bootstrap/readiness requirements
+- fallback removal sequencing
 
 All schema-affecting implementation must conform to this file.
 
 ## Current repository truth
 
-### Existing post schema
+### Existing post/content state
 
-Current `Post` and `PostRevision` state in `prisma/schema.prisma`:
-- `content: Json`
-- `contentVersion: Int @default(1)`
-- `htmlContent: String`
-- `coverImageUrl`
-- `assets: PostAsset[]`
-- `links: PostLink[]`
+In `prisma/schema.prisma`:
+- `Post.content: Json`
+- `Post.contentVersion: Int`
+- `Post.htmlContent: String`
+- `Post.markdownSource: String?`
+- `PostRevision.markdownSource: String?`
 
-Current contracts in `lib/contracts/posts.ts`:
-- `PostDetailDTO` already exposes `htmlContent`, optional `content`, `links`, `assets`
-- `PostEditorInput` currently carries `htmlContent`, `content`, `assets`, and `links`
-- `markdownSource` now exists in schema and contracts and is the active writer input for the v0 Markdown-first editor path
-- legacy non-v0 editor compatibility still exists while mixed old/new rollout remains active
-- current routed v0 admin editing does not present a separate legacy-convert gate; legacy posts that are re-saved through the v0 route are normalized into the block writer path
+In current runtime/contracts:
+- Markdown-first writer support already exists
+- canonical block content already exists
+- `htmlContent` is still stored
+- legacy content still exists in production-compatible shapes
+- the writer now inserts `asset://` image/file tokens at the cursor for uploaded assets
+- removal of an uploaded asset now strips matching `asset://` body references before recomputing derived content
 
-### Existing asset and preview system
+### Existing asset and preview state
 
-Current persisted systems already usable for the new model:
+Current persisted systems already in use:
 - `PostAsset`
 - `PostLink`
 - `LinkPreviewCache`
 
 These systems are retained and enriched, not replaced.
 
-### Existing profile truth
+### Existing profile state
 
-Structured profile schema in Prisma is now the active runtime truth for Home, contact, guestbook, admin settings, and resume output.
-`lib/site/profile.ts` remains only as bootstrap and missing-table fallback truth.
+Structured profile tables already exist in Prisma and are intended as the runtime truth.
+`lib/site/profile.ts` may remain only as bootstrap-only fallback.
 
-## Target schema changes
+### Existing storage state
 
-### Post and post revision
+Upload policy currently targets:
+- `post-media`
+- `post-files`
 
-Add `markdownSource` to:
-- `Post`
-- `PostRevision`
+There is now a canonical bootstrap/readiness path for these buckets:
+- `pnpm storage:bootstrap`
+- `inspectStorageBootstrapState()` in `lib/storage/supabase.ts`
+- `/admin/analytics` readiness cards built from that same snapshot authority
 
-Target meaning:
-- `markdownSource`: authoring input
-- `content`: canonical normalized block document
-- `htmlContent`: derived render output
-- `contentVersion`: explicit version of the canonical block schema
+## Compatibility rules
 
-Versioning rule:
-- old content remains on the legacy content version
-- new Markdown-first content writes the new block schema version
+### Reader selection rule
 
-### Structured profile schema
+During rollout, the safe selector remains:
+- if `markdownSource` is present: use the new block reader
+- else if `content` is already shaped like a canonical block document: use the new block reader
+- otherwise: use the legacy reader
 
-Add:
-- `Profile`
-- `ProfileEducation`
-- `ProfileExperience`
-- `ProfileAward`
-- `ProfileLink`
+`contentVersion >= newVersion` is **not** trusted as a standalone selector until legacy backfill explicitly normalizes old rows.
 
-Required behavior:
-- add/edit/delete support
-- reorder support through `sortOrder`
-- one live runtime profile source
+### Writer rule
 
-Recommended fields:
+The v0 editor writes:
+- Markdown authoring input
+- canonical normalized block JSON into `content`
+- derived render output into `htmlContent`
 
-`Profile`
-- `id`
-- `displayName`
-- `role`
-- `summary`
-- `emailAddress`
-- `resumeHref`
-- `githubHref`
-- `linkedinHref`
-- `createdAt`
-- `updatedAt`
+Legacy content may remain untouched until explicitly rewritten or lazily migrated.
+No big-bang rewrite is allowed.
 
-`ProfileEducation`
-- `id`
-- `profileId`
-- `institution`
-- `degree`
-- `period`
-- `sortOrder`
+### Mixed rollout rule
 
-`ProfileExperience`
-- `id`
-- `profileId`
-- `title`
-- `label`
-- `detail`
-- `period`
-- `year`
-- `sortOrder`
+Rollout must support:
+- old posts without `markdownSource`
+- new posts with `markdownSource`
+- mixed old/new content in the same runtime
 
-`ProfileAward`
-- `id`
-- `profileId`
-- `title`
-- `issuer`
-- `detail`
-- `year`
-- `sortOrder`
-
-`ProfileLink`
-- `id`
-- `profileId`
-- `label`
-- `url`
-- `kind`
-- `isVerified`
-- `sortOrder`
+Forced whole-database migration before safe reading is forbidden.
 
 ## Canonical content model
 
-Canonical block union:
+Canonical block set:
 - paragraph
 - heading
 - list
@@ -144,120 +102,112 @@ Canonical block union:
 - math
 - image
 - embed
-- thematicBreak
+- thematic break
 
-Common rules:
-- every block has a stable `id`
+Rules:
+- block ids remain stable
+- image blocks own captions
 - image blocks reference persisted assets
-- image blocks own caption text
-- embed blocks reference normalized URL and provider-specific preview state
+- embed blocks reference normalized URLs and provider-specific preview context
 
-Provider-specific behavior:
-- generic links render as terminal-style previews
-- YouTube is preview-first and expands inline
-- GitHub supports repo, issue, and PR preview types
+## Inline media and embed normalization
 
-## Compatibility rules
+### Markdown conventions
 
-### Reader compatibility
+- image: `![alt](asset://<assetId> "caption")`
+- file: `[label](asset://<assetId>)`
+- embed: bare URL on its own line
 
-Existing posts without `markdownSource` must still render through the current path until migrated.
+### Normalization rules
 
-Reader selection rule:
-- if `markdownSource` exists and resolves to canonical block content, or `content` is already shaped like a canonical block document: use new block reader path
-- otherwise: use current legacy render path
+- `asset://<assetId>` in image syntax becomes an image block
+- Markdown image title string becomes the normalized block caption
+- `asset://<assetId>` in link syntax becomes a file/link block reference through existing asset ownership
+- bare-line URLs become embed blocks
+- inline Markdown links remain inline text links, not body-level embed blocks
 
-Rollout must support mixed old/new content during migration.
-Forced big-bang content rewrite is forbidden.
+## Preview metadata enrichment
 
-### Writer compatibility
+`LinkPreviewCache.metadata` remains the only preview metadata store.
+Do not create a second preview table.
 
-Writer rule:
-- only the new Markdown-first editor writes `markdownSource`
-- that editor normalizes Markdown into canonical block JSON
-- derived HTML is written into `htmlContent`
-- the v0 admin editor route now uses this writer path; compatibility fallback remains only for non-v0/default editor surfaces during rollout
+Target enriched preview subtypes:
+- GitHub repo
+- GitHub issue
+- GitHub PR
+- YouTube
 
-Legacy writer rule:
-- legacy content remains readable until its route/editor migration is complete
-- old content can remain untouched until lazy migration or explicit migration rewrites it
+Current implementation note:
+- GitHub metadata is the explicit persisted subtype contract for repo / issue / PR previews.
+- YouTube metadata is now also persisted as a typed contract with `kind: "YOUTUBE"` and `videoId` when enrichment succeeds.
+- Older cached YouTube previews remain compatible through the normalized URL/disclosure fallback path until those cache rows are refreshed.
 
-### Profile compatibility
+Fallback rule:
+- unresolved preview metadata must degrade to a terminal-native generic link block
+- widget/card fallback is forbidden
 
-Profile rollout rule:
-- DB profile is the target runtime truth
-- if DB profile does not exist yet, a temporary bootstrap fallback may read from `lib/site/profile.ts`
-- that fallback is bootstrap-only and must not remain the long-term runtime truth
-- seed/bootstrap flows may re-sync nested profile rows from the static bootstrap source when explicitly reset or reseeded
-- runtime ownership switched to DB during E7
+## Storage bootstrap and readiness rule
 
-### Link compatibility
+Bucket names remain:
+- `post-media`
+- `post-files`
 
-Current `PostLink` and `LinkPreviewCache` remain the primary preview system.
-Do not introduce a second link-preview or embed persistence subsystem.
-Provider-specific issue/PR and YouTube-specialized metadata contracts are explicitly deferred beyond E2.
-E2 only establishes compatibility-safe foundation fields and keeps generic or repo-level preview behavior intact.
-During E6, block-authored detail routes may synthesize preview-backed inline link context from `LinkPreviewCache` for block embeds even when no explicit `PostLink` row exists yet.
+Introduce `pnpm storage:bootstrap` with the following behavior:
+- verify Supabase credentials
+- create `post-media` if missing
+- create `post-files` if missing
+- validate public/private visibility expectations
+- re-apply canonical MIME/size policy to existing buckets
+- run idempotently
+
+Readiness diagnostics must be able to report:
+- env presence
+- bucket existence
+- bucket visibility
+
+`Bucket Not Found` is treated as an infrastructure/bootstrap failure, not a UI/editor failure.
+
+## Profile truth and fallback rule
+
+- DB-backed profile data is the runtime source of truth
+- static profile fallback may exist only for bootstrap-only paths
+- static runtime truth must not remain the long-term owner
+- static profile fallback is no longer used in active runtime after `R7` acceptance, except explicitly documented bootstrap paths
 
 ## Migration order
 
-1. Add schema and contracts
-2. Keep read compatibility for both old and new content
-3. Introduce the new writer
-4. Expand the reader to prefer the new block path when present
-5. Migrate old content lazily or with explicit migration tooling
-6. Remove legacy fallback only after parity and compatibility are proven
-
-Profile migration order:
-1. add profile schema
-2. bootstrap initial DB record from static profile truth
-3. switch runtime readers to DB-backed profile
-4. retire static fallback once verified
+1. storage bootstrap/readiness foundation
+2. preserve compatibility-safe reader rules
+3. writer improvements
+4. reader enrichment
+5. optional legacy backfill
+6. final fallback retirement
 
 ## No-removal-before-proof rule
 
 Do not remove:
-- legacy post reader path
-- legacy content compatibility logic
-- static profile bootstrap fallback
+- legacy reader compatibility
+- compatibility-safe mixed old/new handling
+- bootstrap-only static profile fallback
 
 until:
-- mixed old/new content has been validated
-- the new reader is parity-approved
-- the new editor is production-stable
-- DB profile runtime truth is verified in Home, contact, guestbook, admin settings, and resume output
-
-## Phase ownership
-
-- E2 owns schema addition, contracts, and compatibility reads
-- E5 owns new editor writing behavior
-- E6 owns block-reader rollout and mixed-content validation
-- E7 owns profile runtime migration
+- mixed content has been validated
+- inline media/embed writer is production-stable
+- enriched reader behavior is validated
+- DB-backed profile runtime truth is verified
 
 ## Validation requirements
 
-Schema and compatibility acceptance requires:
-- old content still renders
+Acceptance requires:
+- old content still renders safely
 - new content renders through the block pipeline
 - mixed old/new content is supported simultaneously
-- no forced migration is required for basic runtime safety
-- `Jimin Park` is the canonical runtime/profile author name; route-level SEO author output is finalized in E8
-- helper-level compatibility tests plus build/smoke validation are required in E2
-- DB-backed reader/writer compatibility tests expand in E5, E6, and E7
-
-## Risks
-
-- block normalization drift from current reader output
-- old content silently falling into the wrong reader path
-- legacy revision counters accidentally masquerading as block-mode selectors
-- legacy posts edited through the v0 routed editor may auto-upgrade into the block writer path without an explicit convert step
-- profile bootstrap drift between DB and static fallback
-- preview metadata not being rich enough for GitHub issue/PR and YouTube behavior
-- removing fallback too early and breaking production reads
+- no forced migration is required for runtime safety
+- storage bootstrap/readiness behavior is documented before upload rollout
+- `Jimin Park` remains the canonical runtime/profile author name
 
 ## Defaults
 
-- `htmlContent` stays derived, not canonical
-- `content` is the canonical block document
-- `markdownSource` is optional at schema introduction and required only for the new writer path
-- profile uses a single live source in the first release
+- `htmlContent` remains derived output
+- `markdownSource` remains the active writer input
+- `contentVersion` remains non-authoritative until legacy backfill proves otherwise

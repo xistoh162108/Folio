@@ -8,12 +8,13 @@ function buildPdf(lines: string[]) {
   const content = lines
     .map((line, index) => `BT /F1 12 Tf 72 ${760 - index * 18} Td (${escapePdfText(line)}) Tj ET`)
     .join("\n")
+  const contentLength = Buffer.byteLength(content, "utf8")
 
   const objects = [
     "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
     "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
     "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >> endobj",
-    `4 0 obj << /Length ${content.length} >> stream\n${content}\nendstream endobj`,
+    `4 0 obj << /Length ${contentLength} >> stream\n${content}\nendstream endobj`,
     "5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Courier >> endobj",
   ]
 
@@ -71,7 +72,7 @@ export async function GET() {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": 'inline; filename="resume.pdf"',
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "no-store",
     },
   })
 }

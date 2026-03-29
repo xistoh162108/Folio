@@ -5,14 +5,14 @@ import { isMissingTableError } from "@/lib/db/errors"
 import { prisma } from "@/lib/db/prisma"
 import { toLogSourceLabel } from "@/lib/utils/user-agent"
 
-export async function getGuestbookEntries(): Promise<GuestbookEntryDTO[]> {
+export async function getGuestbookEntries(limit = 50): Promise<GuestbookEntryDTO[]> {
   try {
     const entries = await prisma.guestbookEntry.findMany({
       where: {
         deletedAt: null,
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: limit,
       select: {
         id: true,
         message: true,

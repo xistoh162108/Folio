@@ -60,6 +60,13 @@ test("robots and sitemap reflect the shipped IA", async ({ request }) => {
   expect(sitemapText).toContain("<loc>https://xistoh.com/notes</loc>")
   expect(sitemapText).toContain("<loc>https://xistoh.com/projects</loc>")
   expect(sitemapText).not.toContain("/knowledge")
+
+  const knowledgeResponse = await request.get("/knowledge", {
+    failOnStatusCode: false,
+    maxRedirects: 0,
+  })
+  expect([307, 308]).toContain(knowledgeResponse.status())
+  expect(knowledgeResponse.headers().location).toBe("/notes")
 })
 
 test("public pages emit route metadata and detail structured data", async ({ request }) => {
@@ -70,6 +77,30 @@ test("public pages emit route metadata and detail structured data", async ({ req
   expect(homeHtml).toContain('property="og:title"')
   expect(homeHtml).toContain('name="twitter:card"')
   expect(homeHtml).toContain('rel="canonical" href="https://xistoh.com"')
+
+  const notesResponse = await request.get("/notes")
+  expect(notesResponse.ok()).toBeTruthy()
+  const notesHtml = await notesResponse.text()
+  expect(notesHtml).toContain("<title>Notes | xistoh.log</title>")
+  expect(notesHtml).toContain('rel="canonical" href="https://xistoh.com/notes"')
+
+  const projectsResponse = await request.get("/projects")
+  expect(projectsResponse.ok()).toBeTruthy()
+  const projectsHtml = await projectsResponse.text()
+  expect(projectsHtml).toContain("<title>Projects | xistoh.log</title>")
+  expect(projectsHtml).toContain('rel="canonical" href="https://xistoh.com/projects"')
+
+  const contactResponse = await request.get("/contact")
+  expect(contactResponse.ok()).toBeTruthy()
+  const contactHtml = await contactResponse.text()
+  expect(contactHtml).toContain('rel="canonical" href="https://xistoh.com/contact"')
+  expect(contactHtml).toContain('property="og:url" content="https://xistoh.com/contact"')
+
+  const guestbookResponse = await request.get("/guestbook")
+  expect(guestbookResponse.ok()).toBeTruthy()
+  const guestbookHtml = await guestbookResponse.text()
+  expect(guestbookHtml).toContain('rel="canonical" href="https://xistoh.com/guestbook"')
+  expect(guestbookHtml).toContain('property="og:url" content="https://xistoh.com/guestbook"')
 
   const detailPath = await ensurePublishedSeoDetailPath()
   const detailResponse = await request.get(detailPath)

@@ -11,8 +11,14 @@ export interface GenericPreviewMetadata {
   kind: "GENERIC"
 }
 
-export interface GitHubPreviewMetadata {
+export interface YouTubePreviewMetadata {
+  kind: "YOUTUBE"
+  videoId: string
+}
+
+export interface GitHubRepoPreviewMetadata {
   kind: "GITHUB"
+  subtype?: "REPO"
   owner: string
   repo: string
   stars: number | null
@@ -21,7 +27,37 @@ export interface GitHubPreviewMetadata {
   openIssues: number | null
 }
 
-export type PreviewMetadata = GenericPreviewMetadata | GitHubPreviewMetadata
+export interface GitHubIssuePreviewMetadata {
+  kind: "GITHUB"
+  subtype: "ISSUE"
+  owner: string
+  repo: string
+  number: number
+  state: string | null
+  comments: number | null
+  title: string | null
+  author: string | null
+}
+
+export interface GitHubPullRequestPreviewMetadata {
+  kind: "GITHUB"
+  subtype: "PR"
+  owner: string
+  repo: string
+  number: number
+  state: string | null
+  comments: number | null
+  title: string | null
+  author: string | null
+  merged: boolean | null
+}
+
+export type GitHubPreviewMetadata =
+  | GitHubRepoPreviewMetadata
+  | GitHubIssuePreviewMetadata
+  | GitHubPullRequestPreviewMetadata
+
+export type PreviewMetadata = GenericPreviewMetadata | YouTubePreviewMetadata | GitHubPreviewMetadata
 
 export interface PostLinkDTO {
   id?: string

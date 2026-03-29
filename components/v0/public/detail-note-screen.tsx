@@ -44,29 +44,45 @@ export function DetailNoteScreen({
   }
 
   const copyToClipboard = async (code: string, index: number) => {
-    await navigator.clipboard.writeText(code)
-    setCopiedCode(index)
-    setTimeout(() => setCopiedCode(null), 2000)
+    if (!navigator.clipboard) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopiedCode(index)
+      setTimeout(() => setCopiedCode(null), 2000)
+    } catch {}
   }
 
   const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(window.location.href)
-    setActionState("copied")
-    setTimeout(() => setActionState("idle"), 2000)
+    if (!navigator.clipboard) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setActionState("copied")
+      setTimeout(() => setActionState("idle"), 2000)
+    } catch {}
   }
 
   const handleShare = async () => {
-    if (navigator.share) {
-      await navigator.share({
-        title: post?.title ?? samplePostContent.title,
-        url: window.location.href,
-      })
-    } else {
-      await navigator.clipboard.writeText(window.location.href)
-    }
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: post?.title ?? samplePostContent.title,
+          url: window.location.href,
+        })
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href)
+      } else {
+        return
+      }
 
-    setActionState("shared")
-    setTimeout(() => setActionState("idle"), 2000)
+      setActionState("shared")
+      setTimeout(() => setActionState("idle"), 2000)
+    } catch {}
   }
 
   return (
@@ -77,9 +93,9 @@ export function DetailNoteScreen({
       onToggleTheme={toggleTheme}
       runtimeDescriptor={runtimeDescriptor}
     >
-      <div className="h-full overflow-y-auto">
-        <main className="px-8 py-6 max-w-3xl">
-          <div className="space-y-6 max-w-2xl">
+      <div className="min-h-full md:h-full md:overflow-y-auto">
+        <main className="w-full max-w-3xl px-4 py-6 sm:px-6 md:px-8">
+          <div className="w-full max-w-2xl space-y-6">
             <Link href={backHref} className={`inline-block text-xs ${mutedText} ${hoverBg} px-1`}>
               [&larr;] back to notes
             </Link>
@@ -144,30 +160,32 @@ export function DetailNoteScreen({
                       const lines = block.split("\n")
                       const lang = lines[0].replace("```", "")
                       const code = lines.slice(1, -1).join("\n")
+                      const accentClass = isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"
+                      const commentClass = isDarkMode ? "text-white/35" : "text-black/40"
                       const highlightedCode = code
                         .replace(
                           /\b(import|from|def|return|class|if|else|for|while|try|except|with|as|in|and|or|not|True|False|None)\b/g,
-                          `<span class="${isDarkMode ? "text-[#bb9af7]" : "text-purple-700"}">$1</span>`,
+                          `<span class="${accentClass}">$1</span>`,
                         )
                         .replace(
                           /\b(np|numpy|math|os|sys)\b/g,
-                          `<span class="${isDarkMode ? "text-[#7dcfff]" : "text-cyan-700"}">$1</span>`,
+                          `<span class="${accentClass}">$1</span>`,
                         )
                         .replace(
                           /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g,
-                          `<span class="${isDarkMode ? "text-[#7aa2f7]" : "text-blue-700"}">$1</span>`,
+                          `<span class="${accentClass}">$1</span>`,
                         )
                         .replace(
                           /(["'])(.*?)\1/g,
-                          `<span class="${isDarkMode ? "text-[#9ece6a]" : "text-green-700"}">$1$2$1</span>`,
+                          `<span class="${accentClass}">$1$2$1</span>`,
                         )
                         .replace(
                           /#.*$/gm,
-                          `<span class="${isDarkMode ? "text-[#565f89]" : "text-gray-500"}">$&</span>`,
+                          `<span class="${commentClass}">$&</span>`,
                         )
                         .replace(
                           /\b(\d+\.?\d*)\b/g,
-                          `<span class="${isDarkMode ? "text-[#ff9e64]" : "text-orange-700"}">$1</span>`,
+                          `<span class="${accentClass}">$1</span>`,
                         )
 
                       return (

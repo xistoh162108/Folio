@@ -74,7 +74,7 @@ export function ManagePostsScreen({
       brandLabel={brandLabel}
       onToggleTheme={toggleTheme}
     >
-      <main className="flex-1 p-6 overflow-y-auto">
+      <main className="flex-1 min-h-full p-4 sm:p-6 md:h-full md:overflow-y-auto">
         <div className="space-y-6 max-w-3xl">
           <div>
             <p className={`text-xs ${mutedText}`}>// manage posts</p>

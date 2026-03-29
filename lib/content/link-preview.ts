@@ -330,7 +330,7 @@ export async function fetchLinkPreview(rawUrl: string): Promise<PreviewResult> {
       embedUrl: `https://www.youtube.com/embed/${videoId}`,
       previewStatus: "READY",
       failureReason: null,
-      metadata: { kind: "GENERIC" },
+      metadata: { kind: "YOUTUBE", videoId },
     }
   }
 
@@ -425,6 +425,7 @@ async function fetchGitHubPreview(normalizedUrl: string): Promise<PreviewResult 
       failureReason: null,
       metadata: {
         kind: "GITHUB",
+        subtype: "REPO",
         owner,
         repo: payload.name ?? repo,
         stars: payload.stargazers_count ?? null,
@@ -443,16 +444,29 @@ async function fetchGitHubSpecialPreview(normalizedUrl: string): Promise<Preview
     const url = new URL(normalizedUrl)
     const parts = url.pathname.split("/").filter(Boolean)
 
-    if (parts.length < 2) {
+    if (parts.length < 4) {
       return null
     }
 
-    const [owner, repo] = parts
-    if (!owner || !repo) {
+    const [owner, repo, resourceType, rawNumber] = parts
+    const number = Number(rawNumber)
+
+    if (!owner || !repo || !Number.isInteger(number) || number <= 0) {
       return null
     }
 
-    const apiResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+    const endpoint =
+      resourceType === "issues"
+        ? `issues/${number}`
+        : resourceType === "pull"
+          ? `pulls/${number}`
+          : null
+
+    if (!endpoint) {
+      return null
+    }
+
+    const apiResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/${endpoint}`, {
       headers: {
         Accept: "application/vnd.github+json",
         "User-Agent": "xistoh.log-preview-bot/1.0",
@@ -465,14 +479,12 @@ async function fetchGitHubSpecialPreview(normalizedUrl: string): Promise<Preview
     }
 
     const payload = (await apiResponse.json()) as {
-      full_name?: string
-      description?: string | null
-      name?: string | null
-      stargazers_count?: number | null
-      forks_count?: number | null
-      language?: string | null
-      open_issues_count?: number | null
-      owner?: { avatar_url?: string | null; login?: string | null }
+      title?: string | null
+      body?: string | null
+      state?: string | null
+      comments?: number | null
+      merged_at?: string | null
+      user?: { avatar_url?: string | null; login?: string | null }
       html_url?: string
     }
 
@@ -480,22 +492,38 @@ async function fetchGitHubSpecialPreview(normalizedUrl: string): Promise<Preview
       normalizedUrl,
       url: payload.html_url ?? normalizedUrl,
       type: "GITHUB",
-      title: payload.full_name ?? `${owner}/${repo}`,
-      description: payload.description ?? null,
-      imageUrl: payload.owner?.avatar_url ?? null,
+      title: `${owner}/${repo} #${number}`,
+      description: payload.title ?? payload.body?.trim() ?? null,
+      imageUrl: payload.user?.avatar_url ?? null,
       siteName: "GitHub",
       embedUrl: null,
       previewStatus: "READY",
       failureReason: null,
-      metadata: {
-        kind: "GITHUB",
-        owner: payload.owner?.login ?? owner,
-        repo: payload.name ?? repo,
-        stars: payload.stargazers_count ?? null,
-        forks: payload.forks_count ?? null,
-        primaryLanguage: payload.language ?? null,
-        openIssues: payload.open_issues_count ?? null,
-      },
+      metadata:
+        resourceType === "issues"
+          ? {
+              kind: "GITHUB",
+              subtype: "ISSUE",
+              owner,
+              repo,
+              number,
+              state: payload.state ?? null,
+              comments: payload.comments ?? null,
+              title: payload.title ?? null,
+              author: payload.user?.login ?? null,
+            }
+          : {
+              kind: "GITHUB",
+              subtype: "PR",
+              owner,
+              repo,
+              number,
+              state: payload.state ?? null,
+              comments: payload.comments ?? null,
+              title: payload.title ?? null,
+              author: payload.user?.login ?? null,
+              merged: payload.merged_at ? true : false,
+            },
     }
   } catch {
     return null

@@ -2,10 +2,17 @@ import type { BlockDocument, ContentBlock, EmbedBlock, ImageBlock } from "@/lib/
 import { POST_BLOCK_CONTENT_VERSION } from "@/lib/contracts/content-blocks"
 
 const STANDALONE_URL_RE = /^https?:\/\/\S+$/i
-const IMAGE_RE = /^!\[(.*?)\]\((https?:\/\/[^\s)]+)(?:\s+"([^"]*)")?\)$/i
+const MARKDOWN_TARGET_RE = /(?:asset:\/\/[A-Za-z0-9-]+|https?:\/\/[^\s)]+)/i
+const IMAGE_RE = new RegExp(`^!\\[(.*?)\\]\\((${MARKDOWN_TARGET_RE.source})(?:\\s+"([^"]*)")?\\)$`, "i")
 const HEADING_RE = /^(#{1,6})\s+(.*)$/
 const ORDERED_LIST_RE = /^\d+[.)]\s+(.*)$/
 const UNORDERED_LIST_RE = /^[-*]\s+(.*)$/
+
+interface MarkdownWriterAsset {
+  id: string
+  kind?: string | null
+  url?: string | null
+}
 
 function normalizeMarkdownSource(source: string) {
   return source.replace(/\r\n?/g, "\n")
@@ -22,6 +29,33 @@ function escapeHtml(value: string) {
 
 function escapeAttribute(value: string) {
   return escapeHtml(value)
+}
+
+function toAssetProtocolUrl(assetId: string) {
+  return `asset://${assetId}`
+}
+
+function parseAssetProtocolUrl(value: string) {
+  const match = value.trim().match(/^asset:\/\/([A-Za-z0-9-]+)$/)
+  return match?.[1] ?? null
+}
+
+function resolveMarkdownHref(target: string, assets: MarkdownWriterAsset[] = []) {
+  const assetId = parseAssetProtocolUrl(target)
+  if (!assetId) {
+    return target
+  }
+
+  const asset = assets.find((candidate) => candidate.id === assetId)
+  if (!asset) {
+    return target
+  }
+
+  if (asset.kind === "FILE") {
+    return `/api/files/${assetId}`
+  }
+
+  return asset.url ?? target
 }
 
 function isBlockBoundary(line: string) {
@@ -62,13 +96,15 @@ function inferEmbedProvider(url: string): EmbedBlock["provider"] {
   return "GENERIC"
 }
 
-export function renderInlineMarkdownHtml(text: string) {
+export function renderInlineMarkdownHtml(text: string, assets: MarkdownWriterAsset[] = []) {
   const escaped = escapeHtml(text)
   return escaped
     .replace(
-      /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-      (_match, label: string, url: string) =>
-        `<a href="${escapeAttribute(url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(label)}</a>`,
+      /\[([^\]]+)\]\(((?:asset:\/\/[A-Za-z0-9-]+|https?:\/\/[^\s)]+))\)/g,
+      (_match, label: string, url: string) => {
+        const resolvedHref = resolveMarkdownHref(url, assets)
+        return `<a href="${escapeAttribute(resolvedHref)}" target="_blank" rel="noreferrer noopener">${escapeHtml(label)}</a>`
+      },
     )
     .replace(/`([^`]+)`/g, (_match, code: string) => `<code>${escapeHtml(code)}</code>`)
     .replace(/\*\*([^*]+)\*\*/g, (_match, value: string) => `<strong>${escapeHtml(value)}</strong>`)
@@ -199,7 +235,7 @@ function serializeBlockDocumentToMarkdown(content: BlockDocument) {
         case "math":
           return block.variant === "block" ? `$$\n${block.expression}\n$$` : `$${block.expression}$`
         case "image":
-          return `![${block.alt ?? ""}](${block.url ?? ""}${block.caption ? ` "${block.caption}"` : ""})`
+          return `![${block.alt ?? ""}](${block.assetId ? toAssetProtocolUrl(block.assetId) : block.url ?? ""}${block.caption ? ` "${block.caption}"` : ""})`
         case "embed":
           return block.url
         case "thematicBreak":
@@ -253,7 +289,7 @@ export function deriveMarkdownSource(input: {
   return normalizeMarkdownSource(input.excerpt?.trim() || "")
 }
 
-export function buildBlockDocumentFromMarkdown(markdownSource: string): BlockDocument {
+export function buildBlockDocumentFromMarkdown(markdownSource: string, assets: MarkdownWriterAsset[] = []): BlockDocument {
   const source = normalizeMarkdownSource(markdownSource).trim()
   const lines = source.length > 0 ? source.split("\n") : []
   const blocks: ContentBlock[] = []
@@ -386,11 +422,13 @@ export function buildBlockDocumentFromMarkdown(markdownSource: string): BlockDoc
     const image = trimmed.match(IMAGE_RE)
     if (image) {
       const [, alt = "", url = "", caption = ""] = image
+      const assetId = parseAssetProtocolUrl(url)
       blocks.push({
         id: blockId(index++),
         type: "image",
+        assetId,
         alt: alt || null,
-        url,
+        url: assetId ? resolveMarkdownHref(url, assets) : url,
         caption: caption || null,
       } satisfies ImageBlock)
       cursor += 1
@@ -431,19 +469,19 @@ export function buildBlockDocumentFromMarkdown(markdownSource: string): BlockDoc
   }
 }
 
-export function renderBlockDocumentToHtml(document: BlockDocument) {
+export function renderBlockDocumentToHtml(document: BlockDocument, assets: MarkdownWriterAsset[] = []) {
   return document.blocks
     .map((block) => {
       switch (block.type) {
         case "heading":
-          return `<h${block.level}>${renderInlineMarkdownHtml(block.text)}</h${block.level}>`
+          return `<h${block.level}>${renderInlineMarkdownHtml(block.text, assets)}</h${block.level}>`
         case "paragraph":
-          return `<p>${renderInlineMarkdownHtml(block.text)}</p>`
+          return `<p>${renderInlineMarkdownHtml(block.text, assets)}</p>`
         case "quote":
-          return `<blockquote><p>${renderInlineMarkdownHtml(block.text)}</p></blockquote>`
+          return `<blockquote><p>${renderInlineMarkdownHtml(block.text, assets)}</p></blockquote>`
         case "list": {
           const tag = block.style === "ordered" ? "ol" : "ul"
-          return `<${tag}>${block.items.map((item) => `<li>${renderInlineMarkdownHtml(item)}</li>`).join("")}</${tag}>`
+          return `<${tag}>${block.items.map((item) => `<li>${renderInlineMarkdownHtml(item, assets)}</li>`).join("")}</${tag}>`
         }
         case "code":
           return `<pre><code${block.language ? ` data-language="${escapeAttribute(block.language)}"` : ""}>${escapeHtml(block.code)}</code></pre>`
@@ -452,7 +490,7 @@ export function renderBlockDocumentToHtml(document: BlockDocument) {
             ? `<div data-math-block="true"><code>${escapeHtml(block.expression)}</code></div>`
             : `<span data-math-inline="true">${escapeHtml(block.expression)}</span>`
         case "image":
-          return `<figure data-block="image"><img src="${escapeAttribute(block.url ?? "")}" alt="${escapeAttribute(block.alt ?? "")}" />${
+          return `<figure data-block="image"><img src="${escapeAttribute(block.url ?? (block.assetId ? resolveMarkdownHref(toAssetProtocolUrl(block.assetId), assets) : ""))}" alt="${escapeAttribute(block.alt ?? "")}" />${
             block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""
           }</figure>`
         case "embed":
@@ -464,13 +502,13 @@ export function renderBlockDocumentToHtml(document: BlockDocument) {
     .join("\n")
 }
 
-export function buildMarkdownWriterPayload(markdownSource: string) {
+export function buildMarkdownWriterPayload(markdownSource: string, assets: MarkdownWriterAsset[] = []) {
   const normalized = normalizeMarkdownSource(markdownSource)
-  const content = buildBlockDocumentFromMarkdown(normalized)
+  const content = buildBlockDocumentFromMarkdown(normalized, assets)
   return {
     markdownSource: normalized,
     content,
-    htmlContent: renderBlockDocumentToHtml(content),
+    htmlContent: renderBlockDocumentToHtml(content, assets),
     contentVersion: POST_BLOCK_CONTENT_VERSION,
   }
 }

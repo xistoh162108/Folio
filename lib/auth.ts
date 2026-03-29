@@ -1,6 +1,7 @@
 import { getServerSession, NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcrypt"
+import { cache } from "react"
 import { prisma } from "./db/prisma"
 import { env } from "./env"
 
@@ -53,8 +54,10 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: "/admin/login" },
 }
 
+const getCachedServerSession = cache(async () => getServerSession(authOptions))
+
 export async function getSession() {
-  return getServerSession(authOptions)
+  return getCachedServerSession()
 }
 
 export async function requireUser() {

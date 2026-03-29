@@ -1,35 +1,31 @@
 import type { GuestbookEntryDTO } from "@/lib/contracts/community"
 
-import { ContactScreen } from "@/components/v0/public/contact-screen"
+import { GuestbookScreenClient } from "@/components/v0/public/guestbook-screen-client"
 
 interface GuestbookScreenProps {
   isDarkMode?: boolean
   brandLabel?: string
   initialEntries?: GuestbookEntryDTO[]
-  canModerate?: boolean
   emailAddress?: string
   githubHref?: string | null
   linkedinHref?: string | null
 }
 
 export function GuestbookScreen({
-  isDarkMode: initialIsDarkMode = true,
+  isDarkMode = true,
   brandLabel = "xistoh.log",
   initialEntries,
-  canModerate = false,
   emailAddress = "xistoh162108@kaist.ac.kr",
   githubHref = null,
   linkedinHref = null,
 }: GuestbookScreenProps) {
   return (
-    <ContactScreen
+    <GuestbookScreenClient
+      isDarkMode={isDarkMode}
       brandLabel={brandLabel}
-      canModerate={canModerate}
+      initialEntries={initialEntries}
       emailAddress={emailAddress}
-      focusSection="guestbook"
       githubHref={githubHref}
-      initialGuestbookEntries={initialEntries}
-      isDarkMode={initialIsDarkMode}
       linkedinHref={linkedinHref}
     />
   )

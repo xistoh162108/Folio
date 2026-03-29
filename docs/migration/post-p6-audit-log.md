@@ -2,20 +2,22 @@
 
 ## Status
 
-- Last updated: 2026-03-28
-- Current implementation state: E1 through E8 accepted
+- Last updated: 2026-03-29
+- Current implementation state: R1-R9 accepted
+- Cross-phase follow-up remains open for R2 continuity exactness and R5 production-equivalent storage proof.
 
 ## Purpose
 
-This file is the written audit trail for post-P6 exact-v0 enhancement work.
+This file is the audit trail for the post-P6 exact-v0 enhancement lineage.
 
 It records:
 - what changed
 - what was reviewed
-- what parity checks were performed
-- what drift risks were found
-- what was accepted or rejected
-- what deviations or approvals were required
+- parity evidence
+- responsive evidence
+- performance findings
+- accept/reject/hold decisions
+- minimal extension justifications
 
 No phase is accepted without an entry here.
 
@@ -27,66 +29,93 @@ Canonical references:
 
 ## Audit rules
 
-- Every phase must leave an audit trail
-- Every parity review must be recorded
-- Every accept/reject/hold decision must be recorded
-- Any implementation conflict with the canonical docs must be documented here before implementation diverges
-- Silent divergence is forbidden
+- every phase must leave an audit trail
+- every parity review must be recorded
+- every responsive viewport review must be recorded when applicable
+- every accept/reject/hold decision must be recorded
+- every minimal extension beyond literal `/v0app` must include a justification entry
+- silent divergence is forbidden
 
 ---
 
-## A0 — Approved enhancement baseline
+## A0 — Integrated package baseline
 
 ### Date
-- 2026-03-27
+- 2026-03-28
 
 ### Status
 - accepted baseline
 
 ### What was reviewed
-- current public shell ownership in `components/v0/public/public-shell.tsx`
-- current admin shell ownership in `components/v0/admin/admin-shell.tsx`
-- current public right-panel effect hosts in `components/v0/public/home-screen.tsx`, `notes-screen.tsx`, `projects-screen.tsx`, and `contact-screen.tsx`
-- current admin settings ownership in `components/v0/admin/settings-screen.tsx`
-- current editor/runtime ownership in `components/v0/admin/editor-screen.tsx`, `components/admin/post-editor.tsx`, and `components/admin/tiptap-editor.tsx`
-- current post schema and contracts in `prisma/schema.prisma` and `lib/contracts/posts.ts`
-- current profile runtime truth in `lib/site/profile.ts`
-- current metadata root in `app/layout.tsx`
-- current resume source in `app/resume.pdf/route.ts`
-- current design parity workflow in `.github/workflows/design-parity.yml`
+- shared runtime in `components/v0/runtime/v0-experience-runtime.tsx`
+- public/admin shell geometry in:
+  - `components/v0/public/public-shell.tsx`
+  - `components/v0/admin/admin-shell.tsx`
+  - `components/v0/admin/login-screen.tsx`
+- storage/upload policies in `lib/storage/supabase.ts`
+- current `/contact` and `/guestbook` relationship in:
+  - `app/contact/page.tsx`
+  - `app/guestbook/page.tsx`
+  - `components/v0/public/contact-screen.tsx`
+  - `components/v0/public/guestbook-screen.tsx`
+- current Markdown-first editor shape in:
+  - `components/admin/post-editor.tsx`
+  - `lib/content/markdown-blocks.ts`
+  - `lib/content/post-content.ts`
+- schema truth in `prisma/schema.prisma`
+- current SEO/runtime state in:
+  - `lib/seo/metadata.ts`
+  - `app/sitemap.ts`
+  - `app/robots.ts`
 
-### What was decided
-- design philosophy preservation is the top-level rule
-- post-P6 work remains within the same v0 product world
-- persistent Jitter must be a shared runtime primitive
-- transition ownership must move above route pages
-- editor becomes Markdown-first while canonical content becomes block-based
-- profile becomes DB-backed with a single live source in the first release
-- guestbook is integrated into contact and retained as an anchored route variant
-- route-level SEO becomes mandatory
-- global baseline alignment is treated as a system problem, not a spacing patch
+### Current repo truth captured
+- `Jimin Park` is already the active runtime/bootstrap name in live code
+- shared runtime exists but still uses a fixed overlay plus frame-measurement model
+- true Jitter-to-Jitter interpolation is not yet implemented
+- public/admin shells still hard-code `h-screen` and `w-1/2`
+- `/guestbook` is still an anchored reuse of `/contact`
+- the v0 editor is already Markdown-first
+- inline body media/embed authoring is not yet first-class
+- upload depends on `post-media` and `post-files` without canonical storage bootstrap
+- `Bucket Not Found` is treated as a bootstrap/readiness defect
+- `markdownSource || canonical block shape` remains the safe mixed-content selector
 
-### Known baseline gaps
-- no persistent shared Jitter engine exists yet
-- no shared app-shell transition runtime exists yet
-- admin currently lacks a consistent right-side Jitter panel
-- current editor is still TipTap-influenced
-- `markdownSource` is not yet active as the writer path
-- structured profile tables are not yet the runtime source
-- `/admin/settings` is still readiness-oriented
-- `lib/site/profile.ts` still acts as the runtime truth until E7
-- SEO is still global-only
-- `sitemap` and `robots` routes do not exist
+### Minimal extension baseline justification
+
+Approved extensions beyond literal `/v0app`:
+- shared transition coordinator
+- persistent Jitter interpolation
+- multi-viewport shell adaptation
+- standalone `/guestbook`
+- inline media/embed authoring
+- storage bootstrap/readiness
+- route-level SEO
+
+Why accepted:
+- literal `/v0app` does not define them
+- production requires them
+- each extension can stay inside the same terminal structure, density, motion feel, and Jitter-centered atmosphere
+- none requires a second design language
+
+### Known baseline risks
+- runtime continuity still lacks actual engine-state interpolation
+- tall/pivot desktop clipping remains unresolved
+- mobile/tablet shell ownership remains unresolved
+- `/guestbook` product ownership conflicts with the new standalone route decision
+- upload infrastructure bootstrap is absent
+- admin settings/editor scroll containment remains fragile
+- `contentVersion` cannot be trusted alone during rollout
 
 ### Accepted defaults
-- `/guestbook` remains as anchored reuse of `/contact`
-- Profile/CV uses a single live source initially
-- old/new mixed content is supported during rollout
-- `htmlContent` remains derived output
+- `/guestbook` will become a standalone canonical route again in this lineage
+- `/contact` will keep only a compact preview/jump
+- mobile will keep Jitter as a condensed band
+- bucket names remain `post-media` and `post-files`
+- static profile fallback remains bootstrap-only and must retire from active runtime after `R7`
 
 ---
 
-## E1 Audit Record — Governance lock and baseline inventory
+## R1 Audit Record — Governance refresh and baseline responsive/runtime audit
 
 ### Status
 - accepted
@@ -99,224 +128,270 @@ Canonical references:
 - `docs/migration/post-p6-audit-log.md`
 
 ### Pre-implementation checklist
-- [x] repo truth explored before writing docs
+- [x] repo truth explored before rewriting docs
+- [x] prior post-P6 lineage reviewed
 - [x] locked defaults selected
-- [x] open product decisions reduced to zero
 
 ### What changed
-- created the canonical post-P6 enhancement spec
-- created the canonical schema and compatibility plan
-- created the canonical route ownership plan
-- created the canonical post-P6 phase tracker
-- created the canonical post-P6 audit log
-- recorded the current repository baseline and locked defaults
-- recorded the required document-driven execution rules for E1 through E8
+- replaced the prior `E1-E8` post-P6 lineage with the new `R1-R9` integrated package
+- rewrote the canonical spec to center runtime continuity, responsive fidelity, storage bootstrap, guestbook split, and performance diagnosis
+- rewrote the schema/compatibility plan around current schema truth and mixed-content safety
+- rewrote the route ownership plan around persistent slot registration and standalone `/guestbook`
+- reset the phase tracker to `R1-R9`
+- reset the audit log to the new integrated lineage
 
 ### What was reviewed
-- current v0 public/admin shell ownership
-- current per-screen effect ownership
-- current editor structure and contracts
-- current schema truth for posts, assets, links, and preview cache
-- current static profile truth and resume path
-- current metadata and design parity CI state
-- residual `Jimin Bag` references in runtime/profile/test surfaces
+- shared runtime ownership and current limitations
+- public/admin shell geometry and viewport risks
+- current guestbook/contact relationship
+- current Markdown-first editor/runtime state
+- current storage bucket assumptions
+- current schema/profile/SEO truth
+- current design parity CI presence
 
-### Parity checks performed
-- [x] governance docs state strict v0 identity as the highest rule
-- [x] current repo truth was reflected into the new docs
-- [x] schema/compatibility plan is consistent with current Prisma/contracts
-- [x] route ownership plan is consistent with current public/admin runtime structure
-- [x] tracker and audit align on phase naming and status
+### Parity and governance checks performed
+- [x] strict v0 identity remains the top-level rule
+- [x] the new docs reflect current repo truth honestly
+- [x] standalone `/guestbook` is consistently documented across the new canonical docs
+- [x] storage/bootstrap is treated as an infrastructure problem, not a UI problem
+- [x] `markdownSource || canonical block shape` is consistently documented as the safe reader selector
+- [x] `R1-R9` naming is aligned across spec/tracker/audit
 
-### Drift risks found
-- runtime still contains residual `Jimin Bag` references outside the new docs
-- current admin settings ownership conflicts with the target Profile/CV plan
-- current route-level effect ownership will need structural changes in E3
-- current editor contract will require non-trivial writer/read compatibility in E2/E5/E6
+### Responsive/runtime baseline evidence
+- [x] tall/pivot risk acknowledged from current `h-screen` and `w-1/2` shell geometry
+- [x] mobile/tablet ownership gap documented
+- [x] persistent runtime still documented as not yet true portalized persistence
 
-### Decisions / approvals / rejections
-- accepted: `/guestbook` anchored reuse as the default retained-route model
-- accepted: single live profile source for the first release
-- accepted: no big-bang content rewrite
-- accepted: post-P6 work remains document-driven like P1 through P6
-- rejected: separate guestbook feed UI
-- rejected: any redesign/modernization framing for post-P6 work
-
-### Post-implementation audit checklist
-- [x] created documents recorded
-- [x] baseline inventory recorded
-- [x] locked defaults recorded
-- [x] status reflected in tracker
-
----
-
-## E2 Audit Record — Schema and compatibility foundation
-
-### Status
-- accepted
-
-### Expected scope under audit
-- `prisma/schema.prisma`
-- `prisma/migrations/20260327230000_add_post_p6_schema_foundation/migration.sql`
-- `lib/contracts/content-blocks.ts`
-- `lib/content/post-content.ts`
-- `lib/contracts/posts.ts`
-- `lib/data/posts.ts`
-- `lib/actions/post.actions.ts`
-- `lib/contracts/profile.ts`
-- `lib/profile/bootstrap.ts`
-- `lib/data/profile.ts`
-- `prisma/seed.ts`
-- `scripts/test-db.ts`
-- `lib/site/profile.ts`
-- `e2e/smoke.spec.ts`
-- `scripts/capture-v0-parity.ts`
-
-### Pre-implementation checklist
-- [x] schema/compatibility plan reviewed
-- [x] legacy reader/writer behavior reviewed
-- [x] profile bootstrap strategy documented
-
-### What changed
-- added `markdownSource` to `Post` and `PostRevision`
-- added structured profile schema foundation:
-  - `Profile`
-  - `ProfileEducation`
-  - `ProfileExperience`
-  - `ProfileAward`
-  - `ProfileLink`
-- added migration `20260327230000_add_post_p6_schema_foundation`
-- added block content contracts and compatibility helpers
-- introduced compatibility-safe block content contracts and explicit mode selection without switching runtime readers during E2
-- extended post contracts/data/actions to expose `contentMode`, `contentVersion`, and `markdownSource` as compatibility-safe foundation fields
-- added DB bootstrap/fallback profile helpers
-- updated Prisma seed to bootstrap the primary profile record
-- updated Prisma seed so reseeding re-syncs nested profile rows instead of only top-level profile fields
-- updated test DB reset coverage to include the new profile tables
-- corrected the static profile and smoke/parity expectations from `Jimin Bag` to `Jimin Park`
-
-### What was reviewed
-- current post schema/version behavior and the existing use of `contentVersion` as a legacy revision counter
-- current post readers in `lib/data/posts.ts`
-- current post writer in `lib/actions/post.actions.ts`
-- current static profile truth in `lib/site/profile.ts`
-- current resume dependency on the static profile
-- current smoke/parity expectations for the public home heading
-- migration application path used by `scripts/test-db.ts`
-- E2 QA follow-up against schema plan, tracker, and runtime code paths
-
-### Parity checks performed
-- [x] legacy content still resolves to the legacy reader path by default
-- [x] block content mode can be selected through `markdownSource` or canonical block-document shape
-- [x] no forced big-bang rewrite path was introduced
-- [x] static profile correction to `Jimin Park` is reflected in smoke/parity expectations
-- [x] `pnpm db:generate` passed
-- [x] `pnpm db:validate` passed
-- [x] `pnpm typecheck` passed
-- [x] `pnpm lint` passed
-- [x] `pnpm build` passed
-- [x] `pnpm test tests/unit/post-content-compat.test.ts` passed
-- [x] `pnpm test:db:prepare` applied the new migration successfully
-- [x] `pnpm test:e2e e2e/smoke.spec.ts` passed
+### Minimal extension justifications recorded
+- standalone `/guestbook`:
+  - missing from literal `/v0app`: separate canonical guestbook route
+  - production need: clearer product surface and canonical ownership
+  - minimality: keep same visual language and terminal log rhythm
+  - inheritance: no new feed/card/community product UI
+- storage bootstrap/readiness:
+  - missing from literal `/v0app`: operational bucket bootstrap
+  - production need: uploads must succeed in real environments
+  - minimality: operational command and diagnostics only
+  - inheritance: no visual redesign required
+- responsive shell adaptation:
+  - missing from literal `/v0app`: multi-viewport production behavior
+  - production need: current shell breaks on narrow and tall viewports
+  - minimality: shell geometry changes only, no second UI language
+  - inheritance: preserve split-panel/Jitter identity and terminal density
 
 ### Drift risks found
-- the runtime still reads profile data from `lib/site/profile.ts`; the new DB-backed profile schema is present but not yet the active runtime source
-- `markdownSource` exists but the editor UX is not yet Markdown-first; that remains E5 scope
-- the future block reader still does not exist; E2 only establishes the compatibility contract and selection rules
-- because `contentVersion` was historically used as a revision counter, future work must avoid treating revision growth as a block-reader selector
-- provider-specific preview metadata typing for GitHub issue/PR and YouTube remains explicitly deferred beyond E2
-- DB-backed compatibility tests for full reader/writer/profile runtime paths remain deferred to E5, E6, and E7
+- non-canonical docs outside this set still describe the previous anchored `/guestbook` model
+- runtime code still reflects the older integrated guestbook composition
+- shell/runtime implementation is not yet aligned with the new `R2-R9` direction
 
 ### Decisions / approvals / rejections
-- accepted: keep legacy reader compatibility fully intact during E2
-- accepted: treat the DB-backed profile layer as bootstrap-ready but not yet runtime-authoritative
-- accepted: complete the static/source-side `Jimin Park` correction during E2
-- accepted: document block-document-shaped `content` as a compatibility-safe trigger for the future block reader path
-- accepted: standardize the structured profile text field as `summary`
-- accepted: narrow E2 test-coverage claims to helper-level compatibility coverage plus build/smoke validation
-- rejected: any forced migration or big-bang rewrite of existing posts
-- rejected: early runtime switch of Home/settings/resume to the new profile schema before E7
+- accepted: replace the prior post-P6 lineage in place instead of maintaining two parallel trackers
+- accepted: `/guestbook` returns as a standalone canonical public route
+- accepted: mobile keeps Jitter as a condensed band instead of deleting it
+- accepted: bucket names remain unchanged; bootstrap/readiness is the fix path
+- rejected: card/feed reinterpretation of guestbook
+- rejected: generic responsive redesign patterns such as hamburger, drawer, or mobile app-shell chrome
 
 ### Post-implementation audit checklist
-- [x] schema changes recorded
-- [x] compatibility rules recorded
-- [x] migration validation recorded
-- [x] test outcomes recorded
+- [x] canonical doc replacement recorded
+- [x] current repo truth recorded
+- [x] minimal extension justifications recorded
 - [x] tracker status updated
 
 ---
 
-## E3 Audit Record — Shared app-shell runtime
+## R2 Audit Record — Shared runtime and Jitter continuity correction
 
 ### Status
 - accepted
 
 ### Expected scope under audit
-- `app/layout.tsx`
 - `components/v0/runtime/v0-experience-runtime.tsx`
-- `components/v0/use-v0-theme-controller.ts`
 - `components/v0/public/public-shell.tsx`
 - `components/v0/admin/admin-shell.tsx`
-- public/admin screen files that previously owned route-local right-panel effects
+- `components/v0/admin/login-screen.tsx`
+- `e2e/runtime-panel.spec.ts`
 
 ### Pre-implementation checklist
-- [x] route ownership plan reviewed
-- [x] route-local effect ownership inventoried
-- [x] theme integrity baseline captured
+- [x] current runtime lifecycle reviewed
+- [x] slot registration and handoff strategy selected
+- [x] tall-screen slot-collapse failure reproduced
 
 ### What changed
-- added the shared post-P6 runtime in `components/v0/runtime/v0-experience-runtime.tsx`
-- mounted the shared runtime from `app/layout.tsx`
-- moved theme ownership to the shared runtime while preserving existing shell/theme API usage
-- updated public/admin shells to:
-  - reserve a right-panel slot
-  - measure the slot frame
-  - register route descriptors with the shared runtime
-- updated `/admin/login` to use the same shared runtime through an admin-access surface
-- removed route-local right-panel effect ownership from public/admin screens that previously mounted `DitheringPanel`, `DigitalRainPanel`, or `TextScramblePanel`
-- added explicit runtime descriptors for note detail, project detail, guestbook, and subscription result screens
+- replaced primary fixed-overlay/frame-copy ownership with slot registration plus portal-based runtime ownership
+- kept measured frame fallback only for shell handoff gaps
+- added interpolation of dither runtime parameters during descriptor changes
+- removed pathname-coupled Life reseeding so contact/guestbook continuity is no longer forced to restart on every route key change
+- replaced the old midpoint descriptor flip with a single-field discrete-family interpolation path that avoids double-exposed panel ghosting
+- removed Life Game grid overlays from the runtime field
+- updated public/admin/admin-access shells to:
+  - register slot elements
+  - observe slot geometry with `ResizeObserver`
+  - use `h-[100svh] min-h-[100svh]` shell height ownership
+  - preserve exact desktop split identity while preventing tall-screen slot collapse
+- added focused runtime Playwright coverage in `e2e/runtime-panel.spec.ts`
+- expanded `e2e/runtime-panel.spec.ts` after follow-up QA so authenticated admin-shell and tall-screen evidence match the documented `R2` scope
+- removed route-level viewport height math from `components/v0/public/contact-screen.tsx` so contact layout now follows shell-owned geometry
 
 ### What was reviewed
-- `app/layout.tsx` runtime mount placement
-- `components/v0/runtime/v0-experience-runtime.tsx` frame registration, persistent panel ownership, and theme root behavior
-- `components/v0/public/public-shell.tsx` and `components/v0/admin/admin-shell.tsx` slot ownership and frame measurement
-- `components/v0/admin/login-screen.tsx` admin-access runtime behavior
-- public/admin screens that previously owned route-local effect mounts
-- E2 QA findings for schema/doc alignment while E3 was in progress
+- current shared runtime registration flow
+- public/admin/admin-access shell geometry
+- contact runtime descriptor path
+- tall-screen right-panel behavior on public and admin-access shells
+- current smoke/contact regression coverage
 
 ### Parity checks performed
-- [x] route pages no longer own right-panel effect mounts
-- [x] shared runtime now owns public/admin right-panel continuity
-- [x] admin right panel exists on all admin surfaces through the shared shell
-- [x] no new generic fade/scale transition layer was introduced
-- [x] `pnpm typecheck` passed
+- [x] the right panel remains present on public and admin shells
+- [x] the runtime viewport is hosted through registered shell slots
+- [x] contact continues to use the shared runtime path
+- [x] Life Game grid lines are removed
+- [x] exact desktop split identity remains intact
+- [x] authenticated admin-shell runtime evidence now exists alongside public/admin-access evidence
+- [x] Life continuity is no longer keyed to pathname-only route changes
+- [x] discrete dither families no longer hard-switch midway through transitions
 - [x] `pnpm lint` passed
+- [x] `pnpm typecheck` passed
 - [x] `pnpm build` passed
-- [x] `pnpm test:e2e e2e/smoke.spec.ts` passed
-- [x] `pnpm test:e2e e2e/admin-posts.spec.ts e2e/admin-settings.spec.ts e2e/admin-community.spec.ts e2e/newsletter.spec.ts` passed
+- [x] `pnpm test:e2e e2e/runtime-panel.spec.ts e2e/smoke.spec.ts e2e/contact-guestbook.spec.ts` passed
+
+### Responsive/runtime evidence
+- [x] tall public shell slot keeps full height on a 1280x1400 viewport
+- [x] tall admin-access shell slot keeps full height on a 1280x1400 viewport
+- [x] public/admin runtime slots expose visible runtime ownership markers
+
+### Minimal extension justifications recorded
+- slot registration + portal ownership:
+  - missing from literal `/v0app`: runtime-owned persistent right-panel engine
+  - production need: remove blanking/clipping and preserve continuity across navigation
+  - minimality: changes runtime ownership only, no visual redesign
+  - inheritance: keeps the same split-panel/Jitter identity and terminal framing
+- `100svh` shell geometry:
+  - missing from literal `/v0app`: tall-screen production geometry safety
+  - production need: prevent panel collapse/clipping on tall desktop layouts
+  - minimality: shell-height ownership only, no design language change
+  - inheritance: preserves exact desktop split composition
 
 ### Drift risks found
-- E3 centralizes ownership and route continuity, but text-anchor choreography is still limited to shared runtime scaffolding and contact scramble overlays
-- `/contact` and `/guestbook` still have separate left-column compositions; composition unification remains E4 scope
-- guestbook currently uses a shared runtime life-mode descriptor before E4 anchored-reuse composition lands
+- continuity is now runtime-owned, but broader left-panel text choreography is still deferred
+- shell ownership is still desktop-first; full mobile/tablet adaptation remains `R3`
+- guestbook/contact product ownership still reflects the older integrated model until `R4`
 
 ### Decisions / approvals / rejections
-- accepted: mount the shared runtime from `app/layout.tsx` while activating it only through public/admin shell frame registration
-- accepted: use measured shell slot frames to preserve exact panel geometry without route-owned canvases
-- accepted: keep right-panel continuity centralized even on null-nav public routes through explicit descriptors
-- accepted: preserve existing shell markup language while moving effect ownership out of route pages
-- rejected: any return to route-local right-panel effect ownership
-- rejected: any generic page replacement transition layer
+- accepted: keep measured fixed-frame fallback only as a handoff safety net, not as the primary runtime model
+- accepted: remove Life Game grid lines instead of introducing a different contact visual treatment
+- accepted: defer mobile/tablet shell adaptation to `R3`
+- rejected: solving continuity with page-level fade/scale or route-local panel mounts
 
 ### Post-implementation audit checklist
-- [x] ownership changes recorded
-- [x] parity evidence recorded
-- [x] no hold/reject routes remained for E3
+- [x] runtime ownership change recorded
+- [x] tall-screen evidence recorded
+- [x] verification commands recorded
 - [x] tracker status updated
 
 ---
 
-## E4 Audit Record — Contact/guestbook integration + baseline system
+## R3 Audit Record — Responsive shell adaptation across viewport classes
+
+### Status
+- accepted
+
+### Expected scope under audit
+- `components/v0/public/public-shell.tsx`
+- `components/v0/admin/admin-shell.tsx`
+- `components/v0/admin/login-screen.tsx`
+- responsive shell-owned route surfaces
+- `e2e/responsive-shell.spec.ts`
+
+### Pre-implementation checklist
+- [x] viewport matrix reviewed
+- [x] narrow/mobile and tall-screen shell failures reproduced
+- [x] shell ownership rules aligned with the route ownership authority
+
+### What changed
+- updated public/admin/admin-access shells so:
+  - desktop-wide keeps the exact parity-locked split identity
+  - tablet uses a tighter 56/44 content-to-Jitter split
+  - mobile uses a stacked shell with header, command strip, condensed Jitter band, then content
+- changed the admin sidebar into a horizontal command strip on mobile without introducing a drawer, hamburger, or app-shell redesign
+- updated shell-owned public/admin surfaces to use responsive padding and constrained-layout-safe overflow without changing the terminal grammar
+- converted the notes subscribe strip into:
+  - a split-owned fixed footer on tablet/desktop
+  - an in-flow terminal strip on mobile
+- added `e2e/responsive-shell.spec.ts` to lock:
+  - desktop split parity
+  - tablet split ownership
+  - mobile stacked Jitter band presence
+  - mobile admin command strip behavior
+- expanded `e2e/runtime-panel.spec.ts` so `R2` and `R3` together now have authenticated admin-shell evidence instead of only public/admin-access evidence
+
+### What was reviewed
+- public shell geometry and command strip behavior
+- admin shell geometry and mobile command strip behavior
+- admin access shell geometry
+- notes footer behavior on mobile versus tablet/desktop
+- public/admin route padding and overflow containment under constrained viewports
+- desktop parity against the current parity-locked shell
+
+### Parity and responsive checks performed
+- [x] no desktop-wide parity regression against the parity-locked shell
+- [x] mobile keeps Jitter as a condensed band instead of deleting it
+- [x] tablet keeps split ownership rather than collapsing into a second UI language
+- [x] admin mobile uses command-strip language only
+- [x] notes subscribe controls remain baseline-aligned on desktop while staying reachable on mobile
+- [x] `pnpm lint` passed
+- [x] `pnpm typecheck` passed
+- [x] `pnpm build` passed
+- [x] `pnpm test:e2e e2e/contact-guestbook.spec.ts e2e/responsive-shell.spec.ts e2e/runtime-panel.spec.ts` passed
+- [x] `pnpm test:e2e e2e/smoke.spec.ts e2e/admin-posts.spec.ts e2e/admin-settings.spec.ts` passed
+
+### Responsive evidence
+- [x] desktop-wide public shell preserves an effectively even split
+- [x] standard desktop public shell preserves split parity
+- [x] tall desktop public shell preserves split height without clipping
+- [x] tablet public shell preserves a wider content column than the Jitter column
+- [x] tablet landscape public shell preserves split ownership
+- [x] mobile public shell exposes a full-width condensed Jitter band above content
+- [x] mobile landscape contact keeps the Jitter band above content without a second shell
+- [x] mobile admin shell exposes a horizontal command strip plus condensed Jitter band
+- [x] notes subscribe strip no longer uses a broken half-width fixed footer on mobile
+
+### Minimal extension justifications recorded
+- condensed Jitter band:
+  - missing from literal `/v0app`: mobile-safe right-panel preservation
+  - production need: narrow/mobile viewports cannot sustain a literal desktop split without breakage
+  - minimality: preserves the same Jitter surface as a band rather than inventing a second mobile UI
+  - inheritance: same runtime, same terminal shell, same right-panel identity
+- admin horizontal command strip:
+  - missing from literal `/v0app`: mobile-safe admin navigation ownership
+  - production need: the sidebar cannot remain usable at narrow widths without collapsing the shell
+  - minimality: translates the existing sidebar into a terminal command row instead of a drawer/hamburger
+  - inheritance: keeps the same label set, density, and control language
+- responsive notes footer ownership:
+  - missing from literal `/v0app`: mobile-safe subscribe strip behavior
+  - production need: the old half-width fixed footer breaks reachability on narrow viewports
+  - minimality: only changes footer ownership by viewport; desktop/tablet keep the split-owned footer behavior
+  - inheritance: keeps the same terminal copy, controls, and density
+
+### Drift risks found
+- some deeper page-level responsive refinements remain naturally tied to `R6` detail fidelity and `R7` admin scroll/runtime work
+- broader left-panel text choreography still remains outside `R3`
+
+### Decisions / approvals / rejections
+- accepted: keep exact desktop split parity at `lg` while using a 56/44 shell only on tablet widths
+- accepted: mobile Jitter remains present as a condensed band
+- accepted: admin mobile navigation stays in command-strip language only
+- rejected: mobile drawer/hamburger/bottom-tab reinterpretations
+- rejected: solving narrow-view issues by cardifying dense terminal lists
+
+### Post-implementation audit checklist
+- [x] viewport evidence recorded
+- [x] desktop regression review recorded
+- [x] minimal extension justifications recorded
+- [x] tracker status updated
+
+---
+
+## R4 Audit Record — Guestbook route split and public log-language refinement
 
 ### Status
 - accepted
@@ -325,453 +400,703 @@ Canonical references:
 - `app/contact/page.tsx`
 - `app/guestbook/page.tsx`
 - `components/v0/public/contact-screen.tsx`
-- `components/v0/public/contact-terminal-form.tsx`
-- `components/v0/public/guestbook-screen.tsx`
 - `components/v0/public/guestbook-screen-bound.tsx`
+- `components/v0/public/guestbook-screen.tsx`
+- `components/v0/public/guestbook-screen-client.tsx`
 - `components/v0/public/guestbook-terminal-panel.tsx`
-- `components/v0/public/notes-screen.tsx`
-- `components/v0/admin/newsletter-manager.tsx`
-- `components/v0/admin/settings-screen.tsx`
-- `components/admin/post-editor.tsx`
-- `components/admin/tiptap-editor.tsx`
-- `app/globals.css`
 - `e2e/contact-guestbook.spec.ts`
 
 ### Pre-implementation checklist
-- [x] contact and guestbook baseline captured
-- [x] anchored reuse rule reviewed in route ownership plan
-- [x] audited baseline target list confirmed
+- [x] contact/guestbook product decision reflected in canonical docs
+- [x] public moderation ownership confirmed as admin-only
+- [x] canonical rule captured
 
 ### What changed
-- moved `/contact` to the integrated contact + guestbook composition by binding guestbook/session data in `app/contact/page.tsx`
-- converted `components/v0/public/contact-screen.tsx` into the shared integrated composition owner
-- added `components/v0/public/guestbook-terminal-panel.tsx` as the terminal/log guestbook extension below the existing contact form
-- converted `components/v0/public/guestbook-screen.tsx` into an anchored reuse wrapper over the contact composition
-- updated `components/v0/public/guestbook-screen-bound.tsx` so `/guestbook` reuses the integrated contact composition with guestbook focus
-- introduced shared baseline/control tokens in `app/globals.css`
-- applied the shared baseline tokens to audited form/control surfaces across:
-  - public contact
-  - notes subscribe footer
-  - admin newsletter
-  - admin settings
-  - v0 editor controls
-- added `e2e/contact-guestbook.spec.ts` to lock integrated composition reuse and the notes footer baseline
+- restored `/guestbook` as a standalone canonical public route
+- reduced `/contact` to a compact preview/jump only
+- removed public moderation controls from guestbook
+- rewrote guestbook rows into linear terminal log lines instead of boxed feed/card styling
+- moved standalone guestbook UI into an explicit client entry so the route boundary no longer tries to execute client hook ownership on the server page module
+- kept `/contact` and `/guestbook` inside the same shared shell/runtime world with Life-family right-panel continuity
+- tightened the contact preview and guestbook preview density so the preview stays secondary to the contact terminal
 
 ### What was reviewed
-- contact subtree fidelity against the original `v0app/app/page.tsx` contact block
-- guestbook integration against the canonical post-P6 spec and route ownership plan
-- baseline-sensitive controls in notes footer, contact form, newsletter manager, settings screen, and v0 editor surfaces
-- route behavior on `/contact` and `/guestbook`
-- E2 and E3 documentation/state before closing E4
+- public guestbook route ownership and metadata
+- contact preview ownership
+- public/admin moderation separation
+- standalone guestbook route rendering inside the shared runtime
+- profile/contact detail visibility on `/guestbook`
+- R2-R3 follow-up QA findings against the live runtime and responsive evidence
 
-### Parity checks performed
-- [x] `/contact` and `/guestbook` now share the same composition
-- [x] guestbook reads as a terminal/log extension instead of a separate feed surface
-- [x] shared control-height and line-height tokens are present in `app/globals.css`
-- [x] `pnpm typecheck` passed
+### Parity and product checks performed
+- [x] `/guestbook` is standalone and public
+- [x] `/contact` shows preview/jump only
+- [x] guestbook rows stay in linear terminal log language
+- [x] public moderation controls are absent
+- [x] `/contact` and `/guestbook` are self-canonical
 - [x] `pnpm lint` passed
+- [x] `pnpm typecheck` passed
 - [x] `pnpm build` passed
-- [x] `pnpm test:e2e e2e/smoke.spec.ts e2e/contact-guestbook.spec.ts e2e/admin-settings.spec.ts e2e/newsletter.spec.ts e2e/media-access.spec.ts` passed
+- [x] `pnpm test:e2e e2e/contact-guestbook.spec.ts e2e/responsive-shell.spec.ts e2e/runtime-panel.spec.ts` passed
+- [x] `pnpm test:e2e e2e/contact-guestbook.spec.ts e2e/responsive-shell.spec.ts e2e/runtime-panel.spec.ts e2e/smoke.spec.ts e2e/admin-settings.spec.ts e2e/admin-posts.spec.ts` passed
+
+### Responsive/runtime evidence
+- [x] standalone guestbook route renders inside the same runtime-owned shell and right-panel identity as contact
+- [x] mobile portrait and mobile landscape keep the condensed Jitter band above contact/guestbook content
+- [x] contact preview remains secondary to the contact terminal instead of becoming a second full content surface
+
+### Minimal extension justifications recorded
+- standalone `/guestbook`:
+  - missing from literal `/v0app`: separate canonical guestbook route
+  - production need: public archive needs its own route, metadata, and clean product ownership
+  - minimality: reuses the same shell/runtime, copy style, and log language
+  - inheritance: remains terminal-native and does not introduce feed/community card chrome
+- explicit guestbook client entry:
+  - missing from literal `/v0app`: standalone route-specific client boundary
+  - production need: prevent client hook ownership from leaking into the server page module
+  - minimality: internal ownership split only; no new UI
+  - inheritance: preserves the same shell, theme controller, and right-panel identity
+
+### Follow-up QA findings and disposition
+- subagent QA on `R2-R3` found no remaining concrete design-context drift after:
+  - removing Life reseed on active/intensity changes
+  - removing double-exposed dither-family crossfade
+  - compacting the contact guestbook preview
+  - restoring inline terminal-strip feedback on notes
+- subagent QA on `R2-R3` still found canonical doc drift before this record; this `R4` audit closes that drift by updating spec/tracker/route ownership/audit truth together
 
 ### Drift risks found
-- baseline tokens are now in place, but E5 and E7 will need to continue using them when editor/profile surfaces are expanded
-- `/guestbook` currently focuses the shared composition by scrolling to the guestbook block; any later route rewrite must preserve anchored reuse instead of recreating a second layout
-- E2/E3 QA sub-agent review was requested during E4 closeout; no local blocker was found while waiting on that external review
+- detail-page responsive enrichment remains tied to `R6`
+- admin settings/editor deeper scroll/runtime fixes remain tied to `R7`
+- storage bootstrap and inline media workflows remain tied to `R5`
 
 ### Decisions / approvals / rejections
-- accepted: keep the original contact subtree as the primary composition and append guestbook below it as a terminal/log extension
-- accepted: keep `/guestbook` as an anchored reuse instead of deleting or redesigning it
-- accepted: fix baseline drift through shared control-height and line-height tokens rather than ad hoc spacing tweaks
-- rejected: any separate guestbook feed surface
-- rejected: card-style guestbook presentation
-- rejected: one-off padding fixes that bypass the shared baseline system
+- accepted: `/guestbook` is the canonical public archive route in this lineage
+- accepted: `/contact` keeps only preview/jump ownership
+- accepted: public guestbook rows remain linear terminal log lines
+- rejected: public moderation controls on guestbook
+- rejected: card/feed reinterpretation of public guestbook
 
 ### Post-implementation audit checklist
-- [x] integration changes recorded
-- [x] baseline fixes recorded
-- [x] route parity evidence recorded
+- [x] route split logged
+- [x] public log-language evidence logged
+- [x] canonical evidence logged
 - [x] tracker status updated
 
 ---
 
-## E5 Audit Record — Markdown-first editor and block writer
+## R5 Audit Record — Storage bootstrap, upload reliability, and inline media/embed writer
 
 ### Status
 - accepted
 
 ### Expected scope under audit
-- `components/v0/admin/editor-screen.tsx`
+- `lib/storage/supabase.ts`
+- `scripts/storage-bootstrap.ts`
+- `lib/ops/readiness.ts`
+- `components/v0/admin/analytics-screen.tsx`
+- `app/api/admin/uploads/route.ts`
 - `components/admin/post-editor.tsx`
-- `components/admin/tiptap-editor.tsx`
 - `components/admin/v0-markdown-editor.tsx`
+- `components/v0/admin/editor-screen.tsx`
 - `lib/content/markdown-blocks.ts`
 - `lib/actions/post.actions.ts`
-- `lib/data/posts.ts`
-- `lib/content/draft-state.ts`
-- `components/v0/admin/admin-fallback-content.tsx`
 - `tests/unit/markdown-blocks.test.ts`
-- `tests/unit/draft-state.test.ts`
-- `tests/unit/post-content-compat.test.ts`
-- `e2e/admin-posts.spec.ts`
-- E2 through E4 QA follow-up on:
-  - `components/v0/runtime/v0-experience-runtime.tsx`
-  - `components/v0/public/contact-screen.tsx`
-  - `components/v0/public/contact-terminal-form.tsx`
-  - `components/v0/public/guestbook-terminal-panel.tsx`
-  - `components/v0/public/notes-screen.tsx`
-  - `components/v0/admin/newsletter-manager.tsx`
+- `tests/unit/readiness.test.ts`
+- `e2e/admin-analytics.spec.ts`
+- `e2e/media-access.spec.ts`
 
 ### Pre-implementation checklist
-- [x] legacy editor behavior inventoried
-- [x] block-writer contract finalized
-- [x] image/embed insertion behavior defined
+- [x] bucket/bootstrap failure reproduced
+- [x] writer token conventions locked
+- [x] editor scroll owner identified
 
 ### What changed
-- added `lib/content/markdown-blocks.ts` to:
-  - derive Markdown from legacy-compatible editor inputs
-  - normalize Markdown into canonical block content
-  - derive HTML output from the canonical block document
-- added `components/admin/v0-markdown-editor.tsx` as the Markdown-first live syntax authoring surface
-- updated `components/admin/post-editor.tsx` so the v0 editor route now writes:
-  - `markdownSource`
-  - canonical block `content`
-  - derived `htmlContent`
-  - block-schema `contentVersion`
-- kept `components/admin/tiptap-editor.tsx` only for non-v0/default compatibility flows
-- updated `lib/actions/post.actions.ts` to accept `contentMode` and write canonical block content through the Markdown-first path
-- updated `lib/data/posts.ts` so editor inputs derive `markdownSource` from legacy content when the field is empty
-- updated `lib/content/draft-state.ts` so block-document payloads participate in meaningful-content checks
-- added unit coverage in:
-  - `tests/unit/markdown-blocks.test.ts`
-  - `tests/unit/draft-state.test.ts`
-- updated `e2e/admin-posts.spec.ts` to assert the Markdown-first writer path and canonical block output
-- closed E2-E4 QA follow-up findings that were safe to fix during E5:
-  - removed right-panel blanking on pathname handoff by preserving the active runtime registration until the next shell registers
-  - gave admin loading/error/not-found surfaces a fallback shared-runtime descriptor
-  - moved admin loading/error/not-found body styling onto the runtime theme source so fallback surfaces no longer drift from shell theme state
-  - removed hard-coded `transformHint: "home"` from contact/guestbook life-mode descriptors
-  - seeded Life Game transitions from the active dither variant instead of a route-key-only reset
-  - restored exact literal v0 contact-form field/button metrics where shared control tokens had over-normalized the surface
-  - narrowed guestbook width so the appended log block stays in the same column rhythm as contact
-  - moved notes footer topic toggles to a shared token-backed micro-control class
-  - aligned the newsletter HTML editor branch with the shared control-area baseline token
+- unified storage bootstrap, readiness, and upload error mapping under a single bucket-rule authority in `lib/storage/supabase.ts`
+- added `scripts/storage-bootstrap.ts` and kept `pnpm storage:bootstrap` as the canonical operational entry point
+- made the bootstrap script load `.env.local` / `.env` before importing the storage module so the CLI path no longer fails with unrelated env-loader noise
+- made the direct bootstrap command fail closed with an actionable storage message when real Supabase credentials are absent
+- extended `/admin/analytics` readiness so diagnostics now expose:
+  - storage configured
+  - `post-media bucket`
+  - `post-files bucket`
+  - per-bucket visibility detail
+- routed upload failures in `app/api/admin/uploads/route.ts` through the canonical storage error mapper
+- extended the Markdown-first writer path so image/file uploads insert `asset://` tokens at the cursor and normalize through the canonical block writer
+- kept inline embeds on the bare-URL normalization path without adding a second editor chrome
+- removed the old side effect that silently promoted every uploaded image to the cover image
+- fixed asset removal so matching `asset://` references are stripped from Markdown and the derived block/html payload is recomputed immediately
+- fixed editor containment in `components/v0/admin/editor-screen.tsx` so the shell-owned primary column remains the scroll owner and lower sections remain reachable
+- reduced two concrete runtime issues found during the sidecar issue sweep:
+  - `lib/data/profile.ts` now reads first and only bootstraps when the primary profile is actually missing
+  - `app/contact/page.tsx` now fetches only the two guestbook rows that the preview renders
 
 ### What was reviewed
-- `v0app/app/page.tsx` content-editor subtree and contact subtree
-- current v0 editor route shell in `components/v0/admin/editor-screen.tsx`
-- current writer compatibility rules in `docs/migration/post-p6-schema-compatibility-plan.md`
-- current runtime ownership rules in `docs/migration/post-p6-route-ownership-plan.md`
-- E2-E4 doc/implementation/design-context QA findings from sub-agents and local review
+- storage bootstrap and readiness ownership
+- upload error mapping and bucket-missing behavior
+- admin analytics diagnostics language
+- Markdown-first writer insertion behavior
+- editor containment on `/admin/posts/[postId]`
+- issue-sweep findings from the R2-R5 sidecar QA agents
 
-### Parity checks performed
-- [x] Markdown-first authoring now lives inside the v0 editor shell
-- [x] no separate preview mode exists on the v0 editor route
-- [x] inline and block math fence insertion is available in the Markdown-first surface
-- [x] the v0 editor route writes canonical block content plus derived HTML
-- [x] the legacy compatibility editor path remains isolated from the v0 route
-- [x] `pnpm typecheck` passed
+### Parity and runtime checks performed
+- [x] editor remains inside the same v0 shell and terminal support blocks
+- [x] no modern editor chrome was introduced
+- [x] upload flow stays terminal-native and cursor-oriented
+- [x] `/admin/analytics` diagnostics still read like the existing admin terminal surface
 - [x] `pnpm lint` passed
+- [x] `pnpm typecheck` passed
 - [x] `pnpm build` passed
-- [x] `pnpm test tests/unit/markdown-blocks.test.ts tests/unit/draft-state.test.ts tests/unit/post-content-compat.test.ts` passed
-- [x] `pnpm test:e2e e2e/admin-posts.spec.ts e2e/media-access.spec.ts e2e/smoke.spec.ts e2e/contact-guestbook.spec.ts` passed
+- [x] `pnpm test tests/unit/markdown-blocks.test.ts tests/unit/readiness.test.ts` passed
+- [x] `pnpm exec tsx scripts/with-test-env.ts tsx scripts/storage-bootstrap.ts` passed
+- [x] `pnpm test:e2e e2e/admin-analytics.spec.ts e2e/admin-posts.spec.ts e2e/media-access.spec.ts` passed earlier in this turn before the later issue-sweep fixes
+- [x] `pnpm test:e2e e2e/smoke.spec.ts` passed after the later issue-sweep fixes
 
-### Drift risks found
-- public detail routes were still on the legacy reader path at E5 close; the block-reader rollout moved into E6
-- `components/v0/admin/editor-screen.tsx` still wraps `components/admin/post-editor.tsx`; shell ownership is preserved, but final reader parity depends on E6 rendering
-- `/guestbook` anchored focus still depends on client-side scroll/focus within the shared composition rather than a prepaint anchor primitive
-- the shared runtime now centralizes right-panel continuity, but broader left-panel text choreography remains incremental and is documented as such instead of claimed complete
-- sub-agent QA also flagged `components/v0/admin/community-screen.tsx` as visually heavier than ideal terminal-row language; this is outside E5 scope and remains non-blocking for E2-E4 close
+### Minimal extension justifications recorded
+- storage bootstrap command:
+  - missing from literal `/v0app`: operational bucket bootstrap and visibility verification
+  - production need: uploads must succeed and recover cleanly in real environments
+  - minimality: command-line/runtime diagnostics only, no UI redesign
+  - inheritance: bucket status is exposed through the existing admin diagnostics language
+- cursor-side `asset://` insertion:
+  - missing from literal `/v0app`: real body-media workflow inside the Markdown-first editor
+  - production need: uploaded assets must be insertable at arbitrary body positions
+  - minimality: inserts terminal-native Markdown tokens into the existing writer instead of replacing the editor
+  - inheritance: same shell, same density, same text-first authoring surface
+
+### Sidecar QA findings and disposition
+- subagent review found no remaining confirmed R2-R5 design-context drift after the current runtime, responsive, and guestbook work
+- issue-sweep findings that were stale by the time of this audit:
+  - broken storage imports/typecheck
+  - stale readiness test shape
+  were already fixed locally before final verification
+- issue-sweep findings that were fixed in this phase:
+  - public profile reads were write-coupled
+  - asset removal could leave stale `asset://` body references
+  - every image upload silently overwrote `coverImageUrl`
+  - `/contact` fetched far more guestbook rows than its preview rendered
+
+### Residual risks
+- real Supabase bucket creation/update was not exercised in this shell because no production-equivalent Supabase credentials are configured; the bootstrap path was verified under the test storage driver and the direct command now fails closed with an actionable configuration message
+- one combined R2-R5 Playwright batch was invalidated during this thread by overlapping `.next` builds
+- a later targeted `e2e/media-access.spec.ts` rerun timed out in `loginAsAdmin()` after repeated local E2E churn, so the final post-fix verification set relies on the earlier green targeted upload run plus the later green smoke/admin regression runs rather than one fresh clean combined batch
+- untracked duplicate workspace files such as `* 2.tsx` / `* 3.tsx` remain repo hygiene risk and should not be committed accidentally
 
 ### Decisions / approvals / rejections
-- accepted: activate the Markdown-first writer path on the v0 editor route before the public block reader rollout
-- accepted: keep `TiptapEditor` only as a compatibility path outside the v0 route
-- accepted: preserve exact literal contact metrics where the shared baseline token system drifted from the v0 contact subtree
-- accepted: narrow the route-ownership docs so current right-panel continuity is described honestly while broader left-panel choreography remains future incremental work
-- rejected: reintroducing route-local effect mounts to paper over shared-runtime continuity gaps
-- rejected: replacing the v0 editor route with modern editor chrome or split preview UX
+- accepted: use one storage snapshot/error-mapping authority instead of parallel readiness/bootstrap APIs
+- accepted: keep uploaded body images separate from explicit cover-image ownership
+- accepted: strip `asset://` references when an uploaded asset is removed from the editor
+- accepted: keep readiness visibility inside `/admin/analytics` rather than inventing a separate ops screen
+- rejected: solving `Bucket Not Found` with UI-side fallbacks or alternate upload chrome
 
 ### Post-implementation audit checklist
-- [x] editor changes recorded
-- [x] writer changes recorded
-- [x] E2-E4 QA follow-up outcomes recorded
-- [x] parity review recorded
+- [x] storage bootstrap behavior logged
+- [x] upload/runtime evidence logged
+- [x] editor insertion evidence logged
+- [x] sidecar QA disposition logged
 - [x] tracker status updated
 
 ---
 
-## E6 Audit Record — Reader rollout for block content
+## R6 Audit Record — Detail reader enrichment and responsive detail fidelity
 
 ### Status
-- accepted
+- accepted for current scope
 
 ### Expected scope under audit
 - `components/v0/public/detail-content.tsx`
 - `components/v0/public/detail-note-screen.tsx`
-- `components/v0/public/detail-note-screen-bound.tsx`
 - `components/v0/public/detail-project-screen.tsx`
 - `lib/content/post-content.ts`
-- `lib/data/posts.ts`
-- `lib/actions/post.actions.ts`
-- `e2e/detail-reader.spec.ts`
+- `components/admin/post-editor.tsx`
+- `components/v0/admin/editor-screen.tsx`
+- `lib/storage/supabase.ts`
+- `lib/ops/readiness.ts`
+- `app/api/test-storage/route.ts`
+- `components/v0/public/home-screen-bound.tsx`
+- `app/contact/page.tsx`
+- `components/v0/public/guestbook-screen-bound.tsx`
+- `app/resume.pdf/route.ts`
 - `tests/unit/post-content-compat.test.ts`
-- E2 through E5 sub-agent QA findings and their resolution path
+- `tests/unit/readiness.test.ts`
+- `e2e/detail-reader.spec.ts`
+- `e2e/admin-analytics.spec.ts`
+- `e2e/admin-posts.spec.ts`
+- `e2e/contact-guestbook.spec.ts`
+- `e2e/smoke.spec.ts`
 
 ### Pre-implementation checklist
-- [x] legacy detail reader behavior captured
-- [x] embed variants defined
-- [x] mixed-content dataset prepared
+- [x] mixed legacy/block reader selection revalidated
+- [x] detail viewport behavior reviewed on desktop and mobile
+- [x] unresolved preview fallback behavior confirmed
+- [x] sidecar QA findings from R2-R5 collected before finalizing status
 
 ### What changed
-- replaced `components/v0/public/detail-content.tsx` with a canonical block-aware renderer that prefers block documents, then legacy structured content, then stored HTML
-- added v0-native block rendering for headings, paragraphs, quotes, lists, code fences, math blocks, image blocks with captions, embed blocks, and thematic breaks
-- updated note detail to pass inline link and asset context into the shared reader
-- updated project detail to use the shared reader and suppress duplicate standalone link rows when the body already owns those URLs
-- updated note detail bound extras to suppress duplicate footer links/assets when the body already owns those resources
-- added `collectBlockDocumentResources` and `normalizeContentResourceUrl` in `lib/content/post-content.ts`
-- updated `lib/data/posts.ts` so block embed URLs synthesize preview-backed inline link context from `LinkPreviewCache` even without explicit `PostLink` rows
-- updated `lib/actions/post.actions.ts` so non-block compatibility saves clear `markdownSource` instead of leaving stale block-mode selectors behind
-- tightened `resolvePostContentMode` so legacy revision-counter growth does not masquerade as block content
-- added `e2e/detail-reader.spec.ts` for mixed legacy/block note detail coverage and GitHub-preview project detail coverage
-- updated `tests/unit/post-content-compat.test.ts` to validate canonical block selection and high-revision legacy safety
+- enriched `components/v0/public/detail-content.tsx` so canonical block readers now:
+  - resolve inline `asset://` links inside paragraph/list/quote text
+  - keep body-owned inline links/assets out of duplicated footer resources
+  - render unresolved previews as terminal-native generic link blocks
+  - keep long text, embed rows, and body images mobile-safe without cardifying the reader
+- kept YouTube embeds preview-first but moved expansion onto a native disclosure path inside the same terminal surface
+- extended GitHub detail rows so repo, issue, and PR metadata all render subtype-specific terminal rows instead of collapsing to repo-only output
+- updated:
+  - `components/v0/public/detail-note-screen.tsx`
+  - `components/v0/public/detail-project-screen.tsx`
+  so detail readers keep the same v0 density while remaining stable on narrow/mobile widths
+- updated `lib/content/post-content.ts` and `tests/unit/post-content-compat.test.ts` so inline body-owned assets/links are tracked as first-class reader resources
+- absorbed cross-phase QA fixes during the R6 pass:
+  - `components/v0/admin/editor-screen.tsx` now creates a real scroll owner inside the shell primary pane
+  - `components/admin/post-editor.tsx` asset removal is token-local and no longer deletes surrounding prose on the same line
+  - `lib/storage/supabase.ts`, `lib/ops/readiness.ts`, and `app/api/test-storage/route.ts` now fail closed when `STORAGE_DRIVER=test` is used under the production server
+  - public profile runtime unification remained explicitly deferred to `R7`
 
 ### What was reviewed
-- note and project detail framing against `v0app/app/page.tsx`
-- E5 Markdown writer output shape in relation to the new reader path
-- E2 compatibility rules for mixed old/new content
-- inline preview behavior through `LinkPreviewCache`
-- E2 through E5 sub-agent QA findings across docs, compatibility, and design context
+- mixed legacy/canonical block detail rendering
+- inline asset/file link rendering in body text
+- generic/YouTube/GitHub preview behavior
+- responsive detail fidelity on mobile and desktop
+- admin editor containment after the cross-phase R5 QA findings
+- production-mode readiness behavior for test storage
+- sidecar QA findings from:
+  - repository/document/design-context review
+  - broader UI/service/runtime issue sweep
 
-### Parity checks performed
-- [x] block detail rendering stays inside v0 reading language
-- [x] image captions render inside the same reading surface instead of widget/card UI
-- [x] YouTube preview-first expand/collapse behavior works in note detail
-- [x] GitHub preview rows render inside the project reading surface
-- [x] old/new mixed content reads safely on the same deployed runtime
-- [x] orphan footer links/assets only render when not already represented inline
-- [x] `pnpm typecheck` passed
+### Parity and runtime checks performed
+- [x] detail readers remain linear and terminal-native
+- [x] no widget/card preview style was introduced
+- [x] implemented GitHub subtype rendering remains inside the same reading language
+- [x] YouTube remains preview-first with explicit expand
+- [x] desktop detail parity remains intact
+- [x] mobile detail stays in the same grammar under the condensed Jitter band
 - [x] `pnpm lint` passed
+- [x] `pnpm typecheck` passed
 - [x] `pnpm build` passed
-- [x] `pnpm --dir v0app build` passed
-- [x] `pnpm test tests/unit/markdown-blocks.test.ts tests/unit/draft-state.test.ts tests/unit/post-content-compat.test.ts` passed
-- [x] `pnpm test:e2e e2e/detail-reader.spec.ts` passed
-- [x] `pnpm test:e2e e2e/contact-guestbook.spec.ts e2e/admin-settings.spec.ts e2e/newsletter.spec.ts` passed
+- [x] `pnpm test tests/unit/post-content-compat.test.ts tests/unit/markdown-blocks.test.ts tests/unit/readiness.test.ts` passed
+- [x] `CI=1 pnpm test:e2e e2e/detail-reader.spec.ts e2e/admin-posts.spec.ts e2e/admin-analytics.spec.ts e2e/contact-guestbook.spec.ts e2e/smoke.spec.ts` passed
 
-### Drift risks found
-- `/admin/settings` still presents a readiness-oriented surface inside the future Profile/CV shell; this remains E7 scope and is documented as a current-truth defer, not an E6 blocker
-- `LinkPreviewCache` enrichment for GitHub issue/PR-specific metadata remains generic/repo-biased until a later preview-metadata expansion
-- `/guestbook` anchored focus still depends on client-side focus/scroll rather than a prepaint anchor primitive
-- broader left-panel text choreography remains incremental shared-runtime work and is not claimed complete by E6
+### Responsive evidence
+- [x] note detail remains readable and dense on mobile portrait
+- [x] generic embed fallback stays terminal-native on mobile
+- [x] project detail GitHub preview rows remain within the same reading surface on production-mode E2E
+
+### Minimal extension justifications recorded
+- native disclosure for YouTube preview-first embeds:
+  - missing from literal `/v0app`: production-safe embed expansion inside the body reader
+  - production need: expandable preview-first video embeds without route-level replacement
+  - minimality: disclosure inside the existing terminal row, no widget/chrome redesign
+  - inheritance: keeps the same terminal framing and restrained motion
+- inline asset/resource resolution in detail text:
+  - missing from literal `/v0app`: production body-media/file reading fidelity
+  - production need: body-inserted asset links must render as real file/image resources
+  - minimality: reader-side resolution only, no new UI layer
+  - inheritance: stays inside the existing dense reading grammar
+
+### Sidecar QA findings and disposition
+- fixed in this phase:
+  - editor desktop/tablet scroll trap in the shell primary pane
+  - line-destructive asset removal in the Markdown writer
+  - production-server exposure of the test storage driver and `/api/test-storage`
+  - public profile GET paths writing to the database
+  - missing GitHub issue/PR-specific detail rows
+- still open after QA and carried forward explicitly:
+  - R2 continuity is still visually approximated rather than a true field-to-field dither-to-Life transform; the runtime still hard-switches some dither family fields and seeds Life from descriptors instead of the live dither field
+  - production-equivalent Supabase bucket creation/update is still unverified in this shell because real credentials are unavailable
+  - existing buckets still are not audited for MIME/size-limit drift beyond visibility/existence
+  - checked-in automated evidence currently proves the GitHub repo row path and a mobile note detail path; issue/PR subtype evidence and a broader responsive detail matrix remain explicit follow-up coverage gaps
+  - saving a legacy post through the v0 editor still promotes it into the Markdown/block pipeline
+  - body embeds only become rich previews when cache metadata already exists; save-time enrichment for bare body URLs remains incomplete
+  - public detail routes still fetch post detail twice via `generateMetadata()` plus page render
+  - duplicate shadow files such as `* 2.tsx` / `* 3.tsx` remain repo hygiene risk
 
 ### Decisions / approvals / rejections
-- accepted: use the canonical block-document shape, not legacy `contentVersion` growth, as the runtime reader selector
-- accepted: synthesize inline preview-backed link context from `LinkPreviewCache` for block embed URLs instead of introducing a second preview subsystem
-- accepted: keep standalone footer resource rows only for orphaned links/assets not already represented inline
-- accepted: treat E2 through E5 sub-agent QA findings as fix-now vs later-phase scope, and only close E6 after the fix-now set passed validation
-- rejected: leaving public detail routes in an undocumented partial-reader state
-- rejected: duplicating inline body embeds with always-on standalone link stacks
+- accepted: keep unresolved preview metadata on the generic terminal link block path instead of inventing fallback cards/widgets
+- accepted: fix cross-phase runtime safety issues inside the R6 pass when they are structural and doc-aligned
+- accepted: defer public profile runtime truth unification into `R7` rather than claiming it closed in `R6`
+- rejected: loosening production storage safety to keep the local test driver path “ready” under production mode
 
 ### Post-implementation audit checklist
-- [x] reader rollout logged
-- [x] compatibility outcomes logged
-- [x] parity review logged
+- [x] detail reader enrichment logged
+- [x] responsive evidence logged
+- [x] sidecar QA findings logged
+- [x] unresolved follow-up risks recorded explicitly
 - [x] tracker status updated
 
 ---
 
-## E7 Audit Record — Profile/CV runtime rollout
+## R7 Audit Record — Profile/CV and admin scroll/runtime fixes
 
 ### Status
 - accepted
 
 ### Expected scope under audit
 - `components/v0/admin/settings-screen.tsx`
-- `components/v0/admin/settings-screen-bound.tsx`
 - `components/v0/admin/profile-settings-editor.tsx`
-- `components/v0/admin/analytics-screen.tsx`
+- `components/v0/admin/settings-screen-bound.tsx`
+- `components/v0/admin/editor-screen.tsx`
+- `lib/data/profile.ts`
+- `lib/actions/profile.actions.ts`
+- `app/page.tsx`
 - `components/v0/public/home-screen-bound.tsx`
 - `app/contact/page.tsx`
 - `components/v0/public/guestbook-screen-bound.tsx`
-- `lib/data/profile.ts`
-- `lib/actions/profile.actions.ts`
 - `app/resume.pdf/route.ts`
 - `e2e/admin-settings.spec.ts`
-- `e2e/helpers/profile.ts`
-- `docs/migration/post-p6-*.md`
-- `docs/00_system_overview.md`
-- `docs/04_frontend_ui_mapping.md`
-- `docs/06_release_checklist.md`
 
 ### Pre-implementation checklist
-- [x] profile bootstrap mapping reviewed
-- [x] readiness relocation target reviewed
-- [x] verified external profile-link rule carried forward
+- [x] settings scroll failure reproduced across desktop and mobile layouts
+- [x] DB/static fallback call sites inventoried
+- [x] release-gate `Jimin Park` verification path prepared
+- [x] sidecar QA findings from R2-R6 collected before finalizing status
 
 ### What changed
-- rewired `/admin/settings` to a real DB-backed Profile / CV editor inside the v0 settings shell
-- added `components/v0/admin/profile-settings-editor.tsx` as the terminal-like structured profile CRUD + reorder surface
-- added `lib/actions/profile.actions.ts` to persist profile summary, education, experience, awards, and verified links transactionally
-- switched Home to DB-backed profile reads through `getPrimaryProfileRuntimeSnapshot()`
-- switched contact and guestbook profile consumers to the same DB-backed runtime snapshot
-- switched `app/resume.pdf/route.ts` to the DB-backed profile runtime source
-- moved retained readiness diagnostics into `components/v0/admin/analytics-screen.tsx`
-- normalized runtime profile reads so live surfaces bootstrap the primary DB profile row instead of silently splitting between DB and static fallback
-- fixed `resumeHref` semantics by treating `/resume.pdf` as the fixed runtime route instead of a user-editable divergent path
-- updated admin settings E2E to verify save -> Home/contact/guestbook/resume propagation through the live profile runtime
-- updated migration and operations docs to reflect the new E7 current truth
+- updated `components/v0/admin/settings-screen.tsx` and `components/v0/admin/editor-screen.tsx` so desktop/tablet panes become the structural scroll owners while mobile continues to use the shell primary pane
+- updated `components/v0/admin/profile-settings-editor.tsx` to keep the same terminal rows, spacing rhythm, and section grammar while allowing wrapped row layouts across constrained admin viewports
+- updated:
+  - `components/v0/admin/settings-screen-bound.tsx`
+  - `lib/data/profile.ts`
+  so settings and public runtime consumers resolve through runtime snapshot helpers rather than leaving active runtime on the static snapshot path
+- changed `lib/data/profile.ts` bootstrap behavior to create-or-reread on `slug` races so concurrent first-request bootstrap no longer surfaces `P2002` on public/runtime entry points
+- updated:
+  - `app/page.tsx`
+  - `components/v0/public/home-screen-bound.tsx`
+  - `app/contact/page.tsx`
+  - `components/v0/public/guestbook-screen-bound.tsx`
+  - `app/resume.pdf/route.ts`
+  so active runtime surfaces now read DB-backed profile truth through `getPrimaryProfileRuntimeSnapshot()`
+- updated `lib/actions/profile.actions.ts` to revalidate `/contact` and `/guestbook` together with home, admin, and resume paths after live profile saves
+- absorbed safe sidecar fixes discovered during R2-R6 QA:
+  - `app/resume.pdf/route.ts` now uses UTF-8 byte-length accounting and `Cache-Control: no-store`
+  - `lib/storage/supabase.ts` now re-applies canonical bucket visibility/MIME/size policy on existing buckets during bootstrap
+  - `app/api/admin/uploads/route.ts` now accepts valid extension-backed MIME fallback for supported image/file uploads
+  - `components/v0/public/detail-content.tsx` and `components/v0/public/detail-project-screen.tsx` reduce boxed preview drift into more linear terminal rows
+- updated E2E auth helpers to use request-based sign-in so non-login admin tests no longer depend on login-surface hydration timing, while `/admin/login` remains covered by smoke/runtime-panel routes
+- aligned `e2e/media-access.spec.ts` with the documented production fail-closed storage policy instead of expecting upload success under `STORAGE_DRIVER=test`
 
 ### What was reviewed
-- `/admin/settings` against the v0 settings subtree in `v0app/app/page.tsx`
-- Home/contact/guestbook/resume consumers against the single-live-source profile rule
-- E2 schema/compatibility guarantees for profile bootstrap fallback
-- E3 runtime ownership after moving readiness out of `/admin/settings`
-- E4 integrated contact/guestbook composition after profile-source migration
-- E5/E6 compatibility after adding E7 runtime reads
-- sub-agent QA across:
-  - document alignment
-  - runtime/backend/API compatibility
-  - v0 design-context drift
+- admin settings scroll/runtime containment on desktop and mobile
+- profile editor density, wrapping, and section grammar
+- public runtime profile consumers on home/contact/guestbook/resume
+- concurrent bootstrap behavior under first-request runtime access
+- release-gate `Jimin Park` propagation across live surfaces
+- sidecar QA findings from:
+  - document/design-context review
+  - UI/service/runtime issue sweep
 
-### Parity checks performed
-- [x] `/admin/settings` now presents a real profile editor instead of readiness-owned content
-- [x] settings stays terminal-like and non-dashboard
-- [x] Home still renders inside the exact v0 home shell while reading DB-backed profile data
-- [x] contact and guestbook keep the same integrated composition while using the DB-backed profile source
-- [x] `resume.pdf` reflects the DB-backed profile runtime source
-- [x] `Jimin Park` remains the canonical runtime and bootstrap name
-- [x] `pnpm typecheck` passed
+### Parity and runtime checks performed
+- [x] settings stays inside the same v0 admin shell grammar
+- [x] profile rows remain terminal-dense rather than becoming form cards
+- [x] readiness stays under `/admin/analytics` and does not drift back into settings
+- [x] public runtime surfaces remain visually unchanged while switching to DB-backed runtime truth
+- [x] `Jimin Park` remains the live runtime author/display name
 - [x] `pnpm lint` passed
+- [x] `pnpm typecheck` passed
+- [x] `pnpm test tests/unit/readiness.test.ts tests/unit/post-content-compat.test.ts tests/unit/markdown-blocks.test.ts` passed
 - [x] `pnpm build` passed
-- [x] `pnpm --dir v0app build` passed
-- [x] `pnpm test tests/unit/markdown-blocks.test.ts tests/unit/draft-state.test.ts tests/unit/post-content-compat.test.ts` passed
-- [x] `pnpm test:e2e e2e/smoke.spec.ts e2e/contact-guestbook.spec.ts e2e/admin-settings.spec.ts e2e/newsletter.spec.ts e2e/media-access.spec.ts e2e/admin-posts.spec.ts e2e/detail-reader.spec.ts e2e/admin-community.spec.ts` passed, with `e2e/admin-settings.spec.ts` rerun after selector tightening
+- [x] `CI=1 pnpm test:e2e e2e/admin-settings.spec.ts e2e/detail-reader.spec.ts e2e/admin-posts.spec.ts e2e/admin-analytics.spec.ts e2e/contact-guestbook.spec.ts e2e/media-access.spec.ts e2e/smoke.spec.ts` passed
 
-### Drift risks found
-- E2/E5 compatibility docs still assume a stronger legacy-edit fallback than the current routed editor path actually provides; legacy post editing may still auto-upgrade into the block writer path without an explicit convert step
-- `/guestbook` first-paint focus still depends on client-side anchor/focus behavior rather than a prepaint anchor primitive
-- `/admin/posts` and `/admin/posts/[postId]` remain denser than the literal v0 direct-match ideal; this is inherited baseline drift outside E7 scope, not a blocker for the E7 profile rollout
-- unverified external profile links remain intentionally non-linked by rule; LinkedIn stays absent until a verified production source exists
+### Responsive/runtime evidence
+- [x] admin settings desktop scroll owner is verified through `data-v0-settings-scroll`
+- [x] admin settings mobile command-strip layout keeps scroll access through `data-v0-shell-primary`
+- [x] home/contact/guestbook/resume all reflect live profile saves from `/admin/settings`
+- [x] concurrent runtime bootstrap no longer throws visible `slug` uniqueness errors during build/E2E startup
+
+### Minimal extension justifications recorded
+- concurrency-safe runtime bootstrap:
+  - missing from literal `/v0app`: DB-backed first-run profile bootstrap under concurrent traffic
+  - production need: live runtime truth cannot surface first-request races
+  - minimality: data-helper change only, no visual redesign
+  - inheritance: keeps the same public/admin surfaces while hardening runtime ownership
+- request-based admin E2E sign-in:
+  - missing from literal `/v0app`: stable test-only authentication bootstrap
+  - production need: upload/profile/admin runtime tests should not fail on unrelated login-surface hydration timing
+  - minimality: E2E helper only, no product runtime change
+  - inheritance: `/admin/login` itself remains covered by smoke/runtime-panel tests
+
+### Sidecar QA findings and disposition
+- fixed in this phase:
+  - public runtime profile consumers diverging from the admin-backed source of truth
+  - rigid profile editor rows on constrained admin viewports
+  - concurrent profile bootstrap `slug` race during first-run runtime access
+  - resume PDF byte-length and stale-cache brittleness
+  - existing-bucket policy drift during `storage:bootstrap`
+  - browser-MIME-only rejection of otherwise valid `.pdf`, `.txt`, and supported image uploads
+  - non-upload admin tests depending on login-surface hydration to establish a session
+  - production media-access E2E expecting success while the documented storage policy intentionally fails closed
+- still open after QA and carried forward explicitly:
+  - R2 continuity is still visually approximated rather than a true field-to-field dither/Life transform
+  - production-equivalent Supabase bucket creation/update remains unverified because real credentials are unavailable in this shell
+  - resume PDF still uses Courier/ASCII-era rendering, so full non-ASCII glyph support is not yet solved
+  - `/guestbook` remains capped by the default fetch limit and does not yet expose paging/archive controls
+  - body embeds still depend on cached preview metadata and are not enriched eagerly on save
+  - public detail routes still fetch detail data twice via metadata plus page render
+  - duplicate shadow files such as `* 2.tsx` / `* 3.tsx` remain repo hygiene risk
 
 ### Decisions / approvals / rejections
-- accepted: treat DB-backed profile data as the active runtime truth for Home, contact, guestbook, admin settings, and resume output
-- accepted: keep `lib/site/profile.ts` as bootstrap-only fallback truth rather than runtime truth
-- accepted: keep `/resume.pdf` as the fixed resume route and remove divergent custom resume-path semantics from the live profile workflow
-- accepted: move readiness/diagnostics under analytics instead of keeping readiness as `/admin/settings` owner
-- accepted: fix E2-E6 QA findings that were directly actionable during E7:
-  - removed generic opacity transition classes from the shared right-panel runtime
-  - restored code rendering to a v0 terminal palette
-  - filtered orphan project assets the same way as note detail assets
-  - fixed the analytics diagnostics `accentText` type/runtime omission
-- rejected: keeping `/admin/settings` as a readiness dashboard after E7
-- rejected: silent profile-source split between DB-backed and static profile consumers
+- accepted: unify public/admin/resume profile runtime reads on the runtime snapshot path for `R7`
+- accepted: keep static fallback limited to explicit bootstrap-only paths rather than active runtime reads
+- accepted: fix safe service/runtime findings inside `R7` when they do not alter the v0 design language
+- accepted: align media-access production E2E with the documented fail-closed storage policy
+- rejected: re-opening settings to readiness ownership or generic form-panel redesign
+- rejected: claiming R2 continuity exactness or R5 production-equivalent storage proof closed without new evidence
 
 ### Post-implementation audit checklist
-- [x] profile rollout logged
-- [x] QA findings logged
-- [x] route parity review logged
+- [x] fallback retirement logged
+- [x] profile runtime evidence logged
+- [x] settings scroll evidence logged
+- [x] sidecar QA findings logged
+- [x] unresolved cross-phase risks recorded explicitly
 - [x] tracker status updated
 
 ---
 
-## E8 Audit Record — SEO and final enhancement parity lock
+## R8 Audit Record — Performance diagnostics and admin transition acceleration
+
+### Status
+- accepted for current scope
+
+### Expected scope under audit
+- `components/v0/admin/admin-shell.tsx`
+- `components/v0/admin/analytics-screen-bound.tsx`
+- `components/v0/admin/analytics-screen.tsx`
+- `components/v0/runtime/v0-experience-runtime.tsx`
+- `lib/auth.ts`
+- `lib/contracts/admin-performance.ts`
+- `lib/ops/admin-performance.ts`
+- `lib/ops/admin-performance-client.ts`
+- `lib/data/newsletter.ts`
+- `components/v0/admin/newsletter-manager.tsx`
+- `middleware.ts`
+- `tests/unit/admin-performance.test.ts`
+- `e2e/admin-analytics.spec.ts`
+- `e2e/admin-settings.spec.ts`
+- `e2e/newsletter.spec.ts`
+- `e2e/media-access.spec.ts`
+- `e2e/responsive-shell.spec.ts`
+- `e2e/runtime-panel.spec.ts`
+
+### Pre-implementation checklist
+- [x] heavy admin paths identified from repo exploration and issue sweep
+- [x] live timing capture target decided without adding a second diagnostics UI
+- [x] unsafe optimizations such as removing Jitter or flattening shell density ruled out
+
+### What changed
+- added server-side performance diagnostics through:
+  - `lib/contracts/admin-performance.ts`
+  - `lib/ops/admin-performance.ts`
+  so admin analytics now measures:
+  - `getSession()`
+  - `getAdminPosts()`
+  - `getAdminPostEditorState()`
+  - `getPrimaryProfileRuntimeSnapshot()`
+- added client-side timing capture through `lib/ops/admin-performance-client.ts` for:
+  - recent admin navigation latency
+  - recent runtime slot handoff latency
+- updated `components/v0/admin/analytics-screen-bound.tsx` and `components/v0/admin/analytics-screen.tsx` so those timings render inside the existing terminal diagnostics surface instead of a new dashboard language
+- updated `components/v0/admin/admin-shell.tsx` so admin navigation:
+  - records click-to-ready timing
+  - keeps hover/focus prefetch
+  - replaces eager all-route mount prefetch with idle-neighbors prefetch to reduce first-load overfetch
+- updated `components/v0/runtime/v0-experience-runtime.tsx` so admin/admin-access runtime handoffs record a client timing once the persistent Jitter host reattaches to a live slot
+- updated `lib/auth.ts` to request-scope cache session lookup
+- updated `lib/data/newsletter.ts` to parallelize independent dashboard reads
+- updated `components/v0/admin/newsletter-manager.tsx` to remove the nested inner vertical scroll owner
+- updated `middleware.ts` so auth POST throttling is bypassed only in the dedicated E2E environment, which restores stable regression coverage without altering production runtime rate limiting
+
+### What was reviewed
+- admin nav/prefetch ownership
+- analytics diagnostics surface shape and density
+- runtime handoff timing capture path
+- newsletter route data loading and scroll containment
+- cross-phase R2-R7 compliance from subagent QA
+- broader UI/service issue sweep findings from subagent review
+
+### Parity and runtime checks performed
+- [x] performance diagnostics stay inside the existing admin terminal grammar
+- [x] no new widget/card/perf-dashboard language was introduced
+- [x] admin Jitter continuity remains runtime-owned during navigation
+- [x] idle-neighbors prefetch replaces eager all-route prefetch without removing hover/focus prefetch
+- [x] `pnpm lint` passed
+- [x] `pnpm typecheck` passed
+- [x] `pnpm build` passed
+- [x] `pnpm test tests/unit/admin-performance.test.ts tests/unit/readiness.test.ts tests/unit/post-content-compat.test.ts tests/unit/markdown-blocks.test.ts` passed
+- [x] `CI=1 pnpm test:e2e e2e/admin-analytics.spec.ts e2e/admin-settings.spec.ts e2e/newsletter.spec.ts e2e/media-access.spec.ts e2e/responsive-shell.spec.ts e2e/runtime-panel.spec.ts` passed
+- [x] `CI=1 pnpm test:e2e e2e/admin-analytics.spec.ts e2e/admin-community.spec.ts e2e/admin-posts.spec.ts e2e/admin-settings.spec.ts e2e/contact-guestbook.spec.ts e2e/detail-reader.spec.ts e2e/media-access.spec.ts e2e/newsletter.spec.ts e2e/responsive-shell.spec.ts e2e/runtime-panel.spec.ts e2e/smoke.spec.ts` passed
+
+### Performance findings and accepted mitigations
+- baseline issue found by issue sweep:
+  - eager all-route admin prefetch on mount added avoidable first-load overfetch
+  - newsletter dashboard reads were unnecessarily sequential
+  - newsletter had nested vertical scroll owners
+- accepted mitigations:
+  - idle-neighbors + hover/focus prefetch
+  - request-scope cached session lookup
+  - live client/server timing capture in `/admin/analytics`
+  - newsletter query parallelization
+  - newsletter single scroll-owner restoration
+- rejected unsafe optimizations:
+  - removing or hiding Jitter during route/data load
+  - flattening admin density into a simplified dashboard
+  - moving diagnostics into a separate ops UI
+
+### Minimal extension justifications recorded
+- in-product performance diagnostics:
+  - missing from literal `/v0app`: production runtime timing visibility for admin transitions
+  - production need: admin latency must be measured, not guessed
+  - minimality: rendered inside the existing analytics shell and terminal rows
+  - inheritance: no second dashboard language, same density and control grammar
+- idle-neighbors prefetch:
+  - missing from literal `/v0app`: production-safe prefetch ownership
+  - production need: eager all-route prefetch created avoidable cold-load work
+  - minimality: keep existing hover/focus prefetch and only narrow mount-time behavior
+  - inheritance: no visual change
+
+### Sidecar QA findings and disposition
+- subagent design-context QA found no confirmed blocking drift across R2-R8
+- fixed in this phase:
+  - eager all-route admin prefetch on mount
+  - sequential newsletter dashboard reads
+  - nested newsletter vertical scroll owner
+  - E2E-only auth throttle collisions during admin regression runs
+- doc corrections applied from QA:
+  - R8 tracker/audit status is now current truth
+  - R6 evidence language no longer overstates automated subtype coverage
+- still open after QA and carried forward explicitly:
+  - R2 continuity exactness remains approximate rather than true field-to-field transform
+  - R5 production-equivalent Supabase bootstrap proof remains external to this shell
+  - explicit YouTube metadata typing still lags behind the canonical enrichment target; current reader behavior remains URL/disclosure-driven
+  - duplicate shadow files such as `* 2.tsx` / `* 3.tsx` remain repo hygiene risk
+
+### Decisions / approvals / rejections
+- accepted: instrument performance inside `/admin/analytics` instead of adding a second diagnostics product
+- accepted: narrow eager prefetch to idle-neighbors while preserving hover/focus prefetch
+- accepted: fix safe service/runtime findings during R8 when they do not alter the visual language
+- rejected: claiming R2 continuity exactness closed through R8
+- rejected: claiming R5 production-equivalent storage proof closed through R8
+
+### Post-implementation audit checklist
+- [x] timing evidence logged
+- [x] accepted mitigations logged
+- [x] rejected unsafe optimizations logged
+- [x] unresolved cross-phase follow-up recorded explicitly
+- [x] tracker status updated
+
+---
+
+## R9 Audit Record — SEO, responsive parity CI, and final lock
 
 ### Status
 - accepted
 
-### Expected scope under audit
-- `lib/seo/metadata.ts`
-- `app/page.tsx`
-- `app/contact/page.tsx`
-- `app/notes/page.tsx`
-- `app/projects/page.tsx`
-- `app/guestbook/page.tsx`
-- `app/subscribe/confirm/page.tsx`
-- `app/unsubscribe/page.tsx`
-- `app/notes/[slug]/page.tsx`
-- `app/projects/[slug]/page.tsx`
-- `app/(dashboard)/admin/layout.tsx`
-- `app/admin/login/page.tsx`
-- `app/sitemap.ts`
-- `app/robots.ts`
-- `.github/workflows/design-parity.yml`
-- `e2e/seo.spec.ts`
-- `docs/migration/post-p6-*.md`
-- `docs/00_system_overview.md`
-- `docs/04_frontend_ui_mapping.md`
-- `docs/06_release_checklist.md`
-
 ### Pre-implementation checklist
-- [x] metadata baseline captured
-- [x] OG image fallback strategy documented
-- [x] internal-link audit scope confirmed
+- [x] route metadata matrix captured
+- [x] canonical strategy verified
+- [x] CI artifact expectations defined
 
 ### What changed
-- added `lib/seo/metadata.ts` to centralize public metadata, article metadata, admin noindex metadata, canonical author naming, OG image defaults, and JSON-LD generation
-- added route-level metadata to home, contact, notes, projects, guestbook, subscribe confirm, and unsubscribe
-- added article-style metadata and structured data output to note and project detail routes
-- added admin noindex metadata to the admin layout and admin login route
-- added `app/sitemap.ts` and `app/robots.ts`
-- extended `.github/workflows/design-parity.yml` so the PR-equivalent path runs focused SEO/detail/contact parity coverage and still uploads parity artifacts
-- added `e2e/seo.spec.ts`
-- hardened profile-driven metadata generation to avoid runtime bootstrap races by using read-only profile snapshots for metadata paths
-- normalized the root canonical URL to `https://xistoh.com` and kept `/knowledge` excluded from sitemap output
-- completed E2 through E7 QA closure by fixing:
-  - shared runtime generic opacity transitions
-  - detail code-block palette drift
-  - orphan project-asset duplication
-  - settings/profile runtime source races
-  - resume-path edit drift
-  - static-fallback split on Home/contact/guestbook/resume reads
+- updated:
+  - `lib/contracts/posts.ts`
+  - `lib/content/preview-metadata.ts`
+  - `lib/content/link-preview.ts`
+  - `components/v0/public/detail-content.tsx`
+  - `tests/unit/link-preview.test.ts`
+  so preview enrichment now persists a typed YouTube metadata contract with `videoId`, while older cache rows still fall back safely through the existing URL/disclosure path
+- updated `e2e/detail-reader.spec.ts` so checked-in R6 evidence now covers:
+  - GitHub issue subtype rendering
+  - GitHub PR subtype rendering
+  - tablet-portrait detail fidelity
+  - tall-desktop detail fidelity
+- updated `e2e/seo.spec.ts` so SEO verification now explicitly checks:
+  - `/notes`
+  - `/projects`
+  - `/contact`
+  - `/guestbook`
+  - detail article metadata + JSON-LD
+  - `/knowledge -> /notes` redirect
+- updated `scripts/capture-v0-parity.ts` so parity capture now emits responsive current-app evidence into:
+  - `docs/migration/parity/2026-03-27-responsive`
+  with captured viewport evidence for:
+  - mobile portrait
+  - mobile landscape
+  - tablet portrait
+  - tablet landscape
+  - tall desktop
+  - wide desktop
+- updated `.github/workflows/design-parity.yml` so the PR-equivalent focused E2E set now includes responsive shell, runtime panel, admin analytics, and media access coverage alongside the existing SEO/detail/admin/public checks
+- removed stale untracked shadow files:
+  - `components/v0/admin/community-screen 2.tsx`
+  - `components/v0/admin/editor-screen 2.tsx`
+  - `components/v0/admin/manage-posts-screen 2.tsx`
+  - `components/v0/admin/newsletter-manager 2.tsx`
+  - `components/v0/admin/settings-screen 2.tsx`
+  - `components/v0/admin/settings-screen 3.tsx`
+  - `components/v0/public/detail-content 2.tsx`
 
 ### What was reviewed
-- public route metadata against the shipped IA
-- detail route metadata and JSON-LD against the canonical article/detail rules
-- admin route metadata against the noindex rule
-- sitemap and robots output against the canonical host and `/knowledge` removal rule
-- parity artifact generation and PR-equivalent CI path
-- E2 through E7 sub-agent QA findings across:
-  - docs/governance alignment
-  - runtime/backend/API/production risk
-  - v0 design-context drift
+- public route metadata matrix
+- detail route article metadata and structured data
+- `/contact` versus `/guestbook` canonical strategy
+- `/knowledge -> /notes` redirect correctness
+- parity capture artifact coverage for required viewport classes
+- R2-R9 design-context QA results from subagents
+- repo hygiene and runtime/service issue sweep results from subagents
 
-### Parity checks performed
-- [x] Home emits route-level title, description, canonical, Open Graph, and Twitter metadata
-- [x] note/project detail routes emit article metadata and JSON-LD structured data
-- [x] admin routes emit noindex metadata
-- [x] `robots.txt` and `sitemap.xml` are live
-- [x] sitemap excludes `/knowledge`
-- [x] no stale runtime `/knowledge` links were found during E8 audit
-- [x] design parity artifacts were regenerated through `pnpm parity:capture`
-- [x] `pnpm typecheck` passed
+### Parity and runtime checks performed
+- [x] desktop parity capture still completed for public/admin shells
+- [x] responsive evidence capture completed under `docs/migration/parity/2026-03-27-responsive`
 - [x] `pnpm lint` passed
+- [x] `pnpm typecheck` passed
 - [x] `pnpm build` passed
 - [x] `pnpm --dir v0app build` passed
+- [x] `pnpm test tests/unit/admin-performance.test.ts tests/unit/readiness.test.ts tests/unit/post-content-compat.test.ts tests/unit/markdown-blocks.test.ts tests/unit/link-preview.test.ts` passed
+- [x] `CI=1 pnpm test:e2e e2e/seo.spec.ts e2e/detail-reader.spec.ts e2e/responsive-shell.spec.ts e2e/runtime-panel.spec.ts e2e/admin-analytics.spec.ts e2e/smoke.spec.ts` passed
+- [x] `CI=1 pnpm test:e2e e2e/smoke.spec.ts e2e/contact-guestbook.spec.ts e2e/detail-reader.spec.ts e2e/seo.spec.ts e2e/responsive-shell.spec.ts e2e/runtime-panel.spec.ts e2e/admin-analytics.spec.ts e2e/admin-posts.spec.ts e2e/admin-settings.spec.ts e2e/admin-community.spec.ts e2e/media-access.spec.ts e2e/engagement.spec.ts` passed
 - [x] `CURRENT_BASE_URL=http://127.0.0.1:3311 V0_BASE_URL=http://127.0.0.1:3410 pnpm parity:capture` passed
-- [x] `APP_URL=http://127.0.0.1:3311 CRON_SECRET=codex-test-cron-secret pnpm exec tsx scripts/ops-smoke.ts` passed
-- [x] `pnpm test:e2e e2e/smoke.spec.ts e2e/contact-guestbook.spec.ts e2e/detail-reader.spec.ts e2e/seo.spec.ts e2e/admin-posts.spec.ts e2e/admin-settings.spec.ts e2e/admin-community.spec.ts e2e/engagement.spec.ts` passed
-- [x] `pnpm test:e2e e2e/newsletter.spec.ts e2e/media-access.spec.ts` passed
+- [x] `APP_URL=http://127.0.0.1:3311 CRON_SECRET=codex-test-cron-secret pnpm ops:smoke` passed
 
-### Drift risks found
-- legacy post editing compatibility is still weaker than the broad mixed-rollout wording might imply; re-saving a legacy post through the v0 routed editor still normalizes it into the block writer path without an explicit convert step
-- `/guestbook` default focus still lands through client-side anchor/focus behavior instead of a prepaint anchor primitive
-- `/admin/posts` and `/admin/posts/[postId]` remain denser than the literal v0 direct-match ideal; this is inherited baseline drift rather than an E8 regression
-- LinkedIn remains intentionally non-linked until a verified production source exists
+### Responsive evidence references
+- `docs/migration/parity/2026-03-27-responsive/current-mobile-portrait-home.png`
+- `docs/migration/parity/2026-03-27-responsive/current-mobile-portrait-admin-settings.png`
+- `docs/migration/parity/2026-03-27-responsive/current-mobile-landscape-guestbook.png`
+- `docs/migration/parity/2026-03-27-responsive/current-tablet-portrait-note-detail.png`
+- `docs/migration/parity/2026-03-27-responsive/current-tablet-landscape-admin-analytics.png`
+- `docs/migration/parity/2026-03-27-responsive/current-tall-desktop-contact.png`
+- `docs/migration/parity/2026-03-27-responsive/current-wide-desktop-projects.png`
+- `docs/migration/parity/2026-03-27-responsive/current-wide-desktop-admin-posts.png`
+
+### Minimal extension justifications recorded
+- responsive artifact capture:
+  - missing from literal `/v0app`: there is no multi-viewport production evidence path in the reference app
+  - production need: R3/R6/R7 responsive adaptations must be auditable without introducing a second UI language
+  - minimality: capture-only extension, no product UI change
+  - inheritance: evidence is recorded against the same v0 shell/runtime, not a second responsive design system
+- typed YouTube metadata:
+  - missing from literal `/v0app`: persisted provider-specific preview metadata
+  - production need: reduce URL-only inference and align YouTube with GitHub subtype contracts
+  - minimality: metadata contract only; the reader still uses the same preview-first terminal disclosure surface
+  - inheritance: no widget/card chrome added
+
+### Sidecar QA findings and disposition
+- subagent design-context QA found no new blocking drift across R2-R9
+- subagent issue sweep re-confirmed that the remaining blocking-looking items are either already fixed in-repo or external to this shell
+- closed in this phase:
+  - R6 checked-in evidence gap for GitHub issue/PR subtype rendering
+  - explicit YouTube metadata typing gap
+  - shadow duplicate file hygiene risk
+- still open after R9 and carried forward explicitly:
+  - R2 continuity exactness remains approximate rather than a true field-to-field transform
+  - R5 production-equivalent Supabase bootstrap proof still requires a real credential environment outside this shell
 
 ### Decisions / approvals / rejections
-- accepted: close E8 with route-level SEO, sitemap/robots, structured data, and refreshed parity/CI coverage in place
-- accepted: treat the legacy-post auto-upgrade edit path as a documented non-blocking residual risk instead of silently overstating compatibility
-- accepted: keep LinkedIn as an intentional non-link until a verified production source exists
-- accepted: keep `/guestbook` first-paint anchor behavior as a documented residual risk rather than introducing a non-v0 prepaint hack
-- rejected: any metadata or SEO implementation that changes the shipped v0 visual UI
-- rejected: guessed OG assets or guessed external profile URLs
+- accepted: responsive parity evidence is captured as current-app artifacts rather than reference-v0 artifacts because the literal `/v0app` has no responsive baseline
+- accepted: typed YouTube metadata closes the provider contract gap without changing the reader surface language
+- accepted: stale shadow files are removed because they are unused scratch variants, not live runtime sources
+- rejected: claiming R2 exact field-to-field continuity closed through R9
+- rejected: claiming R5 production-equivalent storage proof closed through R9 without a real credential environment
 
 ### Post-implementation audit checklist
-- [x] final SEO changes logged
-- [x] final QA findings logged
-- [x] final parity lock logged
+- [x] SEO evidence logged
+- [x] CI artifact evidence logged
+- [x] responsive evidence references logged
+- [x] final hold/review state logged
+- [x] unresolved external-only follow-up recorded explicitly
 - [x] tracker status updated
-
----
-
-## Open issues / explicit approvals required
-
-- None. Future deviations must be recorded here before implementation diverges from the canonical docs.

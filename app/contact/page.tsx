@@ -1,29 +1,27 @@
 import type { Metadata } from "next"
 
 import { ContactScreen } from "@/components/v0/public/contact-screen"
-import { getSession } from "@/lib/auth"
 import { getGuestbookEntries } from "@/lib/data/guestbook"
-import { getPrimaryProfileRuntimeSnapshot, getPrimaryProfileSnapshot, getVerifiedProfileLink } from "@/lib/data/profile"
+import { getPrimaryProfileRuntimeSnapshot, getVerifiedProfileLink } from "@/lib/data/profile"
 import { buildPublicMetadata } from "@/lib/seo/metadata"
 import { getV0ThemeIsDark } from "@/lib/site/v0-theme.server"
 
 export const dynamic = "force-dynamic"
 
 export async function generateMetadata(): Promise<Metadata> {
-  const profile = await getPrimaryProfileSnapshot()
+  const profile = await getPrimaryProfileRuntimeSnapshot()
 
   return buildPublicMetadata({
     title: `Contact ${profile.displayName}`,
-    description: `Reach ${profile.displayName} through the terminal contact form and integrated guestbook log.`,
+    description: `Reach ${profile.displayName} through the terminal contact form and jump into the guestbook log from the same exact xistoh.log world.`,
     path: "/contact",
   })
 }
 
 export default async function ContactPage() {
-  const [isDarkMode, session, guestbookEntries, profile] = await Promise.all([
+  const [isDarkMode, guestbookEntries, profile] = await Promise.all([
     getV0ThemeIsDark(),
-    getSession(),
-    getGuestbookEntries(),
+    getGuestbookEntries(2),
     getPrimaryProfileRuntimeSnapshot(),
   ])
   const githubLink = getVerifiedProfileLink(profile, "GITHUB")
@@ -32,7 +30,6 @@ export default async function ContactPage() {
   return (
     <ContactScreen
       brandLabel="xistoh.log"
-      canModerate={Boolean(session?.user?.id)}
       emailAddress={profile.emailAddress}
       githubHref={githubLink?.url ?? null}
       initialGuestbookEntries={guestbookEntries}

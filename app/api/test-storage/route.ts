@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { env } from "@/lib/env"
-import { readTestStorageAsset } from "@/lib/storage/supabase"
+import { readTestStorageAsset, isTestStorageDriverActive } from "@/lib/storage/supabase"
 
 const MIME_BY_EXTENSION: Record<string, string> = {
   ".jpg": "image/jpeg",
@@ -22,7 +21,7 @@ function getContentType(storagePath: string) {
 }
 
 export async function GET(request: Request) {
-  if (env.STORAGE_DRIVER !== "test") {
+  if (!isTestStorageDriverActive()) {
     return NextResponse.json({ error: "Test storage route is unavailable." }, { status: 404 })
   }
 

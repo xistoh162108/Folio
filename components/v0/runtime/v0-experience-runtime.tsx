@@ -13,9 +13,12 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import { createPortal } from "react-dom"
 import { usePathname } from "next/navigation"
 
 import { TextScramblePanel } from "@/components/v0/effects/text-scramble-panel"
+import { recordAdminRuntimeHandoff } from "@/lib/ops/admin-performance-client"
+import { getV0RouteAccentPalette, resolveV0RouteAccentKey } from "@/lib/site/v0-route-palette"
 import { V0_THEME_COOKIE, getNextV0ThemeMode, normalizeV0ThemeMode, type V0ThemeMode } from "@/lib/site/v0-theme"
 
 export type V0ExperienceLayout = "public" | "admin" | "admin-access"
@@ -66,7 +69,8 @@ interface V0ExperienceRegistration {
   id: string
   layout: V0ExperienceLayout
   descriptor: V0RuntimeDescriptor | null
-  frame: V0RuntimeFrame
+  frame: V0RuntimeFrame | null
+  slot: HTMLElement | null
   isDarkMode: boolean
   routeKey: string
 }
@@ -125,6 +129,25 @@ function getDitherConfig(variant: V0DitherVariant) {
   }
 }
 
+function lerp(from: number, to: number, progress: number) {
+  return from + (to - from) * progress
+}
+
+function descriptorsMatch(left: V0RuntimeDescriptor | null, right: V0RuntimeDescriptor | null) {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
+
+function resolveDitherVariant(
+  descriptor: V0RuntimeDescriptor,
+  fallback: V0DitherVariant,
+) {
+  if (descriptor.mode === "dither") {
+    return descriptor.variant
+  }
+
+  return descriptor.transformHint ?? fallback
+}
+
 const ADMIN_FALLBACK_RUNTIME_DESCRIPTOR: V0RuntimeDescriptor = {
   mode: "dither",
   variant: "admin-overview",
@@ -150,17 +173,41 @@ function createSeededRandom(seed: string) {
 
 function LifeGamePanel({
   active,
+  opacity,
   isDarkMode,
   intensity = 0.3,
   seedHint,
+  accentColorRgba,
 }: {
   active: boolean
+  opacity: number
   isDarkMode: boolean
   intensity?: number
   seedHint: string
+  accentColorRgba: string
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const seededStateRef = useRef<string>("")
+  const activeRef = useRef(active)
+  const intensityRef = useRef(intensity)
+  const isDarkModeRef = useRef(isDarkMode)
+  const accentColorRef = useRef(accentColorRgba)
+
+  useEffect(() => {
+    activeRef.current = active
+  }, [active])
+
+  useEffect(() => {
+    intensityRef.current = intensity
+  }, [intensity])
+
+  useEffect(() => {
+    isDarkModeRef.current = isDarkMode
+  }, [isDarkMode])
+
+  useEffect(() => {
+    accentColorRef.current = accentColorRgba
+  }, [accentColorRgba])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -183,12 +230,9 @@ function LifeGamePanel({
     let tickAccumulator = 0
 
     const cellSize = 8
-    const frontColor = isDarkMode ? "rgba(212, 255, 0, 0.7)" : "rgba(63, 82, 0, 0.72)"
-    const gridColor = isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.05)"
-
     const seedGrid = (hint: string) => {
       const random = createSeededRandom(hint)
-      const density = Math.max(0.18, Math.min(0.42, 0.18 + intensity * 0.4))
+      const density = Math.max(0.18, Math.min(0.42, 0.18 + intensityRef.current * 0.4))
 
       cells = new Uint8Array(columns * rows)
       nextCells = new Uint8Array(columns * rows)
@@ -236,11 +280,11 @@ function LifeGamePanel({
     }
 
     const draw = () => {
-      context.fillStyle = isDarkMode ? "rgba(0, 0, 0, 0.18)" : "rgba(255, 255, 255, 0.2)"
-      context.fillRect(0, 0, width, height)
+      const isDarkModeValue = isDarkModeRef.current
+      const frontColor = accentColorRef.current
 
-      context.strokeStyle = gridColor
-      context.lineWidth = 1
+      context.fillStyle = isDarkModeValue ? "rgba(0, 0, 0, 0.18)" : "rgba(255, 255, 255, 0.2)"
+      context.fillRect(0, 0, width, height)
 
       for (let row = 0; row < rows; row += 1) {
         for (let column = 0; column < columns; column += 1) {
@@ -248,7 +292,6 @@ function LifeGamePanel({
           const x = column * cellSize
           const y = row * cellSize
 
-          context.strokeRect(x, y, cellSize, cellSize)
           if (cells[index] === 1) {
             context.fillStyle = frontColor
             context.fillRect(x + 1, y + 1, cellSize - 2, cellSize - 2)
@@ -265,12 +308,9 @@ function LifeGamePanel({
       }
 
       draw()
-      if (!active) {
-        return
-      }
-
       tickAccumulator += 1
-      if (tickAccumulator % 5 === 0) {
+      const stepModulo = Math.max(3, Math.round(7 - intensityRef.current * 4))
+      if (activeRef.current && tickAccumulator % stepModulo === 0) {
         step()
       }
 
@@ -285,13 +325,13 @@ function LifeGamePanel({
       window.cancelAnimationFrame(frameHandle)
       window.removeEventListener("resize", resize)
     }
-  }, [active, intensity, isDarkMode, seedHint])
+  }, [seedHint])
 
   return (
     <canvas
       ref={canvasRef}
       className="absolute inset-0 h-full w-full"
-      style={{ opacity: active ? 1 : 0 }}
+      style={{ opacity }}
     />
   )
 }
@@ -299,28 +339,92 @@ function LifeGamePanel({
 function V0PersistentJitterViewport({
   descriptor,
   isDarkMode,
-  routeKey,
 }: {
   descriptor: V0RuntimeDescriptor
   isDarkMode: boolean
-  routeKey: string
 }) {
-  const lastDitherVariant = useRef<V0DitherVariant>("home")
+  const [fromDescriptor, setFromDescriptor] = useState<V0RuntimeDescriptor>(descriptor)
+  const [transitionProgress, setTransitionProgress] = useState(1)
+  const lastDescriptorRef = useRef<V0RuntimeDescriptor>(descriptor)
+  const lastDitherVariant = useRef<V0DitherVariant>(resolveDitherVariant(descriptor, "home"))
 
-  if (descriptor.mode === "dither") {
-    lastDitherVariant.current = descriptor.variant
+  useEffect(() => {
+    if (descriptor.mode === "dither") {
+      lastDitherVariant.current = descriptor.variant
+    }
+  }, [descriptor])
+
+  useEffect(() => {
+    if (descriptorsMatch(lastDescriptorRef.current, descriptor)) {
+      return
+    }
+
+    setFromDescriptor(lastDescriptorRef.current)
+    setTransitionProgress(0)
+
+    const start = performance.now()
+    const duration = 560
+    let frameHandle = 0
+
+    const tick = (now: number) => {
+      const nextProgress = Math.min(1, (now - start) / duration)
+      setTransitionProgress(nextProgress)
+
+      if (nextProgress < 1) {
+        frameHandle = window.requestAnimationFrame(tick)
+        return
+      }
+
+      lastDescriptorRef.current = descriptor
+      setFromDescriptor(descriptor)
+    }
+
+    frameHandle = window.requestAnimationFrame(tick)
+
+    return () => window.cancelAnimationFrame(frameHandle)
+  }, [descriptor])
+
+  const fromDitherVariant = resolveDitherVariant(fromDescriptor, lastDitherVariant.current)
+  const toDitherVariant = resolveDitherVariant(descriptor, fromDitherVariant)
+  const fromDitherConfig = getDitherConfig(fromDitherVariant)
+  const toDitherConfig = getDitherConfig(toDitherVariant)
+  const resolvedDitherShape = transitionProgress < 0.62 ? fromDitherConfig.shape : toDitherConfig.shape
+  const resolvedDitherType = transitionProgress < 0.62 ? fromDitherConfig.type : toDitherConfig.type
+  const ditherConfig = {
+    shape: resolvedDitherShape,
+    type: resolvedDitherType,
+    pxSize: lerp(fromDitherConfig.pxSize, toDitherConfig.pxSize, transitionProgress),
+    scale: lerp(fromDitherConfig.scale, toDitherConfig.scale, transitionProgress),
+    speed: lerp(fromDitherConfig.speed, toDitherConfig.speed, transitionProgress),
   }
-
-  const activeDitherVariant = descriptor.mode === "dither" ? descriptor.variant : descriptor.transformHint ?? lastDitherVariant.current
-  const ditherConfig = getDitherConfig(activeDitherVariant)
+  const fromLife = fromDescriptor.mode === "life"
+  const toLife = descriptor.mode === "life"
+  const ditherOpacity = toLife
+    ? lerp(fromLife ? 0.35 : 1, 0.35, transitionProgress)
+    : lerp(fromLife ? 0.35 : 1, 1, transitionProgress)
+  const lifeOpacity = toLife
+    ? lerp(fromLife ? 1 : 0, 1, transitionProgress)
+    : lerp(fromLife ? 1 : 0, 0, transitionProgress)
+  const lifeIntensity = toLife
+    ? lerp(fromLife ? fromDescriptor.intensity ?? 0.3 : 0.18, descriptor.intensity ?? 0.3, transitionProgress)
+    : lerp(fromLife ? fromDescriptor.intensity ?? 0.3 : 0.18, 0.18, transitionProgress)
+  const resolvedLifeVariant =
+    descriptor.mode === "life" ? descriptor.variant : fromDescriptor.mode === "life" ? fromDescriptor.variant : "contact"
+  const seedHint = `life:${resolvedLifeVariant}`
+  const scrambleText = descriptor.mode === "life" ? descriptor.scrambleText : fromDescriptor.mode === "life" ? fromDescriptor.scrambleText : null
+  const overlay = descriptor.overlay ?? fromDescriptor.overlay
+  const accentPalette = getV0RouteAccentPalette(
+    resolveV0RouteAccentKey({ mode: descriptor.mode, variant: descriptor.variant }),
+    isDarkMode,
+  )
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      <div className="absolute inset-0" style={{ opacity: descriptor.mode === "life" ? 0.35 : 1 }}>
+    <div data-v0-jitter-viewport className="relative h-full w-full overflow-hidden">
+      <div className="absolute inset-0" style={{ opacity: ditherOpacity }}>
         <Dithering
           style={{ height: "100%", width: "100%" }}
           colorBack={isDarkMode ? "hsl(0, 0%, 0%)" : "hsl(0, 0%, 95%)"}
-          colorFront={isDarkMode ? "#D4FF00" : "#3F5200"}
+          colorFront={accentPalette.color}
           shape={ditherConfig.shape as never}
           type={ditherConfig.type as never}
           pxSize={ditherConfig.pxSize}
@@ -330,34 +434,32 @@ function V0PersistentJitterViewport({
       </div>
 
       <LifeGamePanel
-        active={descriptor.mode === "life"}
-        intensity={descriptor.mode === "life" ? descriptor.intensity : 0.3}
-        seedHint={
-          descriptor.mode === "life"
-            ? `life:${descriptor.variant}:${activeDitherVariant}`
-            : `dither:${routeKey}:${activeDitherVariant}`
-        }
+        active={lifeOpacity > 0.04}
+        intensity={lifeIntensity}
+        opacity={lifeOpacity}
+        seedHint={seedHint}
         isDarkMode={isDarkMode}
+        accentColorRgba={accentPalette.colorRgba}
       />
 
-      {descriptor.overlay?.label || descriptor.overlay?.value ? (
+      {overlay?.label || overlay?.value ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className={`text-center ${isDarkMode ? "text-white/50" : "text-black/50"}`}>
-            {descriptor.overlay.label ? <p className="text-xs">{descriptor.overlay.label}</p> : null}
-            {descriptor.overlay.value ? (
-              <p className={`mt-2 text-lg ${isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"}`}>{descriptor.overlay.value}</p>
+            {overlay.label ? <p className="text-xs">{overlay.label}</p> : null}
+            {overlay.value ? (
+              <p className="mt-2 text-lg" style={{ color: accentPalette.color }}>{overlay.value}</p>
             ) : null}
           </div>
         </div>
       ) : null}
 
-      {descriptor.mode === "life" && descriptor.scrambleText ? (
+      {scrambleText ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <TextScramblePanel
-            key={`${routeKey}:${descriptor.scrambleText}`}
-            targetText={descriptor.scrambleText}
+            targetText={scrambleText}
             duration={1500}
             isDarkMode={isDarkMode}
+            accentColor={accentPalette.color}
           />
         </div>
       ) : null}
@@ -366,7 +468,78 @@ function V0PersistentJitterViewport({
 }
 
 function V0ExperienceOverlay({ registration }: { registration: V0ExperienceRegistration | null }) {
+  const handoffStartRef = useRef<{ routeKey: string; startedAt: number } | null>(null)
+  const reportedRouteKeyRef = useRef<string | null>(null)
+  const registrationLayout = registration?.layout ?? null
+  const registrationRouteKey = registration?.routeKey ?? null
+  const registrationSlot = registration?.slot ?? null
+  const registrationFrameHeight = registration?.frame?.height ?? null
+  const registrationFrameLeft = registration?.frame?.left ?? null
+  const registrationFrameTop = registration?.frame?.top ?? null
+  const registrationFrameWidth = registration?.frame?.width ?? null
+
+  useEffect(() => {
+    if (!registrationRouteKey || registrationLayout === "public") {
+      return
+    }
+
+    handoffStartRef.current = {
+      routeKey: registrationRouteKey,
+      startedAt: performance.now(),
+    }
+  }, [registrationLayout, registrationRouteKey, registrationSlot])
+
+  useEffect(() => {
+    if (!registrationRouteKey || registrationLayout === "public") {
+      return
+    }
+
+    const handoff = handoffStartRef.current
+    if (!handoff || reportedRouteKeyRef.current === registrationRouteKey) {
+      return
+    }
+
+    if (!registrationSlot?.isConnected) {
+      return
+    }
+
+    const frameHandle = window.requestAnimationFrame(() => {
+      recordAdminRuntimeHandoff(registrationRouteKey, performance.now() - handoff.startedAt)
+      reportedRouteKeyRef.current = registrationRouteKey
+    })
+
+    return () => window.cancelAnimationFrame(frameHandle)
+  }, [
+    registrationFrameHeight,
+    registrationFrameLeft,
+    registrationFrameTop,
+    registrationFrameWidth,
+    registrationLayout,
+    registrationRouteKey,
+    registrationSlot,
+  ])
+
   if (!registration?.descriptor) {
+    return null
+  }
+
+  const content = (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      <V0PersistentJitterViewport
+        descriptor={registration.descriptor}
+        isDarkMode={registration.isDarkMode}
+      />
+    </div>
+  )
+
+  if (registration.slot?.isConnected) {
+    return createPortal(content, registration.slot)
+  }
+
+  if (!registration.frame) {
     return null
   }
 
@@ -384,7 +557,6 @@ function V0ExperienceOverlay({ registration }: { registration: V0ExperienceRegis
       <V0PersistentJitterViewport
         descriptor={registration.descriptor}
         isDarkMode={registration.isDarkMode}
-        routeKey={registration.routeKey}
       />
     </div>
   )
@@ -418,12 +590,13 @@ export function V0ExperienceProvider({
         currentRegistration &&
         currentRegistration.id === nextRegistration.id &&
         currentRegistration.layout === nextRegistration.layout &&
+        currentRegistration.slot === nextRegistration.slot &&
         currentRegistration.isDarkMode === nextRegistration.isDarkMode &&
         currentRegistration.routeKey === nextRegistration.routeKey &&
-        currentRegistration.frame.top === nextRegistration.frame.top &&
-        currentRegistration.frame.left === nextRegistration.frame.left &&
-        currentRegistration.frame.width === nextRegistration.frame.width &&
-        currentRegistration.frame.height === nextRegistration.frame.height &&
+        currentRegistration.frame?.top === nextRegistration.frame?.top &&
+        currentRegistration.frame?.left === nextRegistration.frame?.left &&
+        currentRegistration.frame?.width === nextRegistration.frame?.width &&
+        currentRegistration.frame?.height === nextRegistration.frame?.height &&
         JSON.stringify(currentRegistration.descriptor) === JSON.stringify(nextRegistration.descriptor)
       ) {
         return currentRegistration
@@ -459,11 +632,13 @@ export function useRegisterV0Experience({
   layout,
   descriptor,
   frame,
+  slot,
   isDarkMode,
 }: {
   layout: V0ExperienceLayout
   descriptor: V0RuntimeDescriptor | null
   frame: V0RuntimeFrame | null
+  slot: HTMLElement | null
   isDarkMode: boolean
 }) {
   const experience = useContext(V0ExperienceContext)
@@ -471,7 +646,7 @@ export function useRegisterV0Experience({
   const registrationId = useId()
 
   useLayoutEffect(() => {
-    if (!experience || !descriptor || !frame || frame.width <= 0 || frame.height <= 0) {
+    if (!experience || !descriptor || (!slot && !frame) || (frame && (frame.width <= 0 || frame.height <= 0))) {
       return
     }
 
@@ -480,10 +655,11 @@ export function useRegisterV0Experience({
       layout,
       descriptor,
       frame,
+      slot,
       isDarkMode,
       routeKey: pathname,
     })
-  }, [descriptor, experience, frame, isDarkMode, layout, pathname, registrationId])
+  }, [descriptor, experience, frame, isDarkMode, layout, pathname, registrationId, slot])
 }
 
 export function getDefaultPublicRuntimeDescriptor(currentPage: "home" | "notes" | "projects" | "contact" | null): V0RuntimeDescriptor | null {

@@ -7,7 +7,7 @@ export const profile = {
   resumeHref: "/resume.pdf",
   emailAddress: "xistoh162108@kaist.ac.kr",
   githubHref: "https://github.com/xistoh162108",
-  linkedinHref: null,
+  linkedinHref: "https://www.linkedin.com/in/jimin-park-984931301/ko",
   focusAreas: ["AI", "InfoSec", "Developer Tools", "Product Systems"],
   experience: [
     {

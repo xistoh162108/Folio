@@ -42,8 +42,8 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
 
   return (
     <PublicShell currentPage="projects" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <div className="h-full px-8 py-6 overflow-y-auto">
-        <div className="space-y-6 max-w-lg">
+      <div className="min-h-full px-4 py-6 sm:px-6 md:h-full md:overflow-y-auto md:px-8">
+        <div className="space-y-6 max-w-lg md:max-w-none">
             <section className="space-y-3">
               <p className={`text-xs ${mutedText}`}>// projects</p>
               <h2 className="text-lg">Featured Work</h2>

@@ -39,5 +39,9 @@ describe("link preview contracts", () => {
     })
 
     expect(parsePreviewMetadata({ kind: "GITHUB", owner: "openai" })).toBeNull()
+    expect(parsePreviewMetadata({ kind: "YOUTUBE", videoId: "dQw4w9WgXcQ" })).toEqual({
+      kind: "YOUTUBE",
+      videoId: "dQw4w9WgXcQ",
+    })
   })
 })

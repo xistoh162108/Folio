@@ -10,6 +10,7 @@ import { digitalGardenNotes, tagFilters } from "@/components/v0/fixtures"
 import { mapPostCardToNoteRow } from "@/components/v0/public/mappers"
 import { PublicShell } from "@/components/v0/public/public-shell"
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller"
+import { getV0RouteAccentPalette } from "@/lib/site/v0-route-palette"
 
 interface NotesScreenProps {
   isDarkMode?: boolean
@@ -50,6 +51,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20"
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"
   const activeBg = isDarkMode ? "bg-white/10" : "bg-black/10"
+  const accentColor = getV0RouteAccentPalette("notes", isDarkMode).color
 
   const noteRows = useMemo(
     () =>
@@ -87,11 +89,13 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
       [topic]: !previous[topic],
     }))
   }
+  const statusText = state?.success ? `[ OK: ${state.message} ]` : state?.error ? `[ ERROR: ${state.error} ]` : null
+  const statusClassName = state?.error ? "text-[#FF3333]" : mutedText
 
   return (
     <PublicShell currentPage="notes" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <div className="h-full px-8 py-6 overflow-y-auto pb-32">
-        <div className="space-y-6 max-w-lg">
+      <div className="min-h-full px-4 py-6 pb-8 sm:px-6 md:h-full md:overflow-y-auto md:px-8 md:pb-32">
+        <div className="space-y-6 max-w-lg md:max-w-none">
             <section className="space-y-3">
               <p className={`text-xs ${mutedText}`}>// digital garden</p>
               <h2 className="text-lg">Notes &amp; Seeds</h2>
@@ -121,13 +125,16 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                   <Link
                     key={note.id}
                     href={note.href}
-                    className={`flex items-baseline gap-3 text-sm ${hoverBg} py-2 px-2 -mx-2 transition-colors w-full text-left`}
+                    data-v0-note-row
+                    className={`-mx-2 flex w-full flex-wrap items-baseline gap-x-3 gap-y-1 px-2 py-2 text-left text-sm transition-colors md:flex-nowrap ${hoverBg}`}
                   >
-                    <span className={`${mutedText} w-20 shrink-0`}>{note.date}</span>
-                    <span className={`${mutedText} w-8 shrink-0`}>{note.statusSymbol}</span>
-                    <span className="flex-1">{note.title}</span>
-                    <span className={`${mutedText} text-xs shrink-0`}>[v: {note.views.toLocaleString()}]</span>
-                    <span className={`${mutedText} text-xs`}>{note.tags.join(" ")}</span>
+                    <span className={`${mutedText} w-16 shrink-0 whitespace-nowrap md:w-20`}>{note.date}</span>
+                    <span className={`${mutedText} w-6 shrink-0 whitespace-nowrap md:w-8`}>{note.statusSymbol}</span>
+                    <span className="min-w-[12rem] flex-1 md:min-w-0">{note.title}</span>
+                    <span className={`${mutedText} shrink-0 whitespace-nowrap text-xs`}>[v: {note.views.toLocaleString()}]</span>
+                    <span className={`${mutedText} w-full pl-[5.75rem] text-xs md:w-auto md:shrink-0 md:whitespace-nowrap md:pl-0`}>
+                      {note.tags.join(" ")}
+                    </span>
                   </Link>
                 ))
               ) : (
@@ -162,17 +169,20 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
         </div>
       </div>
 
-      <div className={`fixed bottom-0 left-0 w-1/2 ${bgColor} border-t ${borderColor} px-8 py-4 font-mono z-30`}>
+      <div
+        className={`mt-8 border-t px-4 py-4 font-mono sm:px-6 md:fixed md:bottom-0 md:left-0 md:z-30 md:mt-0 md:w-[56%] md:px-6 lg:w-1/2 lg:px-8 ${bgColor} ${borderColor}`}
+      >
         <form
           onSubmit={(event) => {
             event.preventDefault()
             startTransition(() => formAction({ email, _honey: honey, topics }))
           }}
-          className="max-w-lg space-y-2"
+          data-v0-notes-subscribe
+          className="max-w-lg space-y-2 lg:max-w-none"
         >
-          <div className="flex items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <p className={`text-xs leading-8 ${mutedText}`}>// stay in the loop</p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+            <div className="flex min-w-0 flex-col gap-3 md:flex-row md:flex-wrap md:items-center md:gap-4 lg:flex-nowrap">
+              <p data-v0-stay-in-loop-label className={`v0-control-inline-label ${mutedText} md:whitespace-nowrap`}>// stay in the loop</p>
               <input
                 type="text"
                 name="_honey"
@@ -189,7 +199,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="you@email.com"
                 disabled={pending}
-                className={`v0-control-inline-input w-40 ${borderColor} ${
+                className={`v0-control-inline-input w-full md:w-40 ${borderColor} ${
                   isDarkMode ? "text-white placeholder:text-white/30" : "text-black placeholder:text-black/30"
                 } ${pending ? "opacity-50" : ""}`}
               />
@@ -198,11 +208,11 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                 disabled={pending}
                 className={`v0-control-inline-button ${borderColor} ${hoverBg} ${pending ? "opacity-50" : ""}`}
               >
-                {pending ? "[...]" : "Subscribe"}
+                Subscribe
               </button>
             </div>
-            <div className="flex gap-3 text-xs">
-              <label className="flex items-center gap-1 cursor-pointer">
+            <div data-v0-notes-topic-strip className="flex flex-wrap items-center gap-3 text-xs md:flex-nowrap md:gap-4 md:whitespace-nowrap lg:shrink-0">
+              <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
                 <button
                   type="button"
                   onClick={() => toggleTopic("all")}
@@ -214,7 +224,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                 </button>
                 <span className={mutedText}>All</span>
               </label>
-              <label className="flex items-center gap-1 cursor-pointer">
+              <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
                 <button
                   type="button"
                   onClick={() => toggleTopic("aiInfosec")}
@@ -226,7 +236,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                 </button>
                 <span className={mutedText}>AI</span>
               </label>
-              <label className="flex items-center gap-1 cursor-pointer">
+              <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
                 <button
                   type="button"
                   onClick={() => toggleTopic("projectsLogs")}
@@ -238,12 +248,13 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                 </button>
                 <span className={mutedText}>Projects</span>
               </label>
+              {statusText ? (
+                <span className={statusClassName} style={state?.success ? { color: accentColor } : undefined}>
+                  {statusText}
+                </span>
+              ) : null}
             </div>
           </div>
-          {state?.success ? (
-            <p className={`text-xs ${isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"}`}>[ OK: {state.message} ]</p>
-          ) : null}
-          {state?.error ? <p className="text-xs text-[#FF3333]">[ ERROR: {state.error} ]</p> : null}
         </form>
       </div>
     </PublicShell>

@@ -98,7 +98,7 @@ export function ProfileSettingsEditor({
   }
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="min-w-0 max-w-3xl space-y-8 pb-10">
       <div>
         <p className={`text-xs ${mutedText}`}>// profile settings</p>
         <h2 className="mt-1 text-lg">Profile &amp; CV Editor</h2>
@@ -106,7 +106,7 @@ export function ProfileSettingsEditor({
 
       <section className="space-y-4">
         <h3 className="text-sm">Basic Information</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={`mb-2 block text-xs ${mutedText}`}>Display Name</label>
             <input
@@ -128,7 +128,7 @@ export function ProfileSettingsEditor({
             />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className={`mb-2 block text-xs ${mutedText}`}>Role</label>
             <input
@@ -163,7 +163,7 @@ export function ProfileSettingsEditor({
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm">Education</h3>
           <button
             type="button"
@@ -184,9 +184,9 @@ export function ProfileSettingsEditor({
         </div>
         <div className="space-y-2">
           {draft.education.map((entry, index) => (
-            <div key={entry.id ?? `education-${index}`} className={`flex items-start gap-3 border p-3 ${borderColor}`}>
+            <div key={entry.id ?? `education-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
-              <div className="flex-1 space-y-2">
+              <div className="min-w-0 flex-1 space-y-2">
                 <input
                   type="text"
                   value={entry.institution}
@@ -194,24 +194,24 @@ export function ProfileSettingsEditor({
                   placeholder="Institution"
                   className={`v0-control-field ${borderColor}`}
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     type="text"
                     value={entry.degree}
                     onChange={(event) => updateEducation(index, { degree: event.target.value })}
                     placeholder="Degree"
-                    className={`v0-control-field-compact flex-1 ${borderColor}`}
+                    className={`v0-control-field-compact w-full sm:flex-1 ${borderColor}`}
                   />
                   <input
                     type="text"
                     value={entry.period}
                     onChange={(event) => updateEducation(index, { period: event.target.value })}
                     placeholder="Period"
-                    className={`v0-control-field-compact w-48 ${borderColor}`}
+                    className={`v0-control-field-compact w-full sm:w-48 ${borderColor}`}
                   />
                 </div>
               </div>
-              <div className="flex gap-2 text-xs">
+              <div className="flex flex-wrap gap-2 text-xs sm:justify-end">
                 <button type="button" onClick={() => setDraft((current) => ({ ...current, education: moveItem(current.education, index, -1) }))} className={`${hoverBg} px-2 py-1`}>
                   [↑]
                 </button>
@@ -232,7 +232,7 @@ export function ProfileSettingsEditor({
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm">Experience</h3>
           <button
             type="button"
@@ -253,9 +253,9 @@ export function ProfileSettingsEditor({
         </div>
         <div className="space-y-2">
           {draft.experience.map((entry, index) => (
-            <div key={entry.id ?? `experience-${index}`} className={`flex items-start gap-3 border p-3 ${borderColor}`}>
+            <div key={entry.id ?? `experience-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
-              <div className="flex-1 space-y-2">
+              <div className="min-w-0 flex-1 space-y-2">
                 <input
                   type="text"
                   value={entry.title}
@@ -263,27 +263,27 @@ export function ProfileSettingsEditor({
                   placeholder="Role / Position"
                   className={`v0-control-field ${borderColor}`}
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     type="text"
                     value={entry.period}
                     onChange={(event) => updateExperience(index, { period: event.target.value })}
                     placeholder="Period"
-                    className={`v0-control-field-compact w-40 ${borderColor}`}
+                    className={`v0-control-field-compact w-full sm:w-40 ${borderColor}`}
                   />
                   <input
                     type="text"
                     value={entry.label}
                     onChange={(event) => updateExperience(index, { label: event.target.value })}
                     placeholder="Short label"
-                    className={`v0-control-field-compact flex-1 ${borderColor}`}
+                    className={`v0-control-field-compact w-full sm:flex-1 ${borderColor}`}
                   />
                   <input
                     type="text"
                     value={entry.year ?? ""}
                     onChange={(event) => updateExperience(index, { year: event.target.value })}
                     placeholder="Year"
-                    className={`v0-control-field-compact w-28 ${borderColor}`}
+                    className={`v0-control-field-compact w-full sm:w-28 ${borderColor}`}
                   />
                 </div>
                 <textarea
@@ -293,7 +293,7 @@ export function ProfileSettingsEditor({
                   className={`v0-control-area h-20 ${borderColor}`}
                 />
               </div>
-              <div className="flex gap-2 text-xs">
+              <div className="flex flex-wrap gap-2 text-xs sm:justify-end">
                 <button type="button" onClick={() => setDraft((current) => ({ ...current, experience: moveItem(current.experience, index, -1) }))} className={`${hoverBg} px-2 py-1`}>
                   [↑]
                 </button>
@@ -314,7 +314,7 @@ export function ProfileSettingsEditor({
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm">Awards</h3>
           <button
             type="button"
@@ -332,9 +332,9 @@ export function ProfileSettingsEditor({
         </div>
         <div className="space-y-2">
           {draft.awards.map((entry, index) => (
-            <div key={entry.id ?? `award-${index}`} className={`flex items-start gap-3 border p-3 ${borderColor}`}>
+            <div key={entry.id ?? `award-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
-              <div className="flex-1 space-y-2">
+              <div className="min-w-0 flex-1 space-y-2">
                 <input
                   type="text"
                   value={entry.title}
@@ -342,20 +342,20 @@ export function ProfileSettingsEditor({
                   placeholder="Award"
                   className={`v0-control-field ${borderColor}`}
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     type="text"
                     value={entry.issuer ?? ""}
                     onChange={(event) => updateAward(index, { issuer: event.target.value })}
                     placeholder="Issuer"
-                    className={`v0-control-field-compact flex-1 ${borderColor}`}
+                    className={`v0-control-field-compact w-full sm:flex-1 ${borderColor}`}
                   />
                   <input
                     type="text"
                     value={entry.year ?? ""}
                     onChange={(event) => updateAward(index, { year: event.target.value })}
                     placeholder="Year"
-                    className={`v0-control-field-compact w-28 ${borderColor}`}
+                    className={`v0-control-field-compact w-full sm:w-28 ${borderColor}`}
                   />
                 </div>
                 <textarea
@@ -365,7 +365,7 @@ export function ProfileSettingsEditor({
                   className={`v0-control-area h-20 ${borderColor}`}
                 />
               </div>
-              <div className="flex gap-2 text-xs">
+              <div className="flex flex-wrap gap-2 text-xs sm:justify-end">
                 <button type="button" onClick={() => setDraft((current) => ({ ...current, awards: moveItem(current.awards, index, -1) }))} className={`${hoverBg} px-2 py-1`}>
                   [↑]
                 </button>
@@ -386,7 +386,7 @@ export function ProfileSettingsEditor({
       </section>
 
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm">Links</h3>
           <button
             type="button"
@@ -404,26 +404,26 @@ export function ProfileSettingsEditor({
         </div>
         <div className="space-y-2">
           {draft.links.map((entry, index) => (
-            <div key={entry.id ?? `link-${index}`} className={`flex items-start gap-3 border p-3 ${borderColor}`}>
+            <div key={entry.id ?? `link-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
-              <div className="flex-1 space-y-2">
-                <div className="flex gap-2">
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     type="text"
                     value={entry.label}
                     onChange={(event) => updateLink(index, { label: event.target.value })}
                     placeholder="Label"
-                    className={`v0-control-field-compact w-40 ${borderColor}`}
+                    className={`v0-control-field-compact w-full sm:w-40 ${borderColor}`}
                   />
                   <input
                     type="text"
                     value={entry.url}
                     onChange={(event) => updateLink(index, { url: event.target.value })}
                     placeholder="URL"
-                    className={`v0-control-field-compact flex-1 ${borderColor}`}
+                    className={`v0-control-field-compact w-full sm:flex-1 ${borderColor}`}
                   />
                 </div>
-                <div className="flex gap-2 text-xs">
+                <div className="flex flex-wrap gap-2 text-xs">
                   {PROFILE_LINK_KINDS.map((kind) => (
                     <button
                       key={kind}
@@ -443,7 +443,7 @@ export function ProfileSettingsEditor({
                   </button>
                 </div>
               </div>
-              <div className="flex gap-2 text-xs">
+              <div className="flex flex-wrap gap-2 text-xs sm:justify-end">
                 <button type="button" onClick={() => setDraft((current) => ({ ...current, links: moveItem(current.links, index, -1) }))} className={`${hoverBg} px-2 py-1`}>
                   [↑]
                 </button>

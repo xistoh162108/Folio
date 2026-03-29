@@ -17,8 +17,8 @@ export function EditorScreen({ post, isDarkMode: initialIsDarkMode = true, brand
 
   return (
     <AdminShell currentSection="content" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <main className="flex-1 p-6 overflow-y-auto">
-        <div className="space-y-6 max-w-3xl">
+      <main className="min-h-full p-4 sm:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
+        <div className="max-w-3xl space-y-6 pb-10">
           <div>
             <p className={`text-xs ${mutedText}`}>// new content</p>
             <h2 className="text-lg mt-1">Content Editor</h2>

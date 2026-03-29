@@ -11,6 +11,7 @@ import {
   useRegisterV0Experience,
 } from "@/components/v0/runtime/v0-experience-runtime"
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller"
+import { getV0RouteAccentPalette } from "@/lib/site/v0-route-palette"
 
 export type V0PublicPage = "home" | "notes" | "projects" | "contact"
 
@@ -35,7 +36,6 @@ export function PublicShell({
   loadingText = "",
   brandLabel = "xistoh.log",
   onNavigate,
-  onAdminClick,
   onToggleTheme,
   runtimeDescriptor,
 }: PublicShellProps) {
@@ -49,6 +49,10 @@ export function PublicShell({
   const borderColor = resolvedIsDarkMode ? "border-white/20" : "border-black/20"
   const hoverBg = resolvedIsDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"
   const activeBg = resolvedIsDarkMode ? "bg-white/10" : "bg-black/10"
+  const routeAccentColor = getV0RouteAccentPalette(
+    currentPage === "notes" ? "notes" : currentPage === "projects" ? "projects" : currentPage === "contact" ? "contact" : "default",
+    resolvedIsDarkMode,
+  ).color
   const resolvedRuntimeDescriptor = useMemo(
     () => runtimeDescriptor ?? getDefaultPublicRuntimeDescriptor(currentPage),
     [currentPage, runtimeDescriptor],
@@ -58,16 +62,15 @@ export function PublicShell({
     ((page: V0PublicPage) => {
       router.push(page === "home" ? "/" : `/${page}`)
     })
-  const openAdmin = onAdminClick ?? (() => router.push("/admin/login"))
   const toggleTheme = onToggleTheme ?? theme.toggleTheme
 
   useLayoutEffect(() => {
-    const measureFrame = () => {
-      const element = rightPanelRef.current
-      if (!element) {
-        return
-      }
+    const element = rightPanelRef.current
+    if (!element) {
+      return
+    }
 
+    const measureFrame = () => {
       const rect = element.getBoundingClientRect()
       setRuntimeFrame({
         top: rect.top,
@@ -78,37 +81,32 @@ export function PublicShell({
     }
 
     measureFrame()
+    const resizeObserver = new ResizeObserver(measureFrame)
+    resizeObserver.observe(element)
     window.addEventListener("resize", measureFrame)
 
-    return () => window.removeEventListener("resize", measureFrame)
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", measureFrame)
+    }
   }, [])
 
   useRegisterV0Experience({
     layout: "public",
     descriptor: resolvedRuntimeDescriptor,
     frame: runtimeFrame,
+    slot: rightPanelRef.current,
     isDarkMode: resolvedIsDarkMode,
   })
 
   return (
-    <div className={`relative h-screen overflow-hidden ${bgColor} ${textColor}`}>
-      <header className={`flex items-center justify-between px-8 py-4 border-b ${borderColor} font-mono relative z-20`}>
+    <div className={`relative flex h-[100svh] min-h-[100svh] flex-col overflow-hidden ${bgColor} ${textColor}`}>
+      <header
+        className={`relative z-20 flex items-center justify-between border-b px-4 py-4 font-mono sm:px-6 md:px-8 ${borderColor}`}
+      >
         <h1 className="text-sm">{brandLabel}</h1>
 
-        <div className="flex items-center gap-6">
-          <div className="flex text-xs">
-            <button type="button" className={`px-3 py-1 border-l border-t border-b ${borderColor} transition-colors ${activeBg}`}>
-              public
-            </button>
-            <button
-              type="button"
-              onClick={openAdmin}
-              className={`px-3 py-1 border ${borderColor} transition-colors ${hoverBg}`}
-            >
-              admin
-            </button>
-          </div>
-
+        <div className="flex items-center gap-3 sm:gap-6">
           <button
             type="button"
             onClick={toggleTheme}
@@ -120,26 +118,39 @@ export function PublicShell({
         </div>
       </header>
 
-      <div className="font-mono h-[calc(100vh-57px)] flex flex-col">
-        <nav className={`flex items-center gap-1 px-8 py-3 text-xs border-b ${borderColor}`}>
+      <div className="font-mono flex min-h-0 flex-1 flex-col">
+        <nav
+          data-v0-public-strip
+          className={`flex items-center gap-1 overflow-x-auto border-b px-4 py-3 text-xs sm:px-6 md:px-8 ${borderColor}`}
+        >
           {(["home", "notes", "projects", "contact"] as V0PublicPage[]).map((page) => (
             <button
               type="button"
               key={page}
               onClick={() => navigate(page)}
-              className={`px-3 py-1 transition-colors ${currentPage === page ? activeBg : hoverBg}`}
+              className={`shrink-0 px-3 py-1 transition-colors ${currentPage === page ? activeBg : hoverBg}`}
             >
               /{page}
             </button>
           ))}
           {isPageLoading ? (
-            <span className={`ml-4 ${resolvedIsDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"}`}>{loadingText}</span>
+            <span className="ml-4 shrink-0" style={{ color: routeAccentColor }}>{loadingText}</span>
           ) : null}
         </nav>
 
-        <div className="flex flex-1 min-h-0">
-          <div className="w-1/2 min-w-0 h-full relative z-20">{children}</div>
-          <div ref={rightPanelRef} className="w-1/2 shrink-0" aria-hidden="true" />
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+          <div
+            data-v0-shell-primary
+            className="relative order-2 z-20 min-h-0 min-w-0 flex-1 overflow-y-auto md:order-1 md:h-full md:flex-none md:w-[56%] md:overflow-hidden lg:w-1/2"
+          >
+            {children}
+          </div>
+          <div
+            ref={rightPanelRef}
+            data-v0-jitter-slot
+            className={`relative order-1 h-40 min-h-[10rem] w-full shrink-0 overflow-hidden border-b sm:h-52 md:order-2 md:h-full md:min-h-0 md:flex-none md:w-[44%] md:border-b-0 lg:w-1/2 ${borderColor}`}
+            aria-hidden="true"
+          />
         </div>
       </div>
     </div>

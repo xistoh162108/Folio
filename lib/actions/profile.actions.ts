@@ -181,6 +181,8 @@ export async function savePrimaryProfile(input: ProfileEditorInput): Promise<Pro
     revalidatePath("/")
     revalidatePath("/admin/settings")
     revalidatePath("/admin/analytics")
+    revalidatePath("/contact")
+    revalidatePath("/guestbook")
     revalidatePath("/resume.pdf")
 
     return { success: true }

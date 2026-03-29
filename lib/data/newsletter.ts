@@ -14,7 +14,7 @@ export interface NewsletterDashboardData {
 }
 
 export async function getNewsletterDashboardData(): Promise<NewsletterDashboardData> {
-  const topics = await prisma.newsletterTopic.findMany({
+  const topicsPromise = prisma.newsletterTopic.findMany({
     orderBy: { name: "asc" },
     select: {
       id: true,
@@ -23,14 +23,14 @@ export async function getNewsletterDashboardData(): Promise<NewsletterDashboardD
     },
   })
 
-  const activeSubscriberCount = await prisma.subscriber.count({
+  const activeSubscriberCountPromise = prisma.subscriber.count({
     where: {
       isConfirmed: true,
       unsubscribedAt: null,
     },
   })
 
-  const subscribers = await prisma.subscriber.findMany({
+  const subscribersPromise = prisma.subscriber.findMany({
     where: {
       isConfirmed: true,
       unsubscribedAt: null,
@@ -50,6 +50,12 @@ export async function getNewsletterDashboardData(): Promise<NewsletterDashboardD
       },
     },
   })
+
+  const [topics, activeSubscriberCount, subscribers] = await Promise.all([
+    topicsPromise,
+    activeSubscriberCountPromise,
+    subscribersPromise,
+  ])
 
   try {
     const [campaigns, deliveries] = await Promise.all([

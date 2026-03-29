@@ -175,7 +175,7 @@ export function V0NewsletterManager({
   const currentText = emailBody.trim() || stripHtml(htmlBody)
 
   return (
-    <div className="space-y-6 font-mono h-full overflow-y-auto">
+    <div className="space-y-6 font-mono">
       <div>
         <p className={`text-xs ${mutedText}`}>// newsletter campaign</p>
         <h2 className="text-lg mt-1">Email Campaign Manager</h2>

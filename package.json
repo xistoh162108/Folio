@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "ops:smoke": "tsx scripts/ops-smoke.ts",
     "parity:capture": "tsx scripts/with-test-env.ts tsx scripts/capture-v0-parity.ts",
+    "storage:bootstrap": "tsx scripts/storage-bootstrap.ts",
     "start": "next start",
     "test": "tsx scripts/with-test-env.ts vitest run",
     "test:db:prepare": "tsx scripts/test-db-prepare.ts",

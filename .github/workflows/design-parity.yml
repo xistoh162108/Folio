@@ -109,7 +109,7 @@ jobs:
         run: pnpm ops:smoke
 
       - name: Focused E2E checks
-        run: pnpm test:e2e e2e/smoke.spec.ts e2e/contact-guestbook.spec.ts e2e/detail-reader.spec.ts e2e/seo.spec.ts e2e/admin-posts.spec.ts e2e/admin-settings.spec.ts e2e/admin-community.spec.ts e2e/engagement.spec.ts
+        run: pnpm test:e2e e2e/smoke.spec.ts e2e/contact-guestbook.spec.ts e2e/detail-reader.spec.ts e2e/seo.spec.ts e2e/responsive-shell.spec.ts e2e/runtime-panel.spec.ts e2e/admin-analytics.spec.ts e2e/admin-posts.spec.ts e2e/admin-settings.spec.ts e2e/admin-community.spec.ts e2e/media-access.spec.ts e2e/engagement.spec.ts
 
       - name: Upload parity artifacts
         uses: actions/upload-artifact@v4

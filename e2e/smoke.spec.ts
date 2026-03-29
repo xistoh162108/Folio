@@ -62,6 +62,8 @@ async function ensurePublishedDetailPath() {
 test("public pages and admin auth boundary are reachable", async ({ page }) => {
   await page.goto("/")
   await expect(page.getByRole("heading", { name: "Jimin Park" })).toBeVisible()
+  await expect(page.getByRole("button", { name: /^public$/i })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: /^admin$/i })).toHaveCount(0)
 
   await page.goto("/notes")
   await expect(page.getByRole("heading", { name: "Notes & Seeds" })).toBeVisible()
@@ -74,6 +76,8 @@ test("public pages and admin auth boundary are reachable", async ({ page }) => {
 
   await page.goto("/admin/login")
   await expect(page.getByRole("heading", { name: "System Access" })).toBeVisible()
+  await expect(page.getByRole("button", { name: /^public$/i })).toHaveCount(0)
+  await expect(page.getByRole("button", { name: /^admin$/i })).toHaveCount(0)
 
   await page.goto("/admin/posts")
   await expect(page).toHaveURL(/\/admin\/login/)

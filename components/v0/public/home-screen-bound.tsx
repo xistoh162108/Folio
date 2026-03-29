@@ -4,7 +4,11 @@ import { getPrimaryProfileRuntimeSnapshot, getVerifiedProfileLink } from "@/lib/
 import { getV0ThemeIsDark } from "@/lib/site/v0-theme.server"
 
 export async function HomeScreenBound({ brandLabel = "xistoh.log" }: { brandLabel?: string } = {}) {
-  const [isDarkMode, { notes }, profile] = await Promise.all([getV0ThemeIsDark(), getHomepagePosts(), getPrimaryProfileRuntimeSnapshot()])
+  const [isDarkMode, { notes }, profile] = await Promise.all([
+    getV0ThemeIsDark(),
+    getHomepagePosts(),
+    getPrimaryProfileRuntimeSnapshot(),
+  ])
   const githubLink = getVerifiedProfileLink(profile, "GITHUB")
   const linkedinLink = getVerifiedProfileLink(profile, "LINKEDIN")
 

@@ -2,6 +2,7 @@ import "server-only"
 
 import { prisma } from "@/lib/db/prisma"
 import { env } from "@/lib/env"
+import { inspectStorageBootstrapState } from "@/lib/storage/supabase"
 
 export type ReadinessStatus = "ready" | "not_ready" | "unknown"
 
@@ -82,21 +83,45 @@ function checkAuthConfigured() {
   )
 }
 
-function checkStorageConfigured() {
-  const isTestDriver = env.STORAGE_DRIVER === "test"
-  const isReady = isTestDriver || Boolean(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY)
+async function getStorageReadinessCards() {
+  try {
+    const snapshot = await inspectStorageBootstrapState()
+    const storageConfigured = readinessCard(
+      "storage",
+      "Storage configured",
+      snapshot.configured ? "ready" : "not_ready",
+      snapshot.driver === "test" ? "Test driver" : asReadyLabel(snapshot.configured),
+      snapshot.driver === "test" && snapshot.configured
+        ? "Test storage driver is active for local QA and E2E uploads."
+        : snapshot.driver === "test"
+          ? "Test storage driver is not allowed in production."
+        : snapshot.driver === "supabase"
+          ? "Supabase Storage credentials are present for uploads, downloads, cleanup, and bucket verification."
+          : "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing.",
+    )
 
-  return readinessCard(
-    "storage",
-    "Storage configured",
-    isReady ? "ready" : "not_ready",
-    asReadyLabel(isReady),
-    isTestDriver
-      ? "Test storage driver is active for local QA and E2E uploads."
-      : isReady
-      ? "Supabase Storage credentials are present for uploads, downloads, and cleanup."
-      : "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing.",
-  )
+    const bucketCards = snapshot.buckets.map((bucket) =>
+      readinessCard(
+        bucket.bucket,
+        bucket.label,
+        bucket.exists && bucket.visibility === bucket.expectedVisibility ? "ready" : "not_ready",
+        bucket.exists ? bucket.visibility : "missing",
+        bucket.detail,
+      ),
+    )
+
+    return [storageConfigured, ...bucketCards]
+  } catch (error) {
+    return [
+      readinessCard(
+        "storage",
+        "Storage configured",
+        "not_ready",
+        "Unavailable",
+        formatError(error),
+      ),
+    ]
+  }
 }
 
 function checkEmailConfigured() {
@@ -216,13 +241,17 @@ async function findLastWorkerActivity(): Promise<WorkerActivity | null> {
 }
 
 export async function getAdminReadinessDashboard(): Promise<ReadinessDashboard> {
-  const [database, lastWorkerActivity] = await Promise.all([checkDatabaseReachable(), findLastWorkerActivity()])
+  const [database, storageCards, lastWorkerActivity] = await Promise.all([
+    checkDatabaseReachable(),
+    getStorageReadinessCards(),
+    findLastWorkerActivity(),
+  ])
 
   return {
     cards: [
       database,
       checkAuthConfigured(),
-      checkStorageConfigured(),
+      ...storageCards,
       checkEmailConfigured(),
       checkWebhookConfigured(),
       checkWorkerRoutesConfigured(),

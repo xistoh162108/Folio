@@ -11,7 +11,7 @@ test("admin posts uses the canonical /admin/posts flow for listing and editing",
   await ensureAdminUser()
   const marker = `e2e-admin-posts-${Date.now()}`
   const publishedSlug = `${marker}-published`
-  const draftSearch = `${marker}-draft`
+  const draftSearch = `${marker} draft`
 
   await testPrisma.post.createMany({
     data: [
@@ -89,10 +89,51 @@ test("admin posts uses the canonical /admin/posts flow for listing and editing",
   }
 
   await page.getByLabel("Title").fill(`${marker} draft`)
-  await page.getByLabel("Markdown body").fill(`# ${marker} draft\n\nBody content`)
-  await page.getByText("[meta]").click()
-  await expect(page.getByLabel("Slug")).toBeVisible()
-  await page.getByLabel("Slug").fill(`${marker}-draft`)
+  const editorContract = await page.locator("[data-v0-editor-textarea]").evaluate((textareaElement) => {
+    const textarea = textareaElement as HTMLTextAreaElement
+    const mirror = document.querySelector("[data-v0-editor-mirror]") as HTMLElement | null
+    if (!mirror) {
+      throw new Error("Editor mirror was not found.")
+    }
+
+    const textareaStyle = window.getComputedStyle(textarea)
+    const mirrorStyle = window.getComputedStyle(mirror)
+
+    return {
+      fontFamily: textareaStyle.fontFamily === mirrorStyle.fontFamily,
+      fontSize: textareaStyle.fontSize === mirrorStyle.fontSize,
+      lineHeight: textareaStyle.lineHeight === mirrorStyle.lineHeight,
+      letterSpacing: textareaStyle.letterSpacing === mirrorStyle.letterSpacing,
+      paddingTop: textareaStyle.paddingTop === mirrorStyle.paddingTop,
+      paddingRight: textareaStyle.paddingRight === mirrorStyle.paddingRight,
+      paddingBottom: textareaStyle.paddingBottom === mirrorStyle.paddingBottom,
+      paddingLeft: textareaStyle.paddingLeft === mirrorStyle.paddingLeft,
+      whiteSpace: textareaStyle.whiteSpace === mirrorStyle.whiteSpace,
+      overflowWrap: textareaStyle.overflowWrap === mirrorStyle.overflowWrap,
+      overflowX: textareaStyle.overflowX === mirrorStyle.overflowX,
+      overflowY: textareaStyle.overflowY === mirrorStyle.overflowY,
+      boxSizing: textareaStyle.boxSizing === mirrorStyle.boxSizing,
+    }
+  })
+  expect(Object.values(editorContract).every(Boolean)).toBeTruthy()
+  await expect(page.getByText("[meta]")).toHaveCount(0)
+  await page.getByLabel("Markdown body").fill(Array.from({ length: 48 }, (_, index) => `# ${marker} draft ${index}\n\nBody content ${index}`).join("\n"))
+  const scrollSync = await page.locator("[data-v0-editor-textarea]").evaluate((textareaElement) => {
+    const textarea = textareaElement as HTMLTextAreaElement
+    const mirror = document.querySelector("[data-v0-editor-mirror]") as HTMLElement | null
+    if (!mirror) {
+      throw new Error("Editor mirror was not found.")
+    }
+
+    textarea.scrollTop = textarea.scrollHeight
+    textarea.dispatchEvent(new Event("scroll", { bubbles: true }))
+
+    return {
+      textareaScrollTop: textarea.scrollTop,
+      mirrorScrollTop: mirror.scrollTop,
+    }
+  })
+  expect(Math.abs(scrollSync.textareaScrollTop - scrollSync.mirrorScrollTop)).toBeLessThanOrEqual(1)
   await page.getByRole("button", { name: "Save Draft" }).click()
   await expect(page.getByText("Saved.")).toBeVisible()
   await expect(page).toHaveURL(`/admin/posts/${draftId}`)
@@ -103,6 +144,7 @@ test("admin posts uses the canonical /admin/posts flow for listing and editing",
   const savedDraft = await testPrisma.post.findUniqueOrThrow({
     where: { id: draftId },
     select: {
+      slug: true,
       markdownSource: true,
       contentVersion: true,
       content: true,
@@ -110,9 +152,10 @@ test("admin posts uses the canonical /admin/posts flow for listing and editing",
     },
   })
 
-  expect(savedDraft.markdownSource).toContain(`# ${marker} draft`)
+  expect(savedDraft.slug.length).toBeGreaterThan(0)
+  expect(savedDraft.markdownSource).toContain(`# ${marker} draft 0`)
   expect(savedDraft.contentVersion).toBeGreaterThanOrEqual(100)
-  expect(savedDraft.htmlContent).toContain(`<h1>${marker} draft</h1>`)
+  expect(savedDraft.htmlContent).toContain(`<h1>${marker} draft 0</h1>`)
   expect(savedDraft.content).toMatchObject({
     type: "doc",
     version: expect.any(Number),

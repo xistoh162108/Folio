@@ -19,6 +19,11 @@ const PUBLIC_OUT_DIR =
 const ADMIN_OUT_DIR =
   process.env.ADMIN_PARITY_OUT_DIR ??
   (PARITY_SCOPE === "admin" && LEGACY_OUT_DIR ? LEGACY_OUT_DIR : `docs/migration/parity/${PARITY_DATE}-admin`)
+const RESPONSIVE_OUT_DIR =
+  process.env.RESPONSIVE_PARITY_OUT_DIR ??
+  (PARITY_SCOPE === "responsive" && LEGACY_OUT_DIR
+    ? LEGACY_OUT_DIR
+    : `docs/migration/parity/${PARITY_DATE}-responsive`)
 const FIXED_TIMESTAMP = 1_772_649_600_000
 const PNG_FIXTURE = "public/icon-light-32x32.png"
 
@@ -39,8 +44,8 @@ type AdminParityFixtures = {
   uploadDraftId: string
 }
 
-async function createCapturePage(browser: Browser) {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1024 } })
+async function createCapturePage(browser: Browser, viewport: { width: number; height: number } = { width: 1440, height: 1024 }) {
+  const page = await browser.newPage({ viewport })
   await page.addInitScript((fixedTimestamp) => {
     const originalNow = Date.now
     Date.now = () => fixedTimestamp
@@ -434,6 +439,94 @@ async function captureAdminReference(browser: Browser) {
   }
 }
 
+async function captureResponsiveCurrent(browser: Browser) {
+  await ensureAdminUser()
+  const publicFixtures = await seedPublicParityFixtures()
+  const adminFixtures = await seedAdminParityFixtures()
+
+  const captures = [
+    {
+      name: "mobile-portrait-home",
+      route: "/",
+      heading: "Jimin Park",
+      viewport: { width: 390, height: 844 },
+      requiresAdmin: false,
+    },
+    {
+      name: "mobile-portrait-admin-settings",
+      route: "/admin/settings",
+      heading: "Profile & CV Editor",
+      viewport: { width: 390, height: 844 },
+      requiresAdmin: true,
+    },
+    {
+      name: "mobile-landscape-guestbook",
+      route: "/guestbook",
+      heading: "System logs from visitors",
+      viewport: { width: 844, height: 390 },
+      requiresAdmin: false,
+    },
+    {
+      name: "tablet-portrait-note-detail",
+      route: `/notes/${publicFixtures.noteSlug}`,
+      heading: `${publicFixtures.marker} note`,
+      viewport: { width: 820, height: 1180 },
+      requiresAdmin: false,
+    },
+    {
+      name: "tablet-landscape-admin-analytics",
+      route: "/admin/analytics",
+      heading: "Terminal Dashboard",
+      viewport: { width: 1180, height: 820 },
+      requiresAdmin: true,
+    },
+    {
+      name: "tall-desktop-contact",
+      route: "/contact",
+      heading: "Get in Touch",
+      viewport: { width: 1280, height: 1400 },
+      requiresAdmin: false,
+    },
+    {
+      name: "wide-desktop-projects",
+      route: "/projects",
+      heading: "Featured Work",
+      viewport: { width: 1600, height: 900 },
+      requiresAdmin: false,
+    },
+    {
+      name: "wide-desktop-admin-posts",
+      route: `/admin/posts?q=${adminFixtures.marker}`,
+      heading: "All Content",
+      viewport: { width: 1600, height: 900 },
+      requiresAdmin: true,
+    },
+  ] as const
+
+  try {
+    for (const capture of captures) {
+      const page = await createCapturePage(browser, capture.viewport)
+
+      try {
+        console.log(`capture responsive current: ${capture.name}`)
+
+        if (capture.requiresAdmin) {
+          await loginCurrentAdmin(page)
+        }
+
+        await page.goto(`${CURRENT_BASE_URL}${capture.route}`, { waitUntil: "domcontentloaded" })
+        await waitForHeading(page, capture.heading)
+        await screenshot(page, `${RESPONSIVE_OUT_DIR}/current-${capture.name}.png`)
+      } finally {
+        await page.close()
+      }
+    }
+  } finally {
+    await cleanupPublicParityFixtures(publicFixtures)
+    await cleanupAdminParityFixtures(adminFixtures)
+  }
+}
+
 async function main() {
   if (PARITY_SCOPE === "all" || PARITY_SCOPE === "public") {
     await mkdir(PUBLIC_OUT_DIR, { recursive: true })
@@ -441,6 +534,10 @@ async function main() {
 
   if (PARITY_SCOPE === "all" || PARITY_SCOPE === "admin") {
     await mkdir(ADMIN_OUT_DIR, { recursive: true })
+  }
+
+  if (PARITY_SCOPE === "all" || PARITY_SCOPE === "responsive") {
+    await mkdir(RESPONSIVE_OUT_DIR, { recursive: true })
   }
 
   const browser = await chromium.launch({ headless: true })
@@ -454,6 +551,10 @@ async function main() {
     if (PARITY_SCOPE === "all" || PARITY_SCOPE === "admin") {
       await captureAdminCurrent(browser)
       await captureAdminReference(browser)
+    }
+
+    if (PARITY_SCOPE === "all" || PARITY_SCOPE === "responsive") {
+      await captureResponsiveCurrent(browser)
     }
   } finally {
     await browser.close()

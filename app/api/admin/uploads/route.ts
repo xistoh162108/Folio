@@ -9,6 +9,7 @@ import {
   FILE_UPLOAD_POLICY,
   getSupabasePublicUrl,
   IMAGE_UPLOAD_POLICY,
+  mapStorageServiceError,
   uploadAssetToSupabase,
 } from "@/lib/storage/supabase"
 import type { UploadKind, UploadResponse } from "@/lib/contracts/uploads"
@@ -16,6 +17,26 @@ import { assertRateLimit, getClientIp, RateLimitExceededError } from "@/lib/secu
 
 function getUploadPolicy(kind: UploadKind) {
   return kind === "image" ? IMAGE_UPLOAD_POLICY : FILE_UPLOAD_POLICY
+}
+
+const FALLBACK_MIME_BY_EXTENSION = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  pdf: "application/pdf",
+  txt: "text/plain",
+} as const
+
+function resolveUploadMime(file: File, allowedMimes: readonly string[]) {
+  if (allowedMimes.includes(file.type as never)) {
+    return file.type
+  }
+
+  const extension = file.name.split(".").pop()?.trim().toLowerCase() ?? ""
+  const fallbackMime = FALLBACK_MIME_BY_EXTENSION[extension as keyof typeof FALLBACK_MIME_BY_EXTENSION]
+
+  return fallbackMime && allowedMimes.includes(fallbackMime as never) ? fallbackMime : null
 }
 
 export async function POST(request: Request) {
@@ -67,8 +88,9 @@ export async function POST(request: Request) {
   }
 
   const policy = getUploadPolicy(kind)
+  const resolvedMime = resolveUploadMime(file, policy.allowedMimes)
 
-  if (!policy.allowedMimes.includes(file.type as never)) {
+  if (!resolvedMime) {
     return NextResponse.json({ error: "This MIME type is not allowed." }, { status: 400 })
   }
 
@@ -98,7 +120,7 @@ export async function POST(request: Request) {
       bucket: policy.bucket,
       storagePath,
       file,
-      contentType: file.type,
+      contentType: resolvedMime,
     })
 
     let asset
@@ -111,7 +133,7 @@ export async function POST(request: Request) {
           bucket: policy.bucket,
           storagePath,
           originalName: file.name,
-          mime: file.type,
+          mime: resolvedMime,
           size: file.size,
           publicUrl: kind === "image" ? getSupabasePublicUrl(policy.bucket, storagePath) : null,
         },
@@ -141,7 +163,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(payload)
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Upload failed."
+    const message = mapStorageServiceError(error, policy.bucket)
 
     return NextResponse.json({ error: message }, { status: 503 })
   }

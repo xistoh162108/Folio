@@ -56,3 +56,24 @@ export function isMissingRelationInRawQuery(error: unknown, relationName?: strin
 export function isMissingRecordError(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025"
 }
+
+export function isUniqueConstraintError(error: unknown, target?: string) {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+    return false
+  }
+
+  if (error.code !== "P2002") {
+    return false
+  }
+
+  if (!target) {
+    return true
+  }
+
+  const metaTarget = error.meta?.target
+  if (Array.isArray(metaTarget)) {
+    return metaTarget.some((value) => String(value).includes(target))
+  }
+
+  return String(metaTarget ?? "").includes(target)
+}

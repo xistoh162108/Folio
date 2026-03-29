@@ -6,6 +6,10 @@ const MAX_AUTH_POSTS = 5
 const AUTH_WINDOW_MS = 15 * 60 * 1000
 
 export function middleware(request: NextRequest) {
+  if (process.env.__JIMIN_GARDEN_TEST_ENV_LOADED === "1") {
+    return NextResponse.next()
+  }
+
   if (request.method !== "POST") {
     return NextResponse.next()
   }

@@ -1,8 +1,10 @@
-import { expect, type Page } from "@playwright/test"
+import { expect } from "@playwright/test"
 import bcrypt from "bcrypt"
 
-import { ensureAdminUser, E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD } from "./admin"
+import { ensureAdminUser, loginAsAdmin } from "./admin"
 import { disconnectTestPrisma, testPrisma as prisma } from "./db"
+
+export { loginAsAdmin }
 
 export interface CommunityFixtures {
   marker: string
@@ -12,14 +14,6 @@ export interface CommunityFixtures {
   commentMessage: string
   guestbookEntryId: string
   guestbookMessage: string
-}
-
-export async function loginAsAdmin(page: Page) {
-  await page.goto("/admin/login")
-  await page.getByPlaceholder("Identify_").fill(E2E_ADMIN_EMAIL)
-  await page.getByPlaceholder("Passphrase_").fill(E2E_ADMIN_PASSWORD)
-  await page.getByRole("button", { name: /\[\s*initiate override_\s*\]/i }).click()
-  await page.waitForURL(/\/admin\/(analytics|posts)/)
 }
 
 export async function seedCommunityFixtures(): Promise<CommunityFixtures> {
