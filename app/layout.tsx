@@ -15,23 +15,7 @@ export const metadata: Metadata = {
   description: "Production-backed portfolio, notes, projects, and admin workflows.",
   generator: "codex",
   icons: {
-    icon: [
-      {
-        url: '/favicon.ico',
-      },
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
+    icon: '/favicon.ico',
     shortcut: '/favicon.ico',
     apple: '/apple-icon.png',
   },
