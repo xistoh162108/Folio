@@ -184,8 +184,8 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
           data-v0-notes-subscribe
           className="max-w-lg space-y-2 lg:max-w-none"
         >
-          <div className="flex flex-wrap items-center gap-3 lg:gap-6">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 md:gap-4 xl:flex-nowrap">
+          <div className="flex flex-col items-start gap-3 2xl:flex-row 2xl:items-center 2xl:gap-6">
+            <div className="flex min-w-0 w-full flex-wrap items-center gap-3 md:gap-4 2xl:flex-1 2xl:flex-nowrap">
               <p data-v0-stay-in-loop-label className={`v0-control-inline-label ${mutedText} md:whitespace-nowrap`}>// stay in the loop</p>
               <input
                 type="text"
@@ -215,7 +215,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                 Subscribe
               </button>
             </div>
-            <div data-v0-notes-topic-strip className="flex min-w-fit flex-wrap items-center gap-3 text-xs md:gap-4 md:whitespace-nowrap xl:ml-auto xl:flex-nowrap">
+            <div data-v0-notes-topic-strip className="flex min-w-fit flex-wrap items-center gap-3 text-xs md:flex-nowrap md:gap-4 md:whitespace-nowrap 2xl:ml-auto">
               <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
                 <button
                   type="button"

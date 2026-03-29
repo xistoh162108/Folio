@@ -71,8 +71,8 @@ export function V0NotesSubscribeFooter({
         }}
         className="max-w-lg space-y-2 lg:max-w-none"
       >
-        <div className="flex flex-wrap items-center gap-3 lg:gap-6">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 md:gap-4 xl:flex-nowrap">
+        <div className="flex flex-col items-start gap-3 2xl:flex-row 2xl:items-center 2xl:gap-6">
+          <div className="flex min-w-0 w-full flex-wrap items-center gap-3 md:gap-4 2xl:flex-1 2xl:flex-nowrap">
             <p className={`text-xs ${mutedText}`}>// stay in the loop</p>
             <input
               type="text"
@@ -101,7 +101,7 @@ export function V0NotesSubscribeFooter({
               {pending ? "[...]" : "Subscribe"}
             </button>
           </div>
-          <div className="flex min-w-fit flex-wrap items-center gap-3 text-xs md:gap-4 md:whitespace-nowrap xl:ml-auto xl:flex-nowrap">
+          <div className="flex min-w-fit flex-wrap items-center gap-3 text-xs md:flex-nowrap md:gap-4 md:whitespace-nowrap 2xl:ml-auto">
             <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
               <button
                 type="button"
