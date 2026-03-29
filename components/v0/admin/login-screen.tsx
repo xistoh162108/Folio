@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, useTransition } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import {
   ADMIN_ACCESS_RUNTIME_DESCRIPTOR,
@@ -30,6 +30,7 @@ export function LoginScreen({
   const [error, setError] = useState("")
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+  const pathname = usePathname()
   const bgColor = resolvedIsDarkMode ? "bg-black" : "bg-white"
   const textColor = resolvedIsDarkMode ? "text-white" : "text-black"
   const borderColor = resolvedIsDarkMode ? "border-white/20" : "border-black/20"
@@ -42,7 +43,14 @@ export function LoginScreen({
       return
     }
 
+    let isActive = true
+    let firstFrame = 0
+    let secondFrame = 0
+
     const measureFrame = () => {
+      if (!isActive) {
+        return
+      }
       const rect = element.getBoundingClientRect()
       setRuntimeFrame({
         top: rect.top,
@@ -52,16 +60,33 @@ export function LoginScreen({
       })
     }
 
+    const scheduleDeferredMeasure = () => {
+      window.cancelAnimationFrame(firstFrame)
+      window.cancelAnimationFrame(secondFrame)
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(measureFrame)
+      })
+    }
+
     measureFrame()
-    const resizeObserver = new ResizeObserver(measureFrame)
+    scheduleDeferredMeasure()
+    const resizeObserver = new ResizeObserver(scheduleDeferredMeasure)
     resizeObserver.observe(element)
-    window.addEventListener("resize", measureFrame)
+    window.addEventListener("resize", scheduleDeferredMeasure)
+    document.fonts?.ready.then(() => {
+      if (isActive) {
+        scheduleDeferredMeasure()
+      }
+    }).catch(() => {})
 
     return () => {
+      isActive = false
+      window.cancelAnimationFrame(firstFrame)
+      window.cancelAnimationFrame(secondFrame)
       resizeObserver.disconnect()
-      window.removeEventListener("resize", measureFrame)
+      window.removeEventListener("resize", scheduleDeferredMeasure)
     }
-  }, [])
+  }, [pathname])
 
   useRegisterV0Experience({
     layout: "admin-access",
@@ -72,7 +97,7 @@ export function LoginScreen({
   })
 
   return (
-    <div className={`relative flex h-[100svh] min-h-[100svh] flex-col overflow-hidden ${bgColor} ${textColor}`}>
+    <div className={`relative grid h-[100svh] min-h-[100svh] grid-rows-[auto_minmax(0,1fr)] overflow-hidden ${bgColor} ${textColor}`}>
       <header
         className={`relative z-20 flex items-center justify-between border-b px-4 py-4 font-mono sm:px-6 md:px-8 ${borderColor}`}
       >
@@ -85,8 +110,8 @@ export function LoginScreen({
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col font-mono md:flex-row">
-        <div className="relative order-2 z-20 flex min-h-0 min-w-0 flex-1 flex-col justify-center px-4 py-6 sm:px-6 md:order-1 md:h-full md:flex-none md:w-[56%] md:px-8 lg:w-1/2">
+      <div className="flex min-h-0 min-w-0 flex-col overflow-hidden font-mono md:h-full md:flex-row md:items-stretch">
+        <div className="relative order-2 z-20 flex min-h-0 min-w-0 flex-1 flex-col justify-center px-4 py-6 sm:px-6 md:order-1 md:h-full md:flex-none md:self-stretch md:w-[56%] md:px-8 lg:w-1/2">
           <div className="space-y-8 max-w-md">
             <section className="space-y-3">
               <p className={`text-xs ${mutedText}`}>// admin</p>
@@ -143,7 +168,7 @@ export function LoginScreen({
         <div
           ref={rightPanelRef}
           data-v0-jitter-slot
-          className={`relative order-1 h-40 min-h-[10rem] w-full shrink-0 overflow-hidden border-b sm:h-52 md:order-2 md:h-full md:min-h-0 md:flex-none md:w-[44%] md:border-b-0 lg:w-1/2 ${borderColor}`}
+          className={`relative order-1 h-40 min-h-[10rem] w-full shrink-0 overflow-hidden border-b sm:h-52 md:order-2 md:h-full md:min-h-0 md:flex-none md:self-stretch md:w-[44%] md:border-b-0 lg:w-1/2 ${borderColor}`}
           aria-hidden="true"
         />
       </div>

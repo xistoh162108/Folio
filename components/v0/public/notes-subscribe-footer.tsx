@@ -71,8 +71,8 @@ export function V0NotesSubscribeFooter({
         }}
         className="max-w-lg space-y-2 lg:max-w-none"
       >
-        <div className="flex items-center justify-between gap-6">
-          <div className="flex min-w-0 items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 lg:gap-6">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3 md:gap-4 xl:flex-nowrap">
             <p className={`text-xs ${mutedText}`}>// stay in the loop</p>
             <input
               type="text"
@@ -89,19 +89,19 @@ export function V0NotesSubscribeFooter({
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="you@email.com"
-              className={`px-3 py-1.5 text-xs border ${borderColor} bg-transparent outline-none w-40 ${
+              className={`px-3 py-1.5 text-xs border ${borderColor} bg-transparent outline-none min-w-[12rem] flex-1 md:w-40 md:flex-none ${
                 isDarkMode ? "text-white placeholder:text-white/30" : "text-black placeholder:text-black/30"
               } ${pending ? "opacity-50" : ""}`}
             />
             <button
               type="submit"
               disabled={pending}
-              className={`px-3 py-1.5 text-xs border ${borderColor} ${hoverBg} ${pending ? "opacity-50" : ""}`}
+              className={`shrink-0 px-3 py-1.5 text-xs border ${borderColor} ${hoverBg} ${pending ? "opacity-50" : ""}`}
             >
               {pending ? "[...]" : "Subscribe"}
             </button>
           </div>
-          <div className="flex flex-wrap gap-3 text-xs md:flex-nowrap md:gap-4 md:whitespace-nowrap">
+          <div className="flex min-w-fit flex-wrap items-center gap-3 text-xs md:gap-4 md:whitespace-nowrap xl:ml-auto xl:flex-nowrap">
             <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
               <button
                 type="button"

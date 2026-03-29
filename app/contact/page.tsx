@@ -2,7 +2,8 @@ import type { Metadata } from "next"
 
 import { ContactScreen } from "@/components/v0/public/contact-screen"
 import { getGuestbookEntries } from "@/lib/data/guestbook"
-import { getPrimaryProfileRuntimeSnapshot, getVerifiedProfileLink } from "@/lib/data/profile"
+import { getPrimaryProfileRuntimeSnapshot } from "@/lib/data/profile"
+import { getPublicVerifiedProfileLinks } from "@/lib/profile/public-links"
 import { buildPublicMetadata } from "@/lib/seo/metadata"
 import { getV0ThemeIsDark } from "@/lib/site/v0-theme.server"
 
@@ -24,17 +25,17 @@ export default async function ContactPage() {
     getGuestbookEntries(2),
     getPrimaryProfileRuntimeSnapshot(),
   ])
-  const githubLink = getVerifiedProfileLink(profile, "GITHUB")
-  const linkedinLink = getVerifiedProfileLink(profile, "LINKEDIN")
+  const publicLinks = getPublicVerifiedProfileLinks(profile)
 
   return (
     <ContactScreen
       brandLabel="xistoh.log"
       emailAddress={profile.emailAddress}
-      githubHref={githubLink?.url ?? null}
+      githubHref={publicLinks.githubHref}
       initialGuestbookEntries={guestbookEntries}
       isDarkMode={isDarkMode}
-      linkedinHref={linkedinLink?.url ?? null}
+      instagramHref={publicLinks.instagramHref}
+      linkedinHref={publicLinks.linkedinHref}
     />
   )
 }

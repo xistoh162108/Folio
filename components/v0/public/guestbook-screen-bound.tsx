@@ -1,6 +1,7 @@
 import { GuestbookScreen } from "@/components/v0/public/guestbook-screen"
 import { getGuestbookEntries } from "@/lib/data/guestbook"
-import { getPrimaryProfileRuntimeSnapshot, getVerifiedProfileLink } from "@/lib/data/profile"
+import { getPrimaryProfileRuntimeSnapshot } from "@/lib/data/profile"
+import { getPublicVerifiedProfileLinks } from "@/lib/profile/public-links"
 import { getV0ThemeIsDark } from "@/lib/site/v0-theme.server"
 
 export async function GuestbookScreenBound({ brandLabel = "xistoh.log" }: { brandLabel?: string } = {}) {
@@ -9,17 +10,17 @@ export async function GuestbookScreenBound({ brandLabel = "xistoh.log" }: { bran
     getV0ThemeIsDark(),
     getPrimaryProfileRuntimeSnapshot(),
   ])
-  const githubLink = getVerifiedProfileLink(profile, "GITHUB")
-  const linkedinLink = getVerifiedProfileLink(profile, "LINKEDIN")
+  const publicLinks = getPublicVerifiedProfileLinks(profile)
 
   return (
     <GuestbookScreen
       brandLabel={brandLabel}
       emailAddress={profile.emailAddress}
-      githubHref={githubLink?.url ?? null}
+      githubHref={publicLinks.githubHref}
       initialEntries={entries}
       isDarkMode={isDarkMode}
-      linkedinHref={linkedinLink?.url ?? null}
+      instagramHref={publicLinks.instagramHref}
+      linkedinHref={publicLinks.linkedinHref}
     />
   )
 }

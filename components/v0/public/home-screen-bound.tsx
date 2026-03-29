@@ -1,6 +1,7 @@
 import { HomeScreen } from "@/components/v0/public/home-screen"
 import { getHomepagePosts } from "@/lib/data/posts"
-import { getPrimaryProfileRuntimeSnapshot, getVerifiedProfileLink } from "@/lib/data/profile"
+import { getPrimaryProfileRuntimeSnapshot } from "@/lib/data/profile"
+import { getPublicVerifiedProfileLinks } from "@/lib/profile/public-links"
 import { getV0ThemeIsDark } from "@/lib/site/v0-theme.server"
 
 export async function HomeScreenBound({ brandLabel = "xistoh.log" }: { brandLabel?: string } = {}) {
@@ -9,8 +10,7 @@ export async function HomeScreenBound({ brandLabel = "xistoh.log" }: { brandLabe
     getHomepagePosts(),
     getPrimaryProfileRuntimeSnapshot(),
   ])
-  const githubLink = getVerifiedProfileLink(profile, "GITHUB")
-  const linkedinLink = getVerifiedProfileLink(profile, "LINKEDIN")
+  const publicLinks = getPublicVerifiedProfileLinks(profile)
 
   return (
     <HomeScreen
@@ -19,8 +19,9 @@ export async function HomeScreenBound({ brandLabel = "xistoh.log" }: { brandLabe
       profileName={profile.displayName}
       profileBio={profile.summary}
       emailAddress={profile.emailAddress}
-      githubHref={githubLink?.url ?? null}
-      linkedinHref={linkedinLink?.url ?? null}
+      githubHref={publicLinks.githubHref}
+      linkedinHref={publicLinks.linkedinHref}
+      instagramHref={publicLinks.instagramHref}
       education={profile.education.map((item) => ({
         id: item.id,
         period: item.period,

@@ -9,6 +9,7 @@ interface GuestbookScreenProps {
   emailAddress?: string
   githubHref?: string | null
   linkedinHref?: string | null
+  instagramHref?: string | null
 }
 
 export function GuestbookScreen({
@@ -18,6 +19,7 @@ export function GuestbookScreen({
   emailAddress = "xistoh162108@kaist.ac.kr",
   githubHref = null,
   linkedinHref = null,
+  instagramHref = null,
 }: GuestbookScreenProps) {
   return (
     <GuestbookScreenClient
@@ -26,6 +28,7 @@ export function GuestbookScreen({
       initialEntries={initialEntries}
       emailAddress={emailAddress}
       githubHref={githubHref}
+      instagramHref={instagramHref}
       linkedinHref={linkedinHref}
     />
   )

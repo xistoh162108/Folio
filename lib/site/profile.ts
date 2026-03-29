@@ -8,6 +8,7 @@ export const profile = {
   emailAddress: "xistoh162108@kaist.ac.kr",
   githubHref: "https://github.com/xistoh162108",
   linkedinHref: "https://www.linkedin.com/in/jimin-park-984931301/ko",
+  instagramHref: "https://www.instagram.com/xistoh1621.8?igsh=MW1nd3VrNXpvaW5odw%3D%3D&utm_source=qr",
   focusAreas: ["AI", "InfoSec", "Developer Tools", "Product Systems"],
   experience: [
     {

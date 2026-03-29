@@ -28,6 +28,7 @@ interface HomeScreenProps {
   emailAddress?: string
   githubHref?: string | null
   linkedinHref?: string | null
+  instagramHref?: string | null
   education?: HomeLineItem[]
   experience?: HomeLineItem[]
   awards?: HomeLineItem[]
@@ -43,6 +44,7 @@ export function HomeScreen({
   emailAddress = "xistoh162108@kaist.ac.kr",
   githubHref = null,
   linkedinHref = null,
+  instagramHref = null,
   education = educationData.map((item) => ({
     id: item.id,
     period: item.period,
@@ -97,6 +99,11 @@ export function HomeScreen({
                 ) : (
                   <span className="px-1">linkedin</span>
                 )}
+                {instagramHref ? (
+                  <a href={instagramHref} target="_blank" rel="noreferrer" className={`${hoverBg} px-1`}>
+                    instagram -&gt;
+                  </a>
+                ) : null}
                 <a href={`mailto:${emailAddress}`} className={`${hoverBg} px-1`}>
                   email -&gt;
                 </a>

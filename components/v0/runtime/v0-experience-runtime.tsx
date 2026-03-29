@@ -18,6 +18,7 @@ import { usePathname } from "next/navigation"
 
 import { TextScramblePanel } from "@/components/v0/effects/text-scramble-panel"
 import { recordAdminRuntimeHandoff } from "@/lib/ops/admin-performance-client"
+import { getV0DitherConfig, resolveV0DitherAspectBucket } from "@/lib/site/v0-runtime-dither"
 import { getV0RouteAccentPalette, resolveV0RouteAccentKey } from "@/lib/site/v0-route-palette"
 import { V0_THEME_COOKIE, getNextV0ThemeMode, normalizeV0ThemeMode, type V0ThemeMode } from "@/lib/site/v0-theme"
 
@@ -99,34 +100,6 @@ function applyDocumentTheme(themeMode: V0ThemeMode) {
 
 function persistTheme(themeMode: V0ThemeMode) {
   document.cookie = `${V0_THEME_COOKIE}=${themeMode}; path=/; max-age=31536000; samesite=lax`
-}
-
-function getDitherConfig(variant: V0DitherVariant) {
-  switch (variant) {
-    case "home":
-      return { shape: "cat", type: "4x4", pxSize: 2, scale: 0.5, speed: 0.05 }
-    case "notes":
-    case "detail-note":
-      return { shape: "noise", type: "4x4", pxSize: 2, scale: 0.4, speed: 0.03 }
-    case "projects":
-    case "detail-project":
-      return { shape: "warp", type: "4x4", pxSize: 2, scale: 0.35, speed: 0.04 }
-    case "admin-overview":
-      return { shape: "grid", type: "2x2", pxSize: 1, scale: 0.6, speed: 0.08 }
-    case "admin-newsletter":
-    case "admin-access":
-      return { shape: "warp", type: "2x2", pxSize: 1, scale: 0.5, speed: 0.06 }
-    case "admin-content":
-      return { shape: "noise", type: "2x2", pxSize: 1, scale: 0.45, speed: 0.05 }
-    case "admin-manage-posts":
-    case "admin-settings":
-      return { shape: "grid", type: "2x2", pxSize: 1, scale: 0.5, speed: 0.05 }
-    case "admin-community":
-      return { shape: "noise", type: "2x2", pxSize: 1, scale: 0.48, speed: 0.05 }
-    case "public-generic":
-    default:
-      return { shape: "grid", type: "2x2", pxSize: 1, scale: 0.45, speed: 0.05 }
-  }
 }
 
 function lerp(from: number, to: number, progress: number) {
@@ -339,9 +312,11 @@ function LifeGamePanel({
 function V0PersistentJitterViewport({
   descriptor,
   isDarkMode,
+  frame,
 }: {
   descriptor: V0RuntimeDescriptor
   isDarkMode: boolean
+  frame: V0RuntimeFrame | null
 }) {
   const [fromDescriptor, setFromDescriptor] = useState<V0RuntimeDescriptor>(descriptor)
   const [transitionProgress, setTransitionProgress] = useState(1)
@@ -384,10 +359,11 @@ function V0PersistentJitterViewport({
     return () => window.cancelAnimationFrame(frameHandle)
   }, [descriptor])
 
+  const aspectBucket = resolveV0DitherAspectBucket(frame)
   const fromDitherVariant = resolveDitherVariant(fromDescriptor, lastDitherVariant.current)
   const toDitherVariant = resolveDitherVariant(descriptor, fromDitherVariant)
-  const fromDitherConfig = getDitherConfig(fromDitherVariant)
-  const toDitherConfig = getDitherConfig(toDitherVariant)
+  const fromDitherConfig = getV0DitherConfig(fromDitherVariant, aspectBucket)
+  const toDitherConfig = getV0DitherConfig(toDitherVariant, aspectBucket)
   const resolvedDitherShape = transitionProgress < 0.62 ? fromDitherConfig.shape : toDitherConfig.shape
   const resolvedDitherType = transitionProgress < 0.62 ? fromDitherConfig.type : toDitherConfig.type
   const ditherConfig = {
@@ -531,6 +507,7 @@ function V0ExperienceOverlay({ registration }: { registration: V0ExperienceRegis
       <V0PersistentJitterViewport
         descriptor={registration.descriptor}
         isDarkMode={registration.isDarkMode}
+        frame={registration.frame}
       />
     </div>
   )
@@ -539,7 +516,12 @@ function V0ExperienceOverlay({ registration }: { registration: V0ExperienceRegis
     return createPortal(content, registration.slot)
   }
 
-  if (!registration.frame) {
+  const disableFixedFallbackForMobilePublic =
+    registration.layout === "public" &&
+    typeof window !== "undefined" &&
+    window.innerWidth < 768
+
+  if (!registration.frame || disableFixedFallbackForMobilePublic) {
     return null
   }
 
@@ -557,6 +539,7 @@ function V0ExperienceOverlay({ registration }: { registration: V0ExperienceRegis
       <V0PersistentJitterViewport
         descriptor={registration.descriptor}
         isDarkMode={registration.isDarkMode}
+        frame={registration.frame}
       />
     </div>
   )
@@ -660,6 +643,58 @@ export function useRegisterV0Experience({
       routeKey: pathname,
     })
   }, [descriptor, experience, frame, isDarkMode, layout, pathname, registrationId, slot])
+
+  useLayoutEffect(() => {
+    if (!experience || !descriptor || !slot) {
+      return
+    }
+
+    let firstFrame = 0
+    let secondFrame = 0
+    let isActive = true
+
+    const registerMeasuredFrame = () => {
+      if (!isActive || !slot.isConnected) {
+        return
+      }
+
+      const rect = slot.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) {
+        return
+      }
+
+      experience.registerExperience({
+        id: registrationId,
+        layout,
+        descriptor,
+        frame: {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        },
+        slot,
+        isDarkMode,
+        routeKey: pathname,
+      })
+    }
+
+    firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(registerMeasuredFrame)
+    })
+
+    document.fonts?.ready.then(() => {
+      if (isActive) {
+        registerMeasuredFrame()
+      }
+    }).catch(() => {})
+
+    return () => {
+      isActive = false
+      window.cancelAnimationFrame(firstFrame)
+      window.cancelAnimationFrame(secondFrame)
+    }
+  }, [descriptor, experience, isDarkMode, layout, pathname, registrationId, slot])
 }
 
 export function getDefaultPublicRuntimeDescriptor(currentPage: "home" | "notes" | "projects" | "contact" | null): V0RuntimeDescriptor | null {

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react"
 import { useLayoutEffect, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import {
   getDefaultPublicRuntimeDescriptor,
@@ -40,6 +40,7 @@ export function PublicShell({
   runtimeDescriptor,
 }: PublicShellProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const theme = useV0ThemeController(isDarkMode)
   const rightPanelRef = useRef<HTMLDivElement>(null)
   const [runtimeFrame, setRuntimeFrame] = useState<V0RuntimeFrame | null>(null)
@@ -70,7 +71,14 @@ export function PublicShell({
       return
     }
 
+    let isActive = true
+    let firstFrame = 0
+    let secondFrame = 0
+
     const measureFrame = () => {
+      if (!isActive) {
+        return
+      }
       const rect = element.getBoundingClientRect()
       setRuntimeFrame({
         top: rect.top,
@@ -80,16 +88,33 @@ export function PublicShell({
       })
     }
 
+    const scheduleDeferredMeasure = () => {
+      window.cancelAnimationFrame(firstFrame)
+      window.cancelAnimationFrame(secondFrame)
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(measureFrame)
+      })
+    }
+
     measureFrame()
-    const resizeObserver = new ResizeObserver(measureFrame)
+    scheduleDeferredMeasure()
+    const resizeObserver = new ResizeObserver(scheduleDeferredMeasure)
     resizeObserver.observe(element)
-    window.addEventListener("resize", measureFrame)
+    window.addEventListener("resize", scheduleDeferredMeasure)
+    document.fonts?.ready.then(() => {
+      if (isActive) {
+        scheduleDeferredMeasure()
+      }
+    }).catch(() => {})
 
     return () => {
+      isActive = false
+      window.cancelAnimationFrame(firstFrame)
+      window.cancelAnimationFrame(secondFrame)
       resizeObserver.disconnect()
-      window.removeEventListener("resize", measureFrame)
+      window.removeEventListener("resize", scheduleDeferredMeasure)
     }
-  }, [])
+  }, [pathname])
 
   useRegisterV0Experience({
     layout: "public",
@@ -100,7 +125,9 @@ export function PublicShell({
   })
 
   return (
-    <div className={`relative flex h-[100svh] min-h-[100svh] flex-col overflow-hidden ${bgColor} ${textColor}`}>
+    <div
+      className={`relative flex min-h-[100svh] flex-col ${bgColor} ${textColor} md:grid md:h-[100svh] md:min-h-[100svh] md:grid-rows-[auto_auto_minmax(0,1fr)] md:overflow-hidden`}
+    >
       <header
         className={`relative z-20 flex items-center justify-between border-b px-4 py-4 font-mono sm:px-6 md:px-8 ${borderColor}`}
       >
@@ -118,40 +145,38 @@ export function PublicShell({
         </div>
       </header>
 
-      <div className="font-mono flex min-h-0 flex-1 flex-col">
-        <nav
-          data-v0-public-strip
-          className={`flex items-center gap-1 overflow-x-auto border-b px-4 py-3 text-xs sm:px-6 md:px-8 ${borderColor}`}
-        >
-          {(["home", "notes", "projects", "contact"] as V0PublicPage[]).map((page) => (
-            <button
-              type="button"
-              key={page}
-              onClick={() => navigate(page)}
-              className={`shrink-0 px-3 py-1 transition-colors ${currentPage === page ? activeBg : hoverBg}`}
-            >
-              /{page}
-            </button>
-          ))}
-          {isPageLoading ? (
-            <span className="ml-4 shrink-0" style={{ color: routeAccentColor }}>{loadingText}</span>
-          ) : null}
-        </nav>
-
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-          <div
-            data-v0-shell-primary
-            className="relative order-2 z-20 min-h-0 min-w-0 flex-1 overflow-y-auto md:order-1 md:h-full md:flex-none md:w-[56%] md:overflow-hidden lg:w-1/2"
+      <nav
+        data-v0-public-strip
+        className={`font-mono flex items-center gap-1 overflow-x-auto border-b px-4 py-3 text-xs sm:px-6 md:px-8 ${borderColor}`}
+      >
+        {(["home", "notes", "projects", "contact"] as V0PublicPage[]).map((page) => (
+          <button
+            type="button"
+            key={page}
+            onClick={() => navigate(page)}
+            className={`shrink-0 px-3 py-1 transition-colors ${currentPage === page ? activeBg : hoverBg}`}
           >
-            {children}
-          </div>
-          <div
-            ref={rightPanelRef}
-            data-v0-jitter-slot
-            className={`relative order-1 h-40 min-h-[10rem] w-full shrink-0 overflow-hidden border-b sm:h-52 md:order-2 md:h-full md:min-h-0 md:flex-none md:w-[44%] md:border-b-0 lg:w-1/2 ${borderColor}`}
-            aria-hidden="true"
-          />
+            /{page}
+          </button>
+        ))}
+        {isPageLoading ? (
+          <span className="ml-4 shrink-0" style={{ color: routeAccentColor }}>{loadingText}</span>
+        ) : null}
+      </nav>
+
+      <div className="font-mono flex min-w-0 flex-col overflow-visible md:min-h-0 md:h-full md:flex-row md:items-stretch md:overflow-hidden">
+        <div
+          data-v0-shell-primary
+          className="relative order-2 z-20 min-w-0 overflow-visible md:order-1 md:min-h-0 md:h-full md:flex-none md:self-stretch md:w-[56%] md:overflow-y-auto md:overflow-x-visible lg:w-1/2"
+        >
+          {children}
         </div>
+        <div
+          ref={rightPanelRef}
+          data-v0-jitter-slot
+          className={`relative order-1 h-40 min-h-[10rem] w-full shrink-0 overflow-hidden border-b sm:h-52 md:order-2 md:h-full md:min-h-0 md:flex-none md:self-stretch md:w-[44%] md:border-b-0 lg:w-1/2 ${borderColor}`}
+          aria-hidden="true"
+        />
       </div>
     </div>
   )

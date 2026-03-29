@@ -23,6 +23,7 @@ export function buildStaticProfileBootstrap(): ProfileBootstrapInput {
   const links = [
     profile.githubHref ? { label: "GitHub", url: profile.githubHref, isVerified: true } : null,
     profile.linkedinHref ? { label: "LinkedIn", url: profile.linkedinHref, isVerified: true } : null,
+    profile.instagramHref ? { label: "Instagram", url: profile.instagramHref, isVerified: true } : null,
     profile.emailAddress ? { label: "Email", url: `mailto:${profile.emailAddress}`, isVerified: true } : null,
   ].filter((item): item is { label: string; url: string; isVerified: boolean } => Boolean(item))
 
