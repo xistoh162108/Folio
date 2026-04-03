@@ -98,7 +98,7 @@ export function ProfileSettingsEditor({
   }
 
   return (
-    <div className="min-w-0 max-w-3xl space-y-8 pb-10">
+    <div className="min-w-0 w-full max-w-3xl space-y-8 overflow-x-hidden pb-10">
       <div>
         <p className={`text-xs ${mutedText}`}>// profile settings</p>
         <h2 className="mt-1 text-lg">Profile &amp; CV Editor</h2>
@@ -184,7 +184,7 @@ export function ProfileSettingsEditor({
         </div>
         <div className="space-y-2">
           {draft.education.map((entry, index) => (
-            <div key={entry.id ?? `education-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
+            <div key={entry.id ?? `education-${index}`} className={`min-w-0 overflow-x-hidden flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
               <div className="min-w-0 flex-1 space-y-2">
                 <input
@@ -253,7 +253,7 @@ export function ProfileSettingsEditor({
         </div>
         <div className="space-y-2">
           {draft.experience.map((entry, index) => (
-            <div key={entry.id ?? `experience-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
+            <div key={entry.id ?? `experience-${index}`} className={`min-w-0 overflow-x-hidden flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
               <div className="min-w-0 flex-1 space-y-2">
                 <input
@@ -332,7 +332,7 @@ export function ProfileSettingsEditor({
         </div>
         <div className="space-y-2">
           {draft.awards.map((entry, index) => (
-            <div key={entry.id ?? `award-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
+            <div key={entry.id ?? `award-${index}`} className={`min-w-0 overflow-x-hidden flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
               <div className="min-w-0 flex-1 space-y-2">
                 <input
@@ -404,7 +404,7 @@ export function ProfileSettingsEditor({
         </div>
         <div className="space-y-2">
           {draft.links.map((entry, index) => (
-            <div key={entry.id ?? `link-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
+            <div key={entry.id ?? `link-${index}`} className={`min-w-0 overflow-x-hidden flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex flex-col gap-2 sm:flex-row">
