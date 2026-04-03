@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useMemo } from "react"
 
 import type { GuestbookEntryDTO } from "@/lib/contracts/community"
+import type { GuestbookEntriesPage } from "@/lib/data/guestbook"
 
 import { V0GuestbookTerminalPanel } from "@/components/v0/public/guestbook-terminal-panel"
 import { PublicShell } from "@/components/v0/public/public-shell"
@@ -14,6 +15,7 @@ interface GuestbookScreenClientProps {
   isDarkMode?: boolean
   brandLabel?: string
   initialEntries?: GuestbookEntryDTO[]
+  initialPage?: GuestbookEntriesPage
   emailAddress?: string
   githubHref?: string | null
   linkedinHref?: string | null
@@ -24,6 +26,7 @@ export function GuestbookScreenClient({
   isDarkMode: initialIsDarkMode = true,
   brandLabel = "xistoh.log",
   initialEntries,
+  initialPage,
   emailAddress = "xistoh162108@kaist.ac.kr",
   githubHref = null,
   linkedinHref = null,
@@ -109,6 +112,7 @@ export function GuestbookScreenClient({
               hoverBg={hoverBg}
               mutedText={mutedText}
               initialEntries={initialEntries}
+              initialPage={initialPage}
               mode="full"
             />
           </div>

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 
 import type { GuestbookEntryDTO } from "@/lib/contracts/community"
+import type { GuestbookEntriesPage } from "@/lib/data/guestbook"
 
 import { formatLogTimestamp } from "@/components/v0/public/mappers"
 import { getV0RouteAccentPalette } from "@/lib/site/v0-route-palette"
@@ -14,6 +15,7 @@ interface GuestbookTerminalPanelProps {
   hoverBg: string
   mutedText: string
   initialEntries?: GuestbookEntryDTO[]
+  initialPage?: GuestbookEntriesPage
   mode?: "preview" | "full"
   previewHref?: string
   previewLimit?: number
@@ -25,12 +27,16 @@ export function V0GuestbookTerminalPanel({
   hoverBg,
   mutedText,
   initialEntries = [],
+  initialPage,
   mode = "full",
   previewHref = "/guestbook",
   previewLimit = 2,
 }: GuestbookTerminalPanelProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [entries, setEntries] = useState(initialEntries)
+  const [currentPage, setCurrentPage] = useState(initialPage?.page ?? 1)
+  const [totalPages, setTotalPages] = useState(initialPage?.totalPages ?? 1)
+  const [loadingPage, setLoadingPage] = useState(false)
   const [message, setMessage] = useState("")
   const [honey, setHoney] = useState("")
   const [pending, setPending] = useState(false)
@@ -45,7 +51,37 @@ export function V0GuestbookTerminalPanel({
 
   useEffect(() => {
     setEntries(initialEntries)
-  }, [initialEntries])
+    setCurrentPage(initialPage?.page ?? 1)
+    setTotalPages(initialPage?.totalPages ?? 1)
+  }, [initialEntries, initialPage?.page, initialPage?.totalPages])
+
+  async function loadPage(nextPage: number) {
+    if (isPreview || loadingPage) return
+
+    setLoadingPage(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/guestbook?page=${nextPage}`, {
+        method: "GET",
+        cache: "no-store",
+      })
+      const result = (await response.json()) as GuestbookEntriesPage & { error?: string }
+
+      if (!response.ok) {
+        setError(result.error ?? "Could not load guest logs.")
+        return
+      }
+
+      setEntries(result.entries)
+      setCurrentPage(result.page)
+      setTotalPages(result.totalPages)
+    } catch {
+      setError("Could not load guest logs.")
+    } finally {
+      setLoadingPage(false)
+    }
+  }
 
   async function submitEntry() {
     if (pending) return
@@ -69,7 +105,12 @@ export function V0GuestbookTerminalPanel({
         return
       }
 
-      setEntries((current) => [result.entry!, ...current])
+      if (currentPage === 1) {
+        setEntries((current) => [result.entry!, ...current])
+      } else {
+        await loadPage(1)
+      }
+      setCurrentPage(1)
       setMessage("")
       setHoney("")
     } catch {
@@ -109,6 +150,30 @@ export function V0GuestbookTerminalPanel({
           <div className={`px-1 py-2 text-xs ${mutedText}`}>[ NO_GUEST_LOGS_YET ]</div>
         )}
       </div>
+
+      {!isPreview ? (
+        <div className={`flex items-center justify-between gap-3 border-t pt-3 text-xs ${borderColor}`}>
+          <button
+            type="button"
+            onClick={() => void loadPage(currentPage - 1)}
+            disabled={loadingPage || currentPage <= 1}
+            className={`v0-control-inline-button ${borderColor} ${hoverBg} ${loadingPage || currentPage <= 1 ? "opacity-50" : ""}`}
+          >
+            [ prev ]
+          </button>
+          <p className={mutedText}>
+            // page {currentPage}/{totalPages}
+          </p>
+          <button
+            type="button"
+            onClick={() => void loadPage(currentPage + 1)}
+            disabled={loadingPage || currentPage >= totalPages}
+            className={`v0-control-inline-button ${borderColor} ${hoverBg} ${loadingPage || currentPage >= totalPages ? "opacity-50" : ""}`}
+          >
+            [ next ]
+          </button>
+        </div>
+      ) : null}
 
       {isPreview ? (
         <div className={`flex items-center justify-between gap-3 border-t pt-3 text-xs ${borderColor}`}>

@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { isMissingTableError } from "@/lib/db/errors"
 import { prisma } from "@/lib/db/prisma"
+import { getGuestbookEntriesPage } from "@/lib/data/guestbook"
 import { assertRateLimit, getClientIp, RateLimitExceededError } from "@/lib/security/rate-limit"
 import { sha256 } from "@/lib/utils/hash"
 import { toLogSourceLabel } from "@/lib/utils/user-agent"
@@ -11,6 +12,22 @@ const GuestbookSchema = z.object({
   message: z.string().trim().min(1).max(280),
   _honey: z.string().optional().default(""),
 })
+
+export async function GET(request: Request) {
+  try {
+    const url = new URL(request.url)
+    const page = url.searchParams.get("page")
+    const data = await getGuestbookEntriesPage({ page })
+
+    return NextResponse.json(data)
+  } catch (error) {
+    if (isMissingTableError(error, "GuestbookEntry")) {
+      return NextResponse.json({ error: "Guestbook migrations have not been applied yet." }, { status: 503 })
+    }
+
+    return NextResponse.json({ error: "Could not fetch guestbook entries." }, { status: 500 })
+  }
+}
 
 export async function POST(request: Request) {
   try {
