@@ -137,14 +137,14 @@ export function ManagePostsScreen({
             {posts.map((post) => (
               <div
                 key={post.id}
-                className={`flex items-center gap-4 py-3 px-3 border ${borderColor} ${hoverBg} transition-colors`}
+                className={`flex flex-wrap items-center gap-x-3 gap-y-2 py-3 px-3 border sm:flex-nowrap ${borderColor} ${hoverBg} transition-colors`}
               >
-                <span className={mutedText}>=</span>
-                <span className={`text-xs ${mutedText} w-24 shrink-0`}>{formatDate(post.publishedAt)}</span>
-                <span className="flex-1 text-sm truncate">{post.title}</span>
-                <span className={`text-xs px-2 py-0.5 ${mutedText}`}>[{post.type === "PROJECT" ? "project" : "note"}]</span>
+                <span className={`shrink-0 ${mutedText}`}>=</span>
+                <span className={`text-xs ${mutedText} min-w-[10ch] shrink-0`}>{formatDate(post.publishedAt)}</span>
+                <span className="min-w-0 basis-full text-sm sm:basis-auto sm:flex-1 sm:truncate">{post.title}</span>
+                <span className={`shrink-0 text-xs px-2 py-0.5 ${mutedText}`}>[{post.type === "PROJECT" ? "project" : "note"}]</span>
                 <span
-                  className={`text-xs px-2 py-0.5 ${
+                  className={`shrink-0 text-xs px-2 py-0.5 ${
                     post.status === "PUBLISHED"
                       ? isDarkMode
                         ? "text-green-400"
@@ -158,7 +158,7 @@ export function ManagePostsScreen({
                 >
                   [{post.status.toLowerCase()}]
                 </span>
-                <div className="flex items-center gap-2 text-xs shrink-0">
+                <div className="ml-auto flex items-center gap-2 text-xs shrink-0">
                   <Link href={`${basePath}/${post.id}`} className={`px-2 py-1 ${hoverBg}`}>
                     Edit
                   </Link>
