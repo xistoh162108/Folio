@@ -768,7 +768,7 @@ export default function DigitalGardenPage() {
                                         : mutedText
                                     }`}
                                   >
-                                    {copiedCode === i ? "[copied]" : "[y]"}
+                                    {copiedCode === i ? "[yanked]" : "[y]"}
                                   </button>
                                 </div>
                                 <pre className={`p-4 border ${borderColor} overflow-x-auto text-xs ${isDarkMode ? "bg-[#1a1a1a]" : "bg-gray-50"}`}>

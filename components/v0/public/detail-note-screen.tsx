@@ -206,7 +206,7 @@ export function DetailNoteScreen({
                                   : mutedText
                               }`}
                             >
-                              {copiedCode === index ? "[copied]" : "[y]"}
+                              {copiedCode === index ? "[yanked]" : "[y]"}
                             </button>
                           </div>
                           <pre

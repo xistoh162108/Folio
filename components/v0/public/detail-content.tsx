@@ -340,7 +340,7 @@ function DetailCodeBlock({
             copiedCode === index ? (isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]") : mutedText
           }`}
         >
-          {copiedCode === index ? "[copied]" : "[y]"}
+          {copiedCode === index ? "[yanked]" : "[y]"}
         </button>
       </div>
       <pre className={`overflow-x-auto border p-4 text-xs ${borderColor} ${isDarkMode ? "bg-[#1a1a1a]" : "bg-gray-50"}`}>
