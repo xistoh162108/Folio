@@ -27,6 +27,7 @@ interface AdminShellProps {
   onPublicClick?: () => void
   onToggleTheme?: () => void
   runtimeDescriptor?: V0RuntimeDescriptor | null
+  primaryScrollOwner?: "shell" | "content"
 }
 
 const adminItems: Array<{ key: V0AdminSidebarSection; label: string }> = [
@@ -83,6 +84,7 @@ export function AdminShell({
   onNavigateSection,
   onToggleTheme,
   runtimeDescriptor,
+  primaryScrollOwner = "shell",
 }: AdminShellProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -110,6 +112,10 @@ export function AdminShell({
       router.push(getAdminSectionHref(section))
     })
   const toggleTheme = onToggleTheme ?? theme.toggleTheme
+  const primaryScrollClass =
+    primaryScrollOwner === "content"
+      ? "relative order-2 z-20 min-h-0 min-w-0 flex-1 overflow-hidden md:order-1 md:h-full md:flex-none md:self-stretch md:w-[56%] lg:w-1/2"
+      : "relative order-2 z-20 min-h-0 min-w-0 flex-1 overflow-y-auto md:order-1 md:h-full md:flex-none md:self-stretch md:w-[56%] md:overflow-hidden lg:w-1/2"
 
   useEffect(() => {
     completeAdminNavigation(pathname)
@@ -253,10 +259,7 @@ export function AdminShell({
         </aside>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:h-full md:flex-row md:items-stretch">
-          <div
-            data-v0-shell-primary
-            className="relative order-2 z-20 min-h-0 min-w-0 flex-1 overflow-y-auto md:order-1 md:h-full md:flex-none md:self-stretch md:w-[56%] md:overflow-hidden lg:w-1/2"
-          >
+          <div data-v0-shell-primary className={primaryScrollClass}>
             {children}
           </div>
           <div

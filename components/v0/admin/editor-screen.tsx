@@ -16,8 +16,14 @@ export function EditorScreen({ post, isDarkMode: initialIsDarkMode = true, brand
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
 
   return (
-    <AdminShell currentSection="content" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <main className="min-h-full p-4 sm:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
+    <AdminShell
+      currentSection="content"
+      isDarkMode={isDarkMode}
+      brandLabel={brandLabel}
+      onToggleTheme={toggleTheme}
+      primaryScrollOwner="content"
+    >
+      <main className="min-h-0 overflow-y-auto p-4 sm:p-6 md:h-full">
         <div className="max-w-3xl space-y-6 pb-10">
           <div>
             <p className={`text-xs ${mutedText}`}>// new content</p>
