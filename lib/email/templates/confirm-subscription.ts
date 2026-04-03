@@ -1,3 +1,5 @@
+import { buildEmailSignature } from "./signature"
+
 export interface ConfirmSubscriptionTemplateInput {
   confirmUrl: string
   unsubscribeUrl: string
@@ -7,6 +9,8 @@ export function buildConfirmSubscriptionEmail({
   confirmUrl,
   unsubscribeUrl,
 }: ConfirmSubscriptionTemplateInput) {
+  const signature = buildEmailSignature({ unsubscribeUrl })
+
   return {
     subject: "Confirm your xistoh.log subscription",
     html: `
@@ -15,7 +19,7 @@ export function buildConfirmSubscriptionEmail({
         <p>Finish activating your xistoh.log subscription by confirming the link below.</p>
         <p><a href="${confirmUrl}">Confirm subscription</a></p>
         <p>If this was not you, ignore this email.</p>
-        <p style="font-size:12px;color:#666">Unsubscribe: <a href="${unsubscribeUrl}">${unsubscribeUrl}</a></p>
+        ${signature.html}
       </div>
     `.trim(),
     text: [
@@ -24,7 +28,7 @@ export function buildConfirmSubscriptionEmail({
       `Confirm subscription: ${confirmUrl}`,
       "If this was not you, ignore this email.",
       "",
-      `Unsubscribe: ${unsubscribeUrl}`,
+      signature.text,
     ].join("\n"),
   }
 }

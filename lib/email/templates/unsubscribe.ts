@@ -1,3 +1,5 @@
+import { buildEmailSignature } from "./signature"
+
 export interface UnsubscribeTemplateInput {
   homeUrl: string
   resubscribeUrl: string
@@ -7,6 +9,8 @@ export function buildUnsubscribeEmail({
   homeUrl,
   resubscribeUrl,
 }: UnsubscribeTemplateInput) {
+  const signature = buildEmailSignature({ homeUrl })
+
   return {
     subject: "You have been unsubscribed from xistoh.log",
     html: `
@@ -15,6 +19,7 @@ export function buildUnsubscribeEmail({
         <p>You have been removed from future xistoh.log sends.</p>
         <p>You can revisit the site any time: <a href="${homeUrl}">${homeUrl}</a></p>
         <p>If you want to subscribe again later, use: <a href="${resubscribeUrl}">${resubscribeUrl}</a></p>
+        ${signature.html}
       </div>
     `.trim(),
     text: [
@@ -23,6 +28,8 @@ export function buildUnsubscribeEmail({
       "You have been removed from future xistoh.log sends.",
       `Home: ${homeUrl}`,
       `Subscribe again: ${resubscribeUrl}`,
+      "",
+      signature.text,
     ].join("\n"),
   }
 }

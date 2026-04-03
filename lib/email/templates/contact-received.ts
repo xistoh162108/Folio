@@ -1,9 +1,13 @@
+import { buildEmailSignature } from "./signature"
+
 export interface ContactReceivedTemplateInput {
   name: string
   homeUrl: string
 }
 
 export function buildContactReceivedEmail({ name, homeUrl }: ContactReceivedTemplateInput) {
+  const signature = buildEmailSignature({ homeUrl })
+
   return {
     subject: "We received your message — xistoh.log",
     html: `
@@ -12,6 +16,7 @@ export function buildContactReceivedEmail({ name, homeUrl }: ContactReceivedTemp
         <p>Hello ${name},</p>
         <p>Your message has been recorded and queued for review.</p>
         <p>You can return to the site here: <a href="${homeUrl}">${homeUrl}</a></p>
+        ${signature.html}
       </div>
     `.trim(),
     text: [
@@ -19,6 +24,8 @@ export function buildContactReceivedEmail({ name, homeUrl }: ContactReceivedTemp
       "",
       "Your message has been recorded and queued for review.",
       `Return to the site: ${homeUrl}`,
+      "",
+      signature.text,
     ].join("\n"),
   }
 }

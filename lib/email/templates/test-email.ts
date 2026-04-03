@@ -1,3 +1,5 @@
+import { buildEmailSignature } from "./signature"
+
 export interface TestEmailTemplateInput {
   subject: string
   html: string
@@ -11,6 +13,8 @@ function stripHtml(html: string) {
 export function buildTestEmail({ subject, html, text }: TestEmailTemplateInput) {
   const intro = "This is a test email from xistoh.log."
 
+  const signature = buildEmailSignature()
+
   return {
     subject,
     html: `
@@ -18,8 +22,9 @@ export function buildTestEmail({ subject, html, text }: TestEmailTemplateInput) 
         <p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#666">${intro}</p>
         <hr style="margin:16px 0;border:none;border-top:1px solid #ddd" />
         ${html}
+        ${signature.html}
       </div>
     `.trim(),
-    text: [intro, "", text?.trim() || stripHtml(html)].join("\n"),
+    text: [intro, "", text?.trim() || stripHtml(html), "", signature.text].join("\n"),
   }
 }
