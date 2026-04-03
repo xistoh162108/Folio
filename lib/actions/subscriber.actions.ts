@@ -6,6 +6,7 @@ import { z } from "zod"
 import { getEmailBaseUrl, isEmailDeliveryConfigured, sendTransactionalEmail } from "../email/provider"
 import { buildConfirmSubscriptionEmail } from "../email/templates/confirm-subscription"
 import { buildUnsubscribeEmail } from "../email/templates/unsubscribe"
+import { buildWelcomeSubscriptionEmail } from "../email/templates/welcome-subscription"
 import { normalizeEmail } from "../utils/normalizers"
 import { generateToken, hashToken } from "../utils/crypto"
 import { slugify } from "../utils/normalizers"
@@ -146,31 +147,79 @@ export async function confirmSubscription(plaintextToken: string) {
   const hashed = hashToken(plaintextToken)
 
   try {
-    const subscriber = await prisma.subscriber.findUnique({
-      where: { confirmTokenHash: hashed },
+    const result = await prisma.$transaction(async (tx) => {
+      const subscriber = await tx.subscriber.findUnique({
+        where: { confirmTokenHash: hashed },
+      })
+
+      if (!subscriber) {
+        return { status: "invalid" as const }
+      }
+
+      if (subscriber.isConfirmed) {
+        return { status: "already_confirmed" as const }
+      }
+
+      if (subscriber.confirmTokenExpiresAt && subscriber.confirmTokenExpiresAt < new Date()) {
+        return { status: "expired" as const }
+      }
+
+      const confirmationTime = new Date()
+      const updated = await tx.subscriber.updateMany({
+        where: {
+          id: subscriber.id,
+          isConfirmed: false,
+          confirmTokenHash: hashed,
+        },
+        data: {
+          isConfirmed: true,
+          confirmedAt: confirmationTime,
+          // Core Security: Destroy token to prevent reuse / replay
+          confirmTokenHash: null,
+          confirmTokenExpiresAt: null,
+          unsubscribedAt: null,
+        },
+      })
+
+      if (updated.count === 0) {
+        return { status: "already_confirmed" as const }
+      }
+
+      return {
+        status: "confirmed" as const,
+        email: subscriber.email,
+        unsubscribeToken: subscriber.unsubscribeToken,
+      }
     })
 
-    if (!subscriber) return { success: false, code: "invalid", error: "Invalid verification token." }
+    if (result.status === "invalid") {
+      return { success: false, code: "invalid", error: "Invalid verification token." }
+    }
 
-    if (subscriber.isConfirmed) {
+    if (result.status === "already_confirmed") {
       return { success: false, code: "already_confirmed", error: "Already confirmed." }
     }
 
-    if (subscriber.confirmTokenExpiresAt && subscriber.confirmTokenExpiresAt < new Date()) {
+    if (result.status === "expired") {
       return { success: false, code: "expired", error: "Verification token expired. Please re-subscribe." }
     }
 
-    await prisma.subscriber.update({
-      where: { id: subscriber.id },
-      data: {
-        isConfirmed: true,
-        confirmedAt: new Date(),
-        // Core Security: Destroy token to prevent reuse / replay
-        confirmTokenHash: null,
-        confirmTokenExpiresAt: null,
-        unsubscribedAt: null,
-      },
+    const baseUrl = getEmailBaseUrl()
+    const homeUrl = new URL("/", baseUrl).toString()
+    const unsubscribeUrl = new URL("/unsubscribe", baseUrl)
+    unsubscribeUrl.searchParams.set("token", result.unsubscribeToken)
+
+    const emailResult = await sendTransactionalEmail({
+      to: result.email,
+      ...buildWelcomeSubscriptionEmail({
+        homeUrl,
+        unsubscribeUrl: unsubscribeUrl.toString(),
+      }),
     })
+
+    if (!emailResult.success) {
+      console.error("[Welcome Email Error]", emailResult.error)
+    }
 
     return { success: true, code: "confirmed", message: "Subscription fully confirmed." }
   } catch (_error) {
