@@ -1,3 +1,5 @@
+import { withEmailLayout } from "@/lib/email/templates/layout"
+
 export interface NewsletterTemplateInput {
   subject: string
   html: string
@@ -19,7 +21,9 @@ export function buildNewsletterEmail({
 
   return {
     subject,
-    html: `${html}${unsubscribeHtml}`,
+    html: withEmailLayout({
+      bodyHtml: `${html}${unsubscribeHtml}`,
+    }),
     text: `${text?.trim() || ""}${unsubscribeText}`.trim() || undefined,
   }
 }

@@ -1,3 +1,5 @@
+import { withEmailLayout } from "@/lib/email/templates/layout"
+
 export interface TestEmailTemplateInput {
   subject: string
   html: string
@@ -13,13 +15,13 @@ export function buildTestEmail({ subject, html, text }: TestEmailTemplateInput) 
 
   return {
     subject,
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111">
-        <p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#666">${intro}</p>
-        <hr style="margin:16px 0;border:none;border-top:1px solid #ddd" />
+    html: withEmailLayout({
+      bodyHtml: `
+        <p style="margin:0 0 16px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#9ca3af">${intro}</p>
+        <hr style="margin:0 0 16px;border:none;border-top:1px solid #1f1f1f" />
         ${html}
-      </div>
-    `.trim(),
+      `.trim(),
+    }),
     text: [intro, "", text?.trim() || stripHtml(html)].join("\n"),
   }
 }

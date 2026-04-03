@@ -177,6 +177,7 @@ describe("email templates", () => {
     })
 
     expect(template.subject).toContain("Confirm")
+    expect(template.html).toContain("/apple-icon.png")
     expect(template.html).toContain("/subscribe/confirm?token=abc")
     expect(template.text).toContain("/unsubscribe?token=def")
   })
@@ -188,6 +189,7 @@ describe("email templates", () => {
     })
 
     expect(template.subject).toContain("unsubscribed")
+    expect(template.html).toContain("/apple-icon.png")
     expect(template.html).toContain("https://jimin.garden")
     expect(template.text).toContain("Subscription cancelled")
   })
