@@ -17,7 +17,6 @@ interface GuestbookScreenClientProps {
   emailAddress?: string
   githubHref?: string | null
   linkedinHref?: string | null
-  instagramHref?: string | null
 }
 
 export function GuestbookScreenClient({
@@ -27,7 +26,6 @@ export function GuestbookScreenClient({
   emailAddress = "xistoh162108@kaist.ac.kr",
   githubHref = null,
   linkedinHref = null,
-  instagramHref = null,
 }: GuestbookScreenClientProps) {
   const { isDarkMode, toggleTheme } = useV0ThemeController(initialIsDarkMode)
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
@@ -85,16 +83,6 @@ export function GuestbookScreenClient({
                   {linkedinHref ? (
                     <a href={linkedinHref} target="_blank" rel="noreferrer" className={hoverBg}>
                       {linkedinHref.replace(/^https?:\/\//, "")} -&gt;
-                    </a>
-                  ) : (
-                    <span>unlisted</span>
-                  )}
-                </p>
-                <p>
-                  <span className={mutedText}>instagram:</span>{" "}
-                  {instagramHref ? (
-                    <a href={instagramHref} target="_blank" rel="noreferrer" className={hoverBg}>
-                      {instagramHref.replace(/^https?:\/\//, "")} -&gt;
                     </a>
                   ) : (
                     <span>unlisted</span>

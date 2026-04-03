@@ -17,7 +17,6 @@ interface ContactScreenProps {
   emailAddress?: string
   githubHref?: string | null
   linkedinHref?: string | null
-  instagramHref?: string | null
   initialGuestbookEntries?: GuestbookEntryDTO[]
 }
 
@@ -34,7 +33,6 @@ export function ContactScreen({
   emailAddress = "xistoh162108@kaist.ac.kr",
   githubHref = null,
   linkedinHref = null,
-  instagramHref = null,
   initialGuestbookEntries = [],
 }: ContactScreenProps) {
   const { isDarkMode, toggleTheme } = useV0ThemeController(initialIsDarkMode)
@@ -114,21 +112,6 @@ export function ContactScreen({
                       className={isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"}
                     >
                       {linkedinHref.replace(/^https?:\/\//, "")} -&gt;
-                    </a>
-                  ) : (
-                    <span>unlisted</span>
-                  )}
-                </p>
-                <p>
-                  <span className={mutedText}>instagram:</span>{" "}
-                  {instagramHref ? (
-                    <a
-                      href={instagramHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"}
-                    >
-                      {instagramHref.replace(/^https?:\/\//, "")} -&gt;
                     </a>
                   ) : (
                     <span>unlisted</span>

@@ -19,7 +19,6 @@ export async function GuestbookScreenBound({ brandLabel = "xistoh.log" }: { bran
       githubHref={publicLinks.githubHref}
       initialEntries={entries}
       isDarkMode={isDarkMode}
-      instagramHref={publicLinks.instagramHref}
       linkedinHref={publicLinks.linkedinHref}
     />
   )
