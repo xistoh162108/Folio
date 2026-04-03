@@ -23,6 +23,7 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
       id: project.id,
       title: project.title,
       detailHref: `/projects/${project.slug}`,
+      views: project.views,
       description: project.excerpt ?? `Published ${formatPostDate(project.publishedAt, project.updatedAt)}`,
       links:
         project.links.length > 0
@@ -33,6 +34,7 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
       id: project.id,
       title: project.title,
       detailHref: "#",
+      views: project.views,
       description: project.description,
       links: project.urls.map((url) => ({
         label: `${url.domain}${url.path}`,
@@ -53,9 +55,12 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
               {renderedProjects.length > 0 ? (
                 renderedProjects.map((project) => (
                   <div key={project.id} className="space-y-2">
-                    <Link href={project.detailHref} className={`inline-block text-sm ${hoverBg} px-1 -mx-1 text-left`}>
-                      {project.title} -&gt;
-                    </Link>
+                    <div className="flex items-center gap-3">
+                      <Link href={project.detailHref} className={`inline-block text-sm ${hoverBg} px-1 -mx-1 text-left`}>
+                        {project.title} -&gt;
+                      </Link>
+                      <span className={`${mutedText} text-xs shrink-0 whitespace-nowrap`}>[v: {project.views.toLocaleString()}]</span>
+                    </div>
                     <p className={`text-sm ${mutedText}`}>{project.description}</p>
                     <div className="flex gap-4 text-xs">
                       {project.links.map((link, index) => (

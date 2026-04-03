@@ -14,6 +14,7 @@ export interface V0ProjectListItem {
   id: string
   title: string
   description: string
+  views: number
   urls: Array<{
     domain: string
     path: string
@@ -134,6 +135,7 @@ export const projectsData: V0ProjectListItem[] = [
     id: "1",
     title: "LifeXP",
     description: "A gamified life management app that turns daily tasks into XP and achievements.",
+    views: 156,
     urls: [
       { domain: "github.com", path: "/jimin/lifexp" },
       { domain: "lifexp.app", path: "/" },
@@ -143,6 +145,7 @@ export const projectsData: V0ProjectListItem[] = [
     id: "2",
     title: "SecureVault",
     description: "End-to-end encrypted password manager with zero-knowledge architecture.",
+    views: 89,
     urls: [{ domain: "github.com", path: "/jimin/securevault" }],
   },
 ]
