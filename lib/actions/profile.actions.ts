@@ -31,10 +31,11 @@ const ProfileEditorSchema = z.object({
   experience: z
     .array(
       z.object({
-        title: z.string().trim().default(""),
         label: z.string().trim().default(""),
-        detail: z.string().trim().default(""),
         period: z.string().trim().default(""),
+        // Compatibility fields for old clients + pre-migration DB schema.
+        title: z.string().trim().optional().default(""),
+        detail: z.string().trim().optional().default(""),
         year: z.string().trim().optional().nullable(),
         sortOrder: z.number().int().default(0),
       }),
@@ -86,15 +87,22 @@ function normalizeEducationRows(rows: ProfileEditorInput["education"]) {
 
 function normalizeExperienceRows(rows: ProfileEditorInput["experience"]) {
   return rows
-    .filter((row) => [row.title, row.label, row.detail, row.period, row.year ?? ""].some((value) => value.trim().length > 0))
-    .map((row, index) => ({
-      title: row.title.trim(),
-      label: row.label.trim() || row.title.trim(),
-      detail: row.detail.trim(),
-      period: row.period.trim(),
-      year: normalizeNullableText(row.year),
-      sortOrder: index,
-    }))
+    .filter((row) => [row.label, row.period, row.title ?? "", row.detail ?? "", row.year ?? ""].some((value) => value.trim().length > 0))
+    .map((row, index) => {
+      const normalizedLabel = row.label.trim() || row.title?.trim() || "Untitled"
+
+      return {
+        // Compatibility write mapping:
+        // - `label` is canonical for rendering/runtime.
+        // - `title`/`detail`/`year` remain populated until DB schema migration removes legacy columns.
+        title: row.title?.trim() || normalizedLabel,
+        label: normalizedLabel,
+        detail: row.detail?.trim() ?? "",
+        period: row.period.trim(),
+        year: normalizeNullableText(row.year),
+        sortOrder: index,
+      }
+    })
 }
 
 function normalizeAwardRows(rows: ProfileEditorInput["awards"]) {

@@ -64,10 +64,14 @@ export interface ProfileEducationInput {
 
 export interface ProfileExperienceInput {
   id?: string
-  title: string
   label: string
-  detail: string
   period: string
+  /**
+   * Legacy compatibility fields kept optional while database schema migration is pending.
+   * New authoring only uses `label` + `period`.
+   */
+  title?: string
+  detail?: string
   year?: string | null
   sortOrder: number
 }

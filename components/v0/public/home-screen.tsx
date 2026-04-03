@@ -53,7 +53,7 @@ export function HomeScreen({
   experience = experienceData.slice(0, 3).map((item) => ({
     id: item.id,
     period: item.period,
-    label: item.role,
+    label: item.label ?? item.role,
   })),
   awards = [],
   recentNotes,

@@ -105,10 +105,10 @@ export const sampleProjectContent = {
 }
 
 export const experienceData = [
-  { id: "1", role: "GDGoC KAIST Lead", period: "2024 -> ....", description: "Leading developer community initiatives" },
-  { id: "2", role: "Madcamp Bootcamp", period: "2024", description: "Intensive development bootcamp participant" },
-  { id: "3", role: "TEDxKAIST Organizer", period: "2023 -> 2024", description: "Event organization and speaker coordination" },
-  { id: "4", role: "NYU Minor Program", period: "2023", description: "International exchange program" },
+  { id: "1", label: "GDGoC KAIST Lead", role: "GDGoC KAIST Lead", period: "2024 -> ....", description: "Leading developer community initiatives" },
+  { id: "2", label: "Madcamp Bootcamp", role: "Madcamp Bootcamp", period: "2024", description: "Intensive development bootcamp participant" },
+  { id: "3", label: "TEDxKAIST Organizer", role: "TEDxKAIST Organizer", period: "2023 -> 2024", description: "Event organization and speaker coordination" },
+  { id: "4", label: "NYU Minor Program", role: "NYU Minor Program", period: "2023", description: "International exchange program" },
 ]
 
 export const educationData = [

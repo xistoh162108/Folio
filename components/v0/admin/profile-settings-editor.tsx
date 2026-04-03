@@ -242,7 +242,7 @@ export function ProfileSettingsEditor({
                 ...current,
                 experience: [
                   ...current.experience,
-                  { id: createId("exp"), title: "", label: "", detail: "", period: "", year: "", sortOrder: current.experience.length },
+                  { id: createId("exp"), label: "", period: "", sortOrder: current.experience.length },
                 ],
               }))
             }
@@ -256,13 +256,6 @@ export function ProfileSettingsEditor({
             <div key={entry.id ?? `experience-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
               <div className="min-w-0 flex-1 space-y-2">
-                <input
-                  type="text"
-                  value={entry.title}
-                  onChange={(event) => updateExperience(index, { title: event.target.value })}
-                  placeholder="Role / Position"
-                  className={`v0-control-field ${borderColor}`}
-                />
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     type="text"
@@ -278,20 +271,7 @@ export function ProfileSettingsEditor({
                     placeholder="Short label"
                     className={`v0-control-field-compact w-full sm:flex-1 ${borderColor}`}
                   />
-                  <input
-                    type="text"
-                    value={entry.year ?? ""}
-                    onChange={(event) => updateExperience(index, { year: event.target.value })}
-                    placeholder="Year"
-                    className={`v0-control-field-compact w-full sm:w-28 ${borderColor}`}
-                  />
                 </div>
-                <textarea
-                  value={entry.detail}
-                  onChange={(event) => updateExperience(index, { detail: event.target.value })}
-                  placeholder="Description"
-                  className={`v0-control-area h-20 ${borderColor}`}
-                />
               </div>
               <div className="flex flex-wrap gap-2 text-xs sm:justify-end">
                 <button type="button" onClick={() => setDraft((current) => ({ ...current, experience: moveItem(current.experience, index, -1) }))} className={`${hoverBg} px-2 py-1`}>

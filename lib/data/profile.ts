@@ -71,10 +71,11 @@ export function mapProfileEditorInput(snapshot: ProfileSnapshotDTO): ProfileEdit
     })),
     experience: snapshot.experience.map((entry) => ({
       id: entry.id,
-      title: entry.title,
-      label: entry.label,
-      detail: entry.detail,
+      label: entry.label.trim() || entry.title.trim(),
       period: entry.period,
+      // Legacy compatibility fields are intentionally read through until DB migration removes them.
+      title: entry.title,
+      detail: entry.detail,
       year: entry.year,
       sortOrder: entry.sortOrder,
     })),
