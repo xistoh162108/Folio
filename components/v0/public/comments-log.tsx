@@ -198,7 +198,7 @@ export function V0CommentsLog({
                   type="button"
                   onClick={() => void deleteComment(comment.id)}
                   disabled={deletingId === comment.id || (deletePinById[comment.id] ?? "").length !== 4}
-                  className={`${hoverBg} px-2 py-1 ${deletingId === comment.id ? "opacity-50" : ""}`}
+                  className={`v0-control-inline-button ${borderColor} ${hoverBg} ${deletingId === comment.id ? "opacity-50" : ""}`}
                 >
                   {deletingId === comment.id ? "[...]" : "[delete]"}
                 </button>
@@ -207,7 +207,7 @@ export function V0CommentsLog({
                     type="button"
                     onClick={() => void moderateDelete(comment.id)}
                     disabled={deletingId === comment.id}
-                    className={`${hoverBg} px-2 py-1 ${isDarkMode ? "text-red-400" : "text-red-600"} ${
+                    className={`v0-control-inline-button ${borderColor} ${hoverBg} ${isDarkMode ? "text-red-400" : "text-red-600"} ${
                       deletingId === comment.id ? "opacity-50" : ""
                     }`}
                   >

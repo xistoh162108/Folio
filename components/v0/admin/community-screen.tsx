@@ -62,7 +62,7 @@ export function CommunityScreen({
                       </Link>
                       <form action={deleteCommentAsAdmin}>
                         <input type="hidden" name="commentId" value={comment.id} />
-                        <button type="submit" className={`px-2 py-1 border ${borderColor} ${hoverBg}`}>
+                        <button type="submit" className={`v0-control-inline-button ${borderColor} ${hoverBg}`}>
                           [delete]
                         </button>
                       </form>
@@ -93,7 +93,7 @@ export function CommunityScreen({
                   <div className="flex justify-end">
                     <form action={deleteGuestbookEntryAsAdmin}>
                       <input type="hidden" name="entryId" value={entry.id} />
-                      <button type="submit" className={`px-2 py-1 border ${borderColor} ${hoverBg}`}>
+                      <button type="submit" className={`v0-control-inline-button ${borderColor} ${hoverBg}`}>
                         [delete]
                       </button>
                     </form>
