@@ -13,12 +13,6 @@ function getConfirmCopy(code: string | undefined, fallback: string | undefined) 
         title: "Subscription confirmed",
         description: fallback ?? "Your subscription is now active.",
       }
-    case "already_confirmed":
-      return {
-        eyebrow: "Subscription",
-        title: "Already confirmed",
-        description: fallback ?? "This subscription has already been confirmed.",
-      }
     case "expired":
       return {
         eyebrow: "Subscription",

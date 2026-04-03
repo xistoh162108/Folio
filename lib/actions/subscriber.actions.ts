@@ -42,7 +42,11 @@ export async function requestSubscription(payload: { email: string, _honey: stri
     })
 
     if (existing?.isConfirmed) {
-      return { success: false, code: "already_subscribed", error: "Already subscribed." }
+      return {
+        success: true,
+        code: "already-subscribed",
+        message: "This email is already subscribed.",
+      }
     }
 
     const token = generateToken()
@@ -124,7 +128,7 @@ export async function requestSubscription(payload: { email: string, _honey: stri
 
     return {
       success: true,
-      code: "verification_sent",
+      code: "pre-confirm",
       message:
         emailResult.provider === "test"
           ? "Verification email was generated in the local test outbox."
@@ -153,11 +157,19 @@ export async function confirmSubscription(plaintextToken: string) {
     if (!subscriber) return { success: false, code: "invalid", error: "Invalid verification token." }
 
     if (subscriber.isConfirmed) {
-      return { success: false, code: "already_confirmed", error: "Already confirmed." }
+      return {
+        success: true,
+        code: "confirmed",
+        message: "This subscription was already confirmed.",
+      }
     }
 
     if (subscriber.confirmTokenExpiresAt && subscriber.confirmTokenExpiresAt < new Date()) {
-      return { success: false, code: "expired", error: "Verification token expired. Please re-subscribe." }
+      return {
+        success: true,
+        code: "expired",
+        message: "Verification token expired. Please re-subscribe.",
+      }
     }
 
     await prisma.subscriber.update({
@@ -187,7 +199,13 @@ export async function unsubscribeSubscription(plaintextToken: string) {
     })
 
     if (!subscriber) return { success: false, code: "invalid", error: "Invalid unsubscribe token." }
-    if (subscriber.unsubscribedAt) return { success: false, code: "already_unsubscribed", error: "Already unsubscribed." }
+    if (subscriber.unsubscribedAt) {
+      return {
+        success: true,
+        code: "already-unsubscribed",
+        message: "This email was already unsubscribed.",
+      }
+    }
 
     await prisma.subscriber.update({
       where: { id: subscriber.id },

@@ -13,7 +13,7 @@ function getUnsubscribeCopy(code: string | undefined, fallback: string | undefin
         title: "Subscription cancelled",
         description: fallback ?? "You have been removed from future sends.",
       }
-    case "already_unsubscribed":
+    case "already-unsubscribed":
       return {
         eyebrow: "Unsubscribe",
         title: "Already unsubscribed",
