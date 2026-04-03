@@ -1,3 +1,4 @@
+import { getPrimaryResumeRedirectUrl } from "@/lib/actions/profile.actions"
 import { getPrimaryProfileRuntimeSnapshot } from "@/lib/data/profile"
 
 function escapePdfText(value: string) {
@@ -41,6 +42,12 @@ function buildPdf(lines: string[]) {
 
 export async function GET() {
   const profile = await getPrimaryProfileRuntimeSnapshot()
+  const redirectUrl = await getPrimaryResumeRedirectUrl(profile.resumeHref)
+
+  if (redirectUrl) {
+    return Response.redirect(redirectUrl, 302)
+  }
+
   const educationLines =
     profile.education.length > 0
       ? profile.education.map((item) =>

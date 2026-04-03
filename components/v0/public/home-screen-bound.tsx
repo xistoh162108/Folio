@@ -38,7 +38,7 @@ export async function HomeScreenBound({ brandLabel = "xistoh.log" }: { brandLabe
         label: item.issuer ? `${item.title}, ${item.issuer}` : item.title,
       }))}
       recentNotes={notes}
-      resumeHref={profile.resumeHref ?? "/resume.pdf"}
+      resumeHref="/resume.pdf"
     />
   )
 }

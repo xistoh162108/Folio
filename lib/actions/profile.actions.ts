@@ -1,5 +1,6 @@
 "use server"
 
+import { randomUUID } from "crypto"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
@@ -8,6 +9,14 @@ import type { ProfileEditorInput, ProfileLinkKind } from "@/lib/contracts/profil
 import { prisma } from "@/lib/db/prisma"
 import { ensurePrimaryProfileBootstrap } from "@/lib/data/profile"
 import { PRIMARY_PROFILE_SLUG } from "@/lib/profile/bootstrap"
+import {
+  FILE_UPLOAD_POLICY,
+  createSignedDownloadUrl,
+  deleteAssetFromSupabase,
+  mapStorageServiceError,
+  sanitizeOriginalName,
+  uploadAssetToSupabase,
+} from "@/lib/storage/supabase"
 
 const ProfileLinkKindSchema = z.enum(["GITHUB", "LINKEDIN", "EMAIL", "WEBSITE", "OTHER"] satisfies [ProfileLinkKind, ...ProfileLinkKind[]])
 
@@ -67,6 +76,37 @@ const ProfileEditorSchema = z.object({
 type ProfileSaveResult =
   | { success: true }
   | { success: false; error: string }
+
+type ResumeUploadResult =
+  | { success: true; resumeHref: string }
+  | { success: false; error: string }
+
+const RESUME_STORAGE_POINTER_PREFIX = "storage://"
+
+function toResumeStoragePointer(bucket: string, storagePath: string) {
+  return `${RESUME_STORAGE_POINTER_PREFIX}${bucket}/${storagePath}`
+}
+
+function parseResumeStoragePointer(resumeHref: string | null | undefined) {
+  if (!resumeHref?.startsWith(RESUME_STORAGE_POINTER_PREFIX)) {
+    return null
+  }
+
+  const pointer = resumeHref.slice(RESUME_STORAGE_POINTER_PREFIX.length)
+  const firstSlashIndex = pointer.indexOf("/")
+  if (firstSlashIndex <= 0 || firstSlashIndex === pointer.length - 1) {
+    return null
+  }
+
+  const bucket = pointer.slice(0, firstSlashIndex).trim()
+  const storagePath = pointer.slice(firstSlashIndex + 1).trim()
+
+  if (!bucket || !storagePath) {
+    return null
+  }
+
+  return { bucket, storagePath }
+}
 
 function normalizeNullableText(value: string | null | undefined) {
   const trimmed = value?.trim() ?? ""
@@ -155,7 +195,7 @@ export async function savePrimaryProfile(input: ProfileEditorInput): Promise<Pro
           role: validated.role.trim(),
           summary: validated.summary.trim(),
           emailAddress: validated.emailAddress.trim(),
-          resumeHref: "/resume.pdf",
+          resumeHref: normalizeNullableText(validated.resumeHref) ?? "/resume.pdf",
           githubHref: firstVerifiedHref(links, "GITHUB"),
           linkedinHref: firstVerifiedHref(links, "LINKEDIN"),
           education: {
@@ -192,4 +232,104 @@ export async function savePrimaryProfile(input: ProfileEditorInput): Promise<Pro
       error: error instanceof z.ZodError ? error.issues[0]?.message ?? "Validation failed." : error instanceof Error ? error.message : "Failed to save profile.",
     }
   }
+}
+
+export async function uploadPrimaryResumePdf(file: File): Promise<ResumeUploadResult> {
+  await requireUser()
+
+  if (!(file instanceof File)) {
+    return { success: false, error: "Resume upload payload is invalid." }
+  }
+
+  const allowedMime = FILE_UPLOAD_POLICY.allowedMimes
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+
+  if (!isPdf || !allowedMime.includes("application/pdf")) {
+    return { success: false, error: "Resume must be a PDF file." }
+  }
+
+  if (file.size > FILE_UPLOAD_POLICY.maxBytes) {
+    return { success: false, error: "Resume file is too large." }
+  }
+
+  try {
+    const profile = await ensurePrimaryProfileBootstrap()
+    const safeName = sanitizeOriginalName(file.name)
+    const suffix = randomUUID()
+    const storagePath = `profiles/${profile.slug}/resume/${suffix}-${safeName.safeBase}.${safeName.extension || "pdf"}`
+
+    const previousPointer = parseResumeStoragePointer(profile.resumeHref)
+
+    await uploadAssetToSupabase({
+      bucket: FILE_UPLOAD_POLICY.bucket,
+      storagePath,
+      file,
+      contentType: "application/pdf",
+    })
+
+    try {
+      await prisma.profile.update({
+        where: { id: profile.id },
+        data: {
+          resumeHref: toResumeStoragePointer(FILE_UPLOAD_POLICY.bucket, storagePath),
+        },
+      })
+    } catch (error) {
+      await deleteAssetFromSupabase(FILE_UPLOAD_POLICY.bucket, storagePath)
+      throw error
+    }
+
+    if (previousPointer) {
+      await deleteAssetFromSupabase(previousPointer.bucket, previousPointer.storagePath)
+    }
+
+    revalidatePath("/")
+    revalidatePath("/admin/settings")
+    revalidatePath("/resume.pdf")
+
+    return { success: true, resumeHref: "/resume.pdf" }
+  } catch (error) {
+    return {
+      success: false,
+      error: mapStorageServiceError(error, FILE_UPLOAD_POLICY.bucket),
+    }
+  }
+}
+
+export async function clearPrimaryResumePdf(): Promise<ResumeUploadResult> {
+  await requireUser()
+
+  try {
+    const profile = await ensurePrimaryProfileBootstrap()
+    const previousPointer = parseResumeStoragePointer(profile.resumeHref)
+
+    await prisma.profile.update({
+      where: { id: profile.id },
+      data: { resumeHref: "/resume.pdf" },
+    })
+
+    if (previousPointer) {
+      await deleteAssetFromSupabase(previousPointer.bucket, previousPointer.storagePath)
+    }
+
+    revalidatePath("/")
+    revalidatePath("/admin/settings")
+    revalidatePath("/resume.pdf")
+
+    return { success: true, resumeHref: "/resume.pdf" }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to clear resume file.",
+    }
+  }
+}
+
+export async function getPrimaryResumeRedirectUrl(resumeHref: string | null | undefined) {
+  const pointer = parseResumeStoragePointer(resumeHref)
+  if (!pointer) {
+    return null
+  }
+
+  return createSignedDownloadUrl(pointer.bucket, pointer.storagePath, 120)
 }

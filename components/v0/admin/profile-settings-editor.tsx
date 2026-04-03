@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useRef, useState, useTransition } from "react"
 
-import { savePrimaryProfile } from "@/lib/actions/profile.actions"
+import { clearPrimaryResumePdf, savePrimaryProfile, uploadPrimaryResumePdf } from "@/lib/actions/profile.actions"
 import type {
   ProfileAwardInput,
   ProfileEditorInput,
@@ -57,6 +57,8 @@ export function ProfileSettingsEditor({
   const [draft, setDraft] = useState(initialProfile)
   const [status, setStatus] = useState<EditorStatus>({ kind: "idle", message: null })
   const [isPending, startTransition] = useTransition()
+  const [isResumePending, startResumeTransition] = useTransition()
+  const resumeInputRef = useRef<HTMLInputElement | null>(null)
 
   const saveLabel =
     status.kind === "success" ? "[saved]" : status.kind === "error" ? "[save failed]" : isPending ? "[saving]" : "[save profile]"
@@ -94,6 +96,42 @@ export function ProfileSettingsEditor({
     startTransition(async () => {
       const result = await savePrimaryProfile(draft)
       setStatus(result.success ? { kind: "success", message: "Profile runtime updated." } : { kind: "error", message: result.error })
+    })
+  }
+
+  const handleResumeUpload = (file: File | null) => {
+    if (!file) {
+      return
+    }
+
+    setStatus({ kind: "idle", message: null })
+    startResumeTransition(async () => {
+      const result = await uploadPrimaryResumePdf(file)
+      if (resumeInputRef.current) {
+        resumeInputRef.current.value = ""
+      }
+
+      if (!result.success) {
+        setStatus({ kind: "error", message: result.error })
+        return
+      }
+
+      setDraft((current) => ({ ...current, resumeHref: result.resumeHref }))
+      setStatus({ kind: "success", message: "Resume file updated." })
+    })
+  }
+
+  const handleResumeReset = () => {
+    setStatus({ kind: "idle", message: null })
+    startResumeTransition(async () => {
+      const result = await clearPrimaryResumePdf()
+      if (!result.success) {
+        setStatus({ kind: "error", message: result.error })
+        return
+      }
+
+      setDraft((current) => ({ ...current, resumeHref: result.resumeHref }))
+      setStatus({ kind: "success", message: "Resume file reset to generated profile PDF." })
     })
   }
 
@@ -150,6 +188,21 @@ export function ProfileSettingsEditor({
             />
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <input
+            ref={resumeInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            aria-label="Upload resume PDF"
+            className={`max-w-full ${mutedText}`}
+            onChange={(event) => handleResumeUpload(event.target.files?.[0] ?? null)}
+            disabled={isResumePending}
+          />
+          <button type="button" onClick={handleResumeReset} className={`${hoverBg} px-2 py-1`} disabled={isResumePending}>
+            [reset resume]
+          </button>
+          {isResumePending ? <span className={mutedText}>[updating resume]</span> : null}
+        </div>
         <div>
           <label className={`mb-2 block text-xs ${mutedText}`}>Bio</label>
           <textarea
@@ -159,7 +212,7 @@ export function ProfileSettingsEditor({
             className={`v0-control-area h-24 ${borderColor}`}
           />
         </div>
-        <p className={`text-xs ${mutedText}`}>[{profileSource}] live source / terminal-owned profile runtime / resume route fixed at /resume.pdf</p>
+        <p className={`text-xs ${mutedText}`}>[{profileSource}] live source / resume serving path fixed at /resume.pdf</p>
       </section>
 
       <section className="space-y-4">
