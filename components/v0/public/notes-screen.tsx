@@ -3,8 +3,9 @@
 import Link from "next/link"
 import { startTransition, useActionState, useMemo, useState } from "react"
 
-import type { PostCardDTO } from "@/lib/contracts/posts"
 import { requestSubscription } from "@/lib/actions/subscriber.actions"
+import type { PublicNotesResult } from "@/lib/data/posts"
+import { makePublicNotesHref } from "@/lib/data/public-notes-query"
 
 import { digitalGardenNotes, tagFilters } from "@/components/v0/fixtures"
 import { mapPostCardToNoteRow } from "@/components/v0/public/mappers"
@@ -15,15 +16,11 @@ import { getV0RouteAccentPalette } from "@/lib/site/v0-route-palette"
 interface NotesScreenProps {
   isDarkMode?: boolean
   brandLabel?: string
-  notes?: PostCardDTO[]
+  notesData?: PublicNotesResult
 }
 
-const notesPerPage = 5
-
-export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel = "xistoh.log", notes }: NotesScreenProps) {
+export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel = "xistoh.log", notesData }: NotesScreenProps) {
   const { isDarkMode, toggleTheme } = useV0ThemeController(initialIsDarkMode)
-  const [activeTagFilter, setActiveTagFilter] = useState<string>("All")
-  const [currentPage, setCurrentPage] = useState(1)
   const [email, setEmail] = useState("")
   const [honey, setHoney] = useState("")
   const [topics, setTopics] = useState({
@@ -53,6 +50,15 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
   const activeBg = isDarkMode ? "bg-white/10" : "bg-black/10"
   const accentColor = getV0RouteAccentPalette("notes", isDarkMode).color
 
+  const activeTagFilter = notesData?.query.tag ?? "All"
+  const pagination = notesData?.pagination ?? { page: 1, pageSize: 5, totalPages: 1 }
+  const currentPage = pagination.page
+  const totalPages = pagination.totalPages
+  const filteredCount = notesData?.counts.filtered ?? 0
+  const totalCount = notesData?.counts.total ?? 0
+  const notes = notesData?.notes
+  const currentQuery = notesData?.query ?? { tag: "All", page: 1, pageSize: 5 }
+
   const noteRows = useMemo(
     () =>
       notes?.map((note) => mapPostCardToNoteRow(note)) ??
@@ -68,14 +74,6 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
       })),
     [notes],
   )
-
-  const filteredNotes = useMemo(
-    () => (activeTagFilter === "All" ? noteRows : noteRows.filter((note) => note.filterTags.includes(activeTagFilter))),
-    [activeTagFilter, noteRows],
-  )
-
-  const totalPages = Math.ceil(filteredNotes.length / notesPerPage)
-  const paginatedNotes = filteredNotes.slice((currentPage - 1) * notesPerPage, currentPage * notesPerPage)
 
   const toggleTopic = (topic: keyof typeof topics) => {
     if (topic === "all") {
@@ -104,24 +102,21 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
 
             <div className="flex gap-2 text-xs">
               {tagFilters.map((tag) => (
-                <button
+                <Link
                   key={tag}
-                  onClick={() => {
-                    setActiveTagFilter(tag)
-                    setCurrentPage(1)
-                  }}
+                  href={makePublicNotesHref("/notes", currentQuery, { tag, page: 1 })}
                   className={`px-2 py-1 border ${borderColor} transition-colors ${
                     activeTagFilter === tag ? activeBg : hoverBg
                   }`}
                 >
                   [{tag}]
-                </button>
+                </Link>
               ))}
             </div>
 
             <div className="space-y-1">
-              {paginatedNotes.length > 0 ? (
-                paginatedNotes.map((note) => (
+              {noteRows.length > 0 ? (
+                noteRows.map((note) => (
                   <Link
                     key={note.id}
                     href={note.href}
@@ -143,31 +138,31 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                 ))
               ) : (
                 <div className={`py-2 px-2 -mx-2 text-sm ${mutedText}`}>
-                  {noteRows.length === 0 ? "[ NO_PUBLISHED_NOTES ]" : "[ NO_MATCHING_NOTES ]"}
+                  {totalCount === 0 ? "[ NO_PUBLISHED_NOTES ]" : "[ NO_MATCHING_NOTES ]"}
                 </div>
               )}
             </div>
 
             {totalPages > 1 ? (
               <div className={`flex items-center justify-center gap-2 text-xs ${mutedText} pt-4`}>
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className={`px-2 py-1 ${currentPage === 1 ? "opacity-30" : hoverBg}`}
-                >
-                  [&lt;]
-                </button>
+                {currentPage === 1 ? (
+                  <span className="px-2 py-1 opacity-30">[&lt;]</span>
+                ) : (
+                  <Link href={makePublicNotesHref("/notes", currentQuery, { page: currentPage - 1 })} className={`px-2 py-1 ${hoverBg}`}>
+                    [&lt;]
+                  </Link>
+                )}
                 <span>
-                  {(currentPage - 1) * notesPerPage + 1}-{Math.min(currentPage * notesPerPage, filteredNotes.length)} /{" "}
-                  {filteredNotes.length}
+                  {(currentPage - 1) * pagination.pageSize + 1}-{Math.min(currentPage * pagination.pageSize, filteredCount)} /{" "}
+                  {filteredCount}
                 </span>
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className={`px-2 py-1 ${currentPage === totalPages ? "opacity-30" : hoverBg}`}
-                >
-                  [&gt;]
-                </button>
+                {currentPage === totalPages ? (
+                  <span className="px-2 py-1 opacity-30">[&gt;]</span>
+                ) : (
+                  <Link href={makePublicNotesHref("/notes", currentQuery, { page: currentPage + 1 })} className={`px-2 py-1 ${hoverBg}`}>
+                    [&gt;]
+                  </Link>
+                )}
               </div>
             ) : null}
         </div>

@@ -15,6 +15,7 @@ import {
   type AdminPostsQueryInput,
   normalizeAdminPostsQuery,
 } from "@/lib/data/admin-posts-query"
+import { type PublicNotesQuery, type PublicNotesQueryInput, normalizePublicNotesQuery } from "@/lib/data/public-notes-query"
 import { isMissingTableError } from "@/lib/db/errors"
 import { prisma } from "@/lib/db/prisma"
 import { toLogSourceLabel } from "@/lib/utils/user-agent"
@@ -106,6 +107,20 @@ export type AdminPostsResult = {
     totalPages: number
   }
   query: AdminPostsQuery
+}
+
+export type PublicNotesResult = {
+  notes: PostCardDTO[]
+  counts: {
+    total: number
+    filtered: number
+  }
+  pagination: {
+    page: number
+    pageSize: number
+    totalPages: number
+  }
+  query: PublicNotesQuery
 }
 
 function mapAssets(
@@ -356,6 +371,79 @@ export async function getPublishedPostsByType(type: PostKind) {
   })
 
   return posts.map(mapPostCard)
+}
+
+export async function getPublishedNotes(input: PublicNotesQueryInput = {}, allowedTags: readonly string[]): Promise<PublicNotesResult> {
+  const query = normalizePublicNotesQuery(input, allowedTags)
+  const selectedTag = query.tag === "All" ? null : query.tag.replace(/^#/, "")
+  const where = {
+    status: "PUBLISHED" as const,
+    type: "NOTE" as const,
+    ...(selectedTag
+      ? {
+          tags: {
+            some: {
+              name: {
+                equals: selectedTag,
+                mode: "insensitive" as const,
+              },
+            },
+          },
+        }
+      : {}),
+  }
+
+  const [total, filtered] = await Promise.all([
+    prisma.post.count({
+      where: {
+        status: "PUBLISHED",
+        type: "NOTE",
+      },
+    }),
+    prisma.post.count({ where }),
+  ])
+
+  const totalPages = Math.max(1, Math.ceil(filtered / query.pageSize))
+  const page = Math.min(query.page, totalPages)
+
+  const posts = await prisma.post.findMany({
+    where,
+    select: {
+      id: true,
+      slug: true,
+      type: true,
+      status: true,
+      title: true,
+      excerpt: true,
+      tags: {
+        select: { name: true },
+      },
+      views: true,
+      coverImageUrl: true,
+      publishedAt: true,
+      updatedAt: true,
+    },
+    orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+    skip: (page - 1) * query.pageSize,
+    take: query.pageSize,
+  })
+
+  return {
+    notes: posts.map(mapPostCard),
+    counts: {
+      total,
+      filtered,
+    },
+    pagination: {
+      page,
+      pageSize: query.pageSize,
+      totalPages,
+    },
+    query: {
+      ...query,
+      page,
+    },
+  }
 }
 
 export async function getPublishedProjectIndexItems() {
