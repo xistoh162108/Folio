@@ -100,6 +100,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
               <p className={`text-xs ${mutedText}`}>// digital garden</p>
               <h2 className="text-lg">Notes &amp; Seeds</h2>
               <p className={`text-sm ${mutedText}`}>[*] seedling | [+] growing | [&gt;] evergreen</p>
+              <p className={`text-xs ${mutedText}`}>[row] YYYY-MM-DD [status] title [v:views] tags</p>
             </section>
 
             <div className="flex gap-2 text-xs">
