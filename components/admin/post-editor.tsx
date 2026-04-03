@@ -537,63 +537,50 @@ export function PostEditor({
         ) : null}
 
         <details className={supportBlockClass}>
-          <summary className={`cursor-pointer text-xs ${mutedText}`}>[attachments]</summary>
+          <summary className={`cursor-pointer text-xs ${mutedText}`}>[assets]</summary>
           <div className="space-y-4 pt-4">
-            {form.coverImageUrl ? (
-              <div className="space-y-3">
-                <img src={form.coverImageUrl} alt={form.title || "Cover image"} className={`h-48 w-full border ${borderColor} object-cover`} />
-                <p className={`text-xs ${mutedText} break-all`}>{form.coverImageUrl}</p>
-              </div>
-            ) : null}
-            {imageAssets.length > 0 ? (
+            <div className={`border ${borderColor} px-3 py-2 text-xs ${mutedText}`}>
+              <p>
+                inventory :: total={form.assets.length} :: images={imageAssets.length} :: files={fileAssets.length}
+              </p>
+              <p>cover :: {form.coverImageUrl ? "set" : "none"}</p>
+            </div>
+
+            {form.assets.length === 0 ? <p className={`text-sm ${mutedText}`}>asset inventory is empty. upload image/file to populate.</p> : null}
+
+            {form.assets.length > 0 ? (
               <ul className="space-y-2 text-sm">
-                {imageAssets.map((asset) => (
-                  <li key={asset.id} className={`flex items-center justify-between gap-3 border ${borderColor} px-3 py-2`}>
-                    <div className="space-y-1">
-                      <p>{asset.originalName}</p>
-                      {asset.pendingDeleteAt ? <p className="text-xs text-amber-300">Queued for deletion</p> : null}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => insertMarkdownSnippet(buildAssetSnippet({ assetId: asset.id, kind: "image", originalName: asset.originalName }))}
-                        className={compactButtonClass}
-                      >
-                        [insert]
-                      </button>
-                      <button type="button" onClick={() => removeAsset(asset.id)} className={compactButtonClass}>
-                        [remove]
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {fileAssets.length > 0 ? (
-              <ul className="space-y-2 text-sm">
-                {fileAssets.map((asset) => (
-                  <li key={asset.id} className={`flex items-center justify-between gap-3 border ${borderColor} px-3 py-2`}>
-                    <div className="space-y-1">
-                      <p>{asset.originalName}</p>
-                      {asset.pendingDeleteAt ? <p className="text-xs text-amber-300">Queued for deletion</p> : null}
-                    </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => insertMarkdownSnippet(buildAssetSnippet({ assetId: asset.id, kind: "file", originalName: asset.originalName }))}
-                        className={compactButtonClass}
-                      >
-                        [insert]
-                      </button>
-                      <a href={asset.url} target="_blank" rel="noreferrer" className={compactButtonClass}>
-                        [open]
-                      </a>
-                      <button type="button" onClick={() => removeAsset(asset.id)} className={compactButtonClass}>
-                        [remove]
-                      </button>
-                    </div>
-                  </li>
-                ))}
+                {form.assets.map((asset) => {
+                  const kind = asset.kind === "IMAGE" ? "image" : "file"
+                  return (
+                    <li key={asset.id} className={`flex items-center justify-between gap-3 border ${borderColor} px-3 py-2`}>
+                      <div className="flex min-w-0 items-center gap-3">
+                        {asset.kind === "IMAGE" ? (
+                          <img src={asset.url} alt={asset.originalName} className={`h-8 w-8 shrink-0 border ${borderColor} object-cover`} />
+                        ) : (
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center border ${borderColor} text-[10px] ${mutedText}`}>FILE</div>
+                        )}
+                        <div className="min-w-0 space-y-1">
+                          <p className="truncate">{asset.originalName}</p>
+                          <p className={`text-xs ${mutedText}`}>[{kind}]</p>
+                          {asset.pendingDeleteAt ? <p className="text-xs text-amber-300">Queued for deletion</p> : null}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => insertMarkdownSnippet(buildAssetSnippet({ assetId: asset.id, kind, originalName: asset.originalName }))}
+                          className={compactButtonClass}
+                        >
+                          [insert]
+                        </button>
+                        <button type="button" onClick={() => removeAsset(asset.id)} className={compactButtonClass}>
+                          [rm]
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             ) : null}
           </div>
