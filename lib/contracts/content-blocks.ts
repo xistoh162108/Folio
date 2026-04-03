@@ -1,4 +1,7 @@
 export const POST_BLOCK_CONTENT_VERSION = 100
+export const CANONICAL_MARKDOWN_FEATURES = ["code", "math", "links", "assets", "embeds"] as const
+
+export type CanonicalMarkdownFeature = (typeof CANONICAL_MARKDOWN_FEATURES)[number]
 
 export type PostContentMode = "legacy" | "block"
 

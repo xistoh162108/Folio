@@ -1,7 +1,19 @@
-import { buildBlockDocumentFromMarkdown, buildMarkdownWriterPayload, deriveMarkdownSource } from "@/lib/content/markdown-blocks"
+import {
+  CANONICAL_MARKDOWN_FEATURES,
+  buildBlockDocumentFromMarkdown,
+  buildMarkdownWriterPayload,
+  deriveMarkdownSource,
+  renderBlockDocumentToHtml,
+  serializeBlockDocumentToMarkdown,
+} from "@/lib/content/markdown-blocks"
+import { collectBlockDocumentResources } from "@/lib/content/post-content"
 import { POST_BLOCK_CONTENT_VERSION } from "@/lib/contracts/content-blocks"
 
 describe("markdown block writer", () => {
+  it("declares and enforces canonical markdown features", () => {
+    expect(CANONICAL_MARKDOWN_FEATURES).toEqual(["code", "math", "links", "assets", "embeds"])
+  })
+
   it("builds canonical blocks and derived html from markdown", () => {
     const payload = buildMarkdownWriterPayload(`# Title
 
@@ -86,5 +98,68 @@ https://github.com/openai/openai
     })
     expect(payload.htmlContent).toContain('src="https://cdn.example.com/diagram.png"')
     expect(payload.htmlContent).toContain('href="/api/files/file-asset"')
+  })
+
+  it("round-trips canonical markdown for code/math/links/assets/embeds", () => {
+    const markdown = `Paragraph with [docs](https://example.com/docs), [download](asset://file-asset), and $x^2$.
+
+![Diagram](asset://image-asset "diagram")
+
+\`\`\`ts
+const x = 1
+\`\`\`
+
+$$
+x^2 + y^2
+$$
+
+https://youtu.be/dQw4w9WgXcQ`
+    const assets = [
+      { id: "image-asset", kind: "IMAGE", url: "https://cdn.example.com/diagram.png" },
+      { id: "file-asset", kind: "FILE", url: "https://cdn.example.com/file.pdf" },
+    ]
+
+    const document = buildBlockDocumentFromMarkdown(markdown, assets)
+    const serialized = serializeBlockDocumentToMarkdown(document)
+    const reparsed = buildBlockDocumentFromMarkdown(serialized, assets)
+
+    expect(reparsed).toEqual(document)
+  })
+
+  it("keeps public html renderer output equivalent to serialized block content resources", () => {
+    const payload = buildMarkdownWriterPayload(
+      `Paragraph with [docs](https://example.com/docs), [download](asset://file-asset), and $x^2$.
+
+![Diagram](asset://image-asset "diagram")
+
+\`\`\`ts
+const x = 1
+\`\`\`
+
+$$
+x^2 + y^2
+$$
+
+https://youtu.be/dQw4w9WgXcQ`,
+      [
+        { id: "image-asset", kind: "IMAGE", url: "https://cdn.example.com/diagram.png" },
+        { id: "file-asset", kind: "FILE", url: "https://cdn.example.com/file.pdf" },
+      ],
+    )
+    const serializedResources = collectBlockDocumentResources(payload.content)
+    const rendered = renderBlockDocumentToHtml(payload.content, [
+      { id: "image-asset", kind: "IMAGE", url: "https://cdn.example.com/diagram.png" },
+      { id: "file-asset", kind: "FILE", url: "https://cdn.example.com/file.pdf" },
+    ])
+
+    expect(rendered).toContain("<pre")
+    expect(rendered).toContain('data-math-block="true"')
+    expect(rendered).toContain("<code>x^2 + y^2</code>")
+    expect(rendered).toContain('href="https://example.com/docs"')
+    expect(rendered).toContain('href="/api/files/file-asset"')
+    expect(rendered).toContain('src="https://cdn.example.com/diagram.png"')
+    expect(rendered).toContain('data-provider="youtube"')
+    expect(serializedResources.linkUrls).toEqual(expect.arrayContaining(["https://example.com/docs", "https://youtu.be/dQw4w9WgXcQ"]))
+    expect(serializedResources.assetIds).toEqual(expect.arrayContaining(["file-asset", "image-asset"]))
   })
 })

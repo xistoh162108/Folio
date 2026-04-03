@@ -1,5 +1,7 @@
 import type { BlockDocument, ContentBlock, EmbedBlock, ImageBlock } from "@/lib/contracts/content-blocks"
-import { POST_BLOCK_CONTENT_VERSION } from "@/lib/contracts/content-blocks"
+import { CANONICAL_MARKDOWN_FEATURES, POST_BLOCK_CONTENT_VERSION } from "@/lib/contracts/content-blocks"
+
+export { CANONICAL_MARKDOWN_FEATURES } from "@/lib/contracts/content-blocks"
 
 const STANDALONE_URL_RE = /^https?:\/\/\S+$/i
 const MARKDOWN_TARGET_RE = /(?:asset:\/\/[A-Za-z0-9-]+|https?:\/\/[^\s)]+)/i
@@ -213,7 +215,7 @@ function serializeLegacyNode(node: unknown): string {
   }
 }
 
-function serializeBlockDocumentToMarkdown(content: BlockDocument) {
+export function serializeBlockDocumentToMarkdown(content: BlockDocument) {
   return content.blocks
     .map((block) => {
       switch (block.type) {

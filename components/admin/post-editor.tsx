@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { V0MarkdownEditor, type V0MarkdownEditorHandle } from "@/components/admin/v0-markdown-editor"
 import type { PostEditorInput } from "@/lib/contracts/posts"
 import { archivePost, savePost } from "@/lib/actions/post.actions"
-import { buildMarkdownWriterPayload, deriveMarkdownSource } from "@/lib/content/markdown-blocks"
+import { CANONICAL_MARKDOWN_FEATURES, buildMarkdownWriterPayload, deriveMarkdownSource } from "@/lib/content/markdown-blocks"
 import { TiptapEditor } from "@/components/admin/tiptap-editor"
 
 function escapeMarkdownText(value: string) {
@@ -453,7 +453,9 @@ export function PostEditor({
             isDarkMode={isDarkMode}
             placeholder={"# Title\n\nWrite in markdown...\n\n- bullet\n> quote\n$$\nexpression\n$$"}
           />
-          <p className={`text-xs ${mutedText}`}>canonical blocks + derived html update as you type. no separate preview mode.</p>
+          <p className={`text-xs ${mutedText}`}>
+            canonical features: {CANONICAL_MARKDOWN_FEATURES.join(" / ")} :: blocks + public renderer stay in sync.
+          </p>
         </section>
 
         <div>
