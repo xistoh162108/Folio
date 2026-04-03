@@ -23,7 +23,6 @@ interface PublicShellProps {
   loadingText?: string
   brandLabel?: string
   onNavigate?: (page: V0PublicPage) => void
-  onAdminClick?: () => void
   onToggleTheme?: () => void
   runtimeDescriptor?: V0RuntimeDescriptor | null
 }

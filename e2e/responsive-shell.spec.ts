@@ -120,6 +120,15 @@ test("mobile landscape keeps the jitter band and stacked contact content without
   expect((headingBox?.y ?? 0) - ((slotBox?.y ?? 0) + (slotBox?.height ?? 0))).toBeGreaterThanOrEqual(0)
 })
 
+test("public shell exposes no direct admin entry affordance", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto("/")
+
+  await expect(page.locator("header").getByRole("link", { name: /admin/i })).toHaveCount(0)
+  await expect(page.locator("header").getByRole("button", { name: /admin/i })).toHaveCount(0)
+  await expect(page.locator("nav[data-v0-public-strip]").getByRole("button", { name: /admin/i })).toHaveCount(0)
+})
+
 test("admin shell keeps a horizontal command strip and condensed jitter band on mobile", async ({ page }) => {
   await ensureAdminUser()
   await loginAsAdmin(page)
