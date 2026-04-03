@@ -10,20 +10,20 @@ function getUnsubscribeCopy(code: string | undefined, fallback: string | undefin
     case "unsubscribed":
       return {
         eyebrow: "Unsubscribe",
-        title: "Subscription cancelled",
-        description: fallback ?? "You have been removed from future sends.",
+        title: "STATUS: UNSUBSCRIBED",
+        description: fallback ?? "Unsubscribe command complete. You have been removed from future sends.",
       }
     case "already_unsubscribed":
       return {
         eyebrow: "Unsubscribe",
-        title: "Already unsubscribed",
-        description: fallback ?? "This address had already been removed from future sends.",
+        title: "STATUS: ALREADY UNSUBSCRIBED",
+        description: fallback ?? "No action required. This address is already removed from future sends.",
       }
     default:
       return {
         eyebrow: "Unsubscribe",
-        title: "Unsubscribe link issue",
-        description: fallback ?? "This unsubscribe link is invalid.",
+        title: "STATUS: LINK INVALID",
+        description: fallback ?? "Token validation failed. This unsubscribe link is invalid.",
       }
   }
 }
@@ -60,24 +60,24 @@ export async function UnsubscribeScreenBound({
       brandLabel={brandLabel}
       isDarkMode={isDarkMode}
       eyebrow={copy.eyebrow}
-      title={result ? copy.title : "Confirm unsubscribe"}
+      title={result ? copy.title : "STATUS: AWAITING UNSUBSCRIBE"}
       body={
         result
           ? copy.description
           : token
-            ? "Confirm that you want to stop receiving future newsletter sends."
-            : "This unsubscribe link is invalid."
+            ? "Run unsubscribe action to stop all future newsletter sends for this address."
+            : "Token validation failed. This unsubscribe link is invalid."
       }
       actions={
         <>
           {!result && token ? (
             <form action={handleUnsubscribe}>
               <input type="hidden" name="token" value={token} />
-              <button className={`${hoverBg} px-2 py-1`}>[unsubscribe]</button>
+              <button className={`${hoverBg} px-2 py-1`}>[Unsubscribe / 구독 취소하기]</button>
             </form>
           ) : null}
           <Link href="/" className={`${hoverBg} px-2 py-1`}>
-            [home]
+            [Go Home / 홈으로]
           </Link>
         </>
       }

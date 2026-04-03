@@ -10,26 +10,26 @@ function getConfirmCopy(code: string | undefined, fallback: string | undefined) 
     case "confirmed":
       return {
         eyebrow: "Subscription",
-        title: "Subscription confirmed",
-        description: fallback ?? "Your subscription is now active.",
+        title: "STATUS: CONFIRMED",
+        description: fallback ?? "Subscription handshake complete. Newsletter delivery is active.",
       }
     case "already_confirmed":
       return {
         eyebrow: "Subscription",
-        title: "Already confirmed",
-        description: fallback ?? "This subscription has already been confirmed.",
+        title: "STATUS: ALREADY CONFIRMED",
+        description: fallback ?? "No action required. This subscription is already active.",
       }
     case "expired":
       return {
         eyebrow: "Subscription",
-        title: "Confirmation link expired",
-        description: fallback ?? "Please request a fresh confirmation email from the homepage.",
+        title: "STATUS: LINK EXPIRED",
+        description: fallback ?? "This token is expired. Request a new confirmation link from home.",
       }
     default:
       return {
         eyebrow: "Subscription",
-        title: "Subscription link issue",
-        description: fallback ?? "This confirmation link is invalid.",
+        title: "STATUS: LINK INVALID",
+        description: fallback ?? "Token validation failed. This confirmation link is invalid.",
       }
   }
 }
@@ -66,28 +66,28 @@ export async function ConfirmSubscriptionScreenBound({
       brandLabel={brandLabel}
       isDarkMode={isDarkMode}
       eyebrow={copy.eyebrow}
-      title={result ? copy.title : "Confirm your subscription"}
+      title={result ? copy.title : "STATUS: AWAITING CONFIRMATION"}
       body={
         result
           ? copy.description
           : token
-            ? "Confirm this subscription to start receiving newsletter updates."
-            : "This confirmation link is invalid."
+            ? "Run confirm action to activate newsletter delivery for this address."
+            : "Token validation failed. This confirmation link is invalid."
       }
       actions={
         <>
           {!result && token ? (
             <form action={handleConfirm}>
               <input type="hidden" name="token" value={token} />
-              <button className={`${hoverBg} px-2 py-1`}>[confirm subscription]</button>
+              <button className={`${hoverBg} px-2 py-1`}>[Confirm Subscription / 구독 확정하기]</button>
             </form>
           ) : null}
           <Link href="/" className={`${hoverBg} px-2 py-1`}>
-            [home]
+            [Go Home / 홈으로]
           </Link>
           {result && result !== "confirmed" ? (
             <Link href="/" className={`${hoverBg} px-2 py-1`}>
-              [request new link]
+              [Request New Link / 새 링크 요청하기]
             </Link>
           ) : null}
         </>
