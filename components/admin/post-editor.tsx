@@ -67,6 +67,7 @@ export function PostEditor({
     [initialPost],
   )
   const [isPending, startTransition] = useTransition()
+  const [pendingCommand, setPendingCommand] = useState<"draft" | "publish" | "archive" | "save" | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [tagsText, setTagsText] = useState(initialPost.tags.join(", "))
@@ -98,46 +99,54 @@ export function PostEditor({
 
   const onSave = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (pendingCommand) return
+
     setMessage(null)
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null
-    const nextStatus =
-      submitter?.value === "publish"
-        ? "PUBLISHED"
-        : submitter?.value === "draft"
-          ? "DRAFT"
-          : form.status
+    const command = submitter?.value === "publish" ? "publish" : submitter?.value === "draft" ? "draft" : "save"
+    const nextStatus = command === "publish" ? "PUBLISHED" : command === "draft" ? "DRAFT" : form.status
 
+    setPendingCommand(command)
     startTransition(async () => {
-      const result = await savePost({
-        ...form,
-        status: nextStatus,
-        tags: parsedTags,
-      })
+      try {
+        const result = await savePost({
+          ...form,
+          status: nextStatus,
+          tags: parsedTags,
+        })
 
-      if (!result.success) {
-        setMessage(result.error)
-        return
+        if (!result.success) {
+          setMessage(result.error)
+          return
+        }
+
+        setMessage("Saved.")
+        router.replace(`/admin/posts/${result.id}`)
+        router.refresh()
+      } finally {
+        setPendingCommand(null)
       }
-
-      setMessage("Saved.")
-      router.replace(`/admin/posts/${result.id}`)
-      router.refresh()
     })
   }
 
   const onArchive = () => {
-    if (!form.id) return
+    if (!form.id || pendingCommand) return
 
+    setPendingCommand("archive")
     startTransition(async () => {
-      const result = await archivePost(form.id!)
+      try {
+        const result = await archivePost(form.id!)
 
-      if (!result.success) {
-        setMessage(result.error)
-        return
+        if (!result.success) {
+          setMessage(result.error)
+          return
+        }
+
+        setMessage("Archived.")
+        router.refresh()
+      } finally {
+        setPendingCommand(null)
       }
-
-      setMessage("Archived.")
-      router.refresh()
     })
   }
 
@@ -468,20 +477,20 @@ export function PostEditor({
 
         <div className="flex flex-wrap items-center gap-3">
           {form.id ? (
-            <button type="button" onClick={onArchive} disabled={isPending} className={`${buttonClass} disabled:opacity-50`}>
+            <button type="button" onClick={onArchive} disabled={isPending && pendingCommand === "archive"} className={`${buttonClass} disabled:opacity-50`}>
               Archive
             </button>
           ) : null}
-          <button type="submit" value="draft" disabled={isPending || isUploading} className={`${buttonClass} disabled:opacity-50`}>
-            {isPending ? "Saving..." : "Save Draft"}
+          <button type="submit" value="draft" disabled={(isPending && pendingCommand === "draft") || isUploading} className={`${buttonClass} disabled:opacity-50`}>
+            {isPending && pendingCommand === "draft" ? "Saving..." : "Save Draft"}
           </button>
           <button
             type="submit"
             value="publish"
-            disabled={isPending || isUploading}
+            disabled={(isPending && pendingCommand === "publish") || isUploading}
             className="v0-control-button bg-white px-4 text-black disabled:opacity-50"
           >
-            {isPending ? "Publishing..." : "Publish"}
+            {isPending && pendingCommand === "publish" ? "Publishing..." : "Publish"}
           </button>
           <span className={`text-xs ${mutedText}`}>[{form.type.toLowerCase()} :: {form.status.toLowerCase()}]</span>
         </div>
@@ -629,24 +638,24 @@ export function PostEditor({
           </div>
           <div className="flex gap-3">
             {form.id ? (
-              <button type="button" onClick={onArchive} disabled={isPending} className={secondaryButtonClass}>
+              <button type="button" onClick={onArchive} disabled={isPending && pendingCommand === "archive"} className={secondaryButtonClass}>
                 Archive
               </button>
             ) : null}
-            <button type="submit" disabled={isPending || isUploading} className={buttonClass}>
-              {isPending ? "Saving..." : isV0 ? "Save Draft" : "Save"}
+            <button type="submit" disabled={(isPending && pendingCommand === "save") || isUploading} className={buttonClass}>
+              {isPending && pendingCommand === "save" ? "Saving..." : isV0 ? "Save Draft" : "Save"}
             </button>
           </div>
         </div>
       ) : (
         <div className="flex flex-wrap gap-3">
           {form.id ? (
-            <button type="button" onClick={onArchive} disabled={isPending} className={secondaryButtonClass}>
+            <button type="button" onClick={onArchive} disabled={isPending && pendingCommand === "archive"} className={secondaryButtonClass}>
               Archive
             </button>
           ) : null}
-          <button type="submit" disabled={isPending || isUploading} className={buttonClass}>
-            {isPending ? "Saving..." : isV0 ? "Save Draft" : "Save"}
+          <button type="submit" disabled={(isPending && pendingCommand === "save") || isUploading} className={buttonClass}>
+            {isPending && pendingCommand === "save" ? "Saving..." : isV0 ? "Save Draft" : "Save"}
           </button>
         </div>
       )}
