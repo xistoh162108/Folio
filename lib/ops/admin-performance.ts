@@ -93,18 +93,33 @@ export async function getAdminPerformanceDashboard(): Promise<AdminPerformanceDa
         ),
       }
 
+  const measuredTimings = [
+    sessionMeasurement.metric,
+    postsMeasurement.metric,
+    editorMeasurement.metric,
+    profileMeasurement.metric,
+  ].filter((metric) => metric.status === "measured" && typeof metric.durationMs === "number")
+  const highestContributor = measuredTimings.reduce<AdminPerformanceMetric | null>(
+    (maxMetric, metric) => {
+      if (!maxMetric) {
+        return metric
+      }
+
+      return (metric.durationMs ?? 0) > (maxMetric.durationMs ?? 0) ? metric : maxMetric
+    },
+    null,
+  )
+
   return {
     measuredAt: new Date().toISOString(),
-    timings: [
-      sessionMeasurement.metric,
-      postsMeasurement.metric,
-      editorMeasurement.metric,
-      profileMeasurement.metric,
-    ],
+    timings: [sessionMeasurement.metric, postsMeasurement.metric, editorMeasurement.metric, profileMeasurement.metric],
     navPrefetchStrategy: "idle-neighbors + hover/focus",
     notes: [
       "Admin navigation timing is captured client-side from nav click to route-ready shell mount.",
       "Runtime handoff timing is captured client-side from admin route registration to visible Jitter slot reuse.",
+      highestContributor
+        ? `Highest measured server contributor in this sample: ${highestContributor.label} (${highestContributor.durationMs}ms).`
+        : "Highest measured server contributor unavailable for this sample.",
     ],
   }
 }

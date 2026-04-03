@@ -560,13 +560,23 @@ export async function getAdminPosts(input: AdminPostsQueryInput = {}): Promise<A
     searchWhere.type = query.type
   }
 
-  const [total, draft, published, archived, filtered] = await Promise.all([
+  const [total, filtered, statusCounts] = await Promise.all([
     prisma.post.count(),
-    prisma.post.count({ where: { status: "DRAFT" } }),
-    prisma.post.count({ where: { status: "PUBLISHED" } }),
-    prisma.post.count({ where: { status: "ARCHIVED" } }),
     prisma.post.count({ where: searchWhere }),
+    prisma.post.groupBy({
+      by: ["status"],
+      _count: {
+        _all: true,
+      },
+    }),
   ])
+
+  const statusCountMap = new Map<string, number>(
+    statusCounts.map((entry) => [entry.status, Number(entry._count?._all ?? 0)]),
+  )
+  const draft = statusCountMap.get("DRAFT") ?? 0
+  const published = statusCountMap.get("PUBLISHED") ?? 0
+  const archived = statusCountMap.get("ARCHIVED") ?? 0
 
   const totalPages = Math.max(1, Math.ceil(filtered / query.pageSize))
   const page = Math.min(query.page, totalPages)
@@ -641,47 +651,50 @@ export async function getAdminPostEditorState(postId: string) {
     notFound()
   }
 
-  let assets: PostAssetRecord[] = []
-  try {
-    assets = await prisma.postAsset.findMany({
-      where: { postId: post.id },
-      select: {
-        id: true,
-        kind: true,
-        originalName: true,
-        mime: true,
-        size: true,
-        publicUrl: true,
-        pendingDeleteAt: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "asc" },
-    })
-  } catch (error) {
-    if (!isMissingTableError(error, "PostAsset")) {
-      throw error
-    }
-  }
+  const [assets, storedLinks] = await Promise.all([
+    prisma.postAsset
+      .findMany({
+        where: { postId: post.id },
+        select: {
+          id: true,
+          kind: true,
+          originalName: true,
+          mime: true,
+          size: true,
+          publicUrl: true,
+          pendingDeleteAt: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+      })
+      .catch((error) => {
+        if (isMissingTableError(error, "PostAsset")) {
+          return [] as PostAssetRecord[]
+        }
 
-  let storedLinks: PostLinkRecord[] = []
-  try {
-    storedLinks = await prisma.postLink.findMany({
-      where: { postId: post.id },
-      select: {
-        id: true,
-        label: true,
-        url: true,
-        normalizedUrl: true,
-        type: true,
-        sortOrder: true,
-      },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    })
-  } catch (error) {
-    if (!isMissingTableError(error, "PostLink")) {
-      throw error
-    }
-  }
+        throw error
+      }),
+    prisma.postLink
+      .findMany({
+        where: { postId: post.id },
+        select: {
+          id: true,
+          label: true,
+          url: true,
+          normalizedUrl: true,
+          type: true,
+          sortOrder: true,
+        },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      })
+      .catch((error) => {
+        if (isMissingTableError(error, "PostLink")) {
+          return [] as PostLinkRecord[]
+        }
+
+        throw error
+      }),
+  ])
 
   let previewMap = new Map<string, LinkPreviewRecord>()
 
