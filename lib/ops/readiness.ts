@@ -20,9 +20,18 @@ export interface WorkerActivity {
   occurredAt: string
 }
 
+export interface WorkerEvent {
+  id: string
+  status: string
+  source: string
+  detail: string
+  occurredAt: string
+}
+
 export interface ReadinessDashboard {
   cards: ReadinessCard[]
   lastWorkerActivity: WorkerActivity | null
+  workerEvents: WorkerEvent[]
 }
 
 function readinessCard(
@@ -240,11 +249,98 @@ async function findLastWorkerActivity(): Promise<WorkerActivity | null> {
   return candidates.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0] ?? null
 }
 
+async function findRecentWorkerEvents(limit = 12): Promise<WorkerEvent[]> {
+  const [webhookDeliveries, newsletterCampaigns, newsletterDeliveries] = await Promise.allSettled([
+    prisma.webhookDelivery.findMany({
+      take: limit,
+      orderBy: [{ deliveredAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        eventType: true,
+        status: true,
+        attempts: true,
+        deliveredAt: true,
+        nextRetryAt: true,
+        createdAt: true,
+      },
+    }),
+    prisma.newsletterCampaign.findMany({
+      take: limit,
+      orderBy: [{ completedAt: "desc" }, { startedAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        subject: true,
+        status: true,
+        startedAt: true,
+        completedAt: true,
+        updatedAt: true,
+      },
+    }),
+    prisma.newsletterDelivery.findMany({
+      take: limit,
+      orderBy: [{ sentAt: "desc" }, { processingAt: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        processingAt: true,
+        sentAt: true,
+        updatedAt: true,
+        createdAt: true,
+      },
+    }),
+  ])
+
+  const events: WorkerEvent[] = []
+
+  if (webhookDeliveries.status === "fulfilled") {
+    for (const delivery of webhookDeliveries.value) {
+      const occurredAt = delivery.deliveredAt ?? delivery.nextRetryAt ?? delivery.createdAt
+      events.push({
+        id: `webhook-${delivery.id}`,
+        status: delivery.status,
+        source: "webhook",
+        detail: `${delivery.eventType} attempt=${delivery.attempts}`,
+        occurredAt: occurredAt.toISOString(),
+      })
+    }
+  }
+
+  if (newsletterCampaigns.status === "fulfilled") {
+    for (const campaign of newsletterCampaigns.value) {
+      const occurredAt = campaign.completedAt ?? campaign.startedAt ?? campaign.updatedAt
+      events.push({
+        id: `campaign-${campaign.id}`,
+        status: campaign.status,
+        source: "newsletter",
+        detail: `campaign "${campaign.subject}"`,
+        occurredAt: occurredAt.toISOString(),
+      })
+    }
+  }
+
+  if (newsletterDeliveries.status === "fulfilled") {
+    for (const delivery of newsletterDeliveries.value) {
+      const occurredAt = delivery.sentAt ?? delivery.processingAt ?? delivery.updatedAt ?? delivery.createdAt
+      events.push({
+        id: `delivery-${delivery.id}`,
+        status: delivery.status,
+        source: "worker",
+        detail: `delivery ${delivery.email}`,
+        occurredAt: occurredAt.toISOString(),
+      })
+    }
+  }
+
+  return events.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)).slice(0, limit)
+}
+
 export async function getAdminReadinessDashboard(): Promise<ReadinessDashboard> {
-  const [database, storageCards, lastWorkerActivity] = await Promise.all([
+  const [database, storageCards, lastWorkerActivity, workerEvents] = await Promise.all([
     checkDatabaseReachable(),
     getStorageReadinessCards(),
     findLastWorkerActivity(),
+    findRecentWorkerEvents(),
   ])
 
   return {
@@ -266,5 +362,6 @@ export async function getAdminReadinessDashboard(): Promise<ReadinessDashboard> 
       ),
     ],
     lastWorkerActivity,
+    workerEvents,
   }
 }

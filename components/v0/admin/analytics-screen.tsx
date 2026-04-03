@@ -192,6 +192,26 @@ export function AnalyticsScreen({
                   ? `last_worker :: ${readiness.lastWorkerActivity.label} :: ${readiness.lastWorkerActivity.source}`
                   : "last_worker :: no persisted activity"}
               </p>
+              <div className={`border-t pt-3 ${borderColor}`}>
+                <div className="flex items-center justify-between">
+                  <p className={`text-xs ${mutedText}`}>--- WORKER EVENT STREAM ---</p>
+                  <span className={`text-xs ${mutedText}`}>[{readiness.workerEvents.length}]</span>
+                </div>
+                <div className="mt-2 space-y-1 text-xs">
+                  {readiness.workerEvents.length > 0 ? (
+                    readiness.workerEvents.map((event) => (
+                      <p key={event.id} className={hoverBg}>
+                        <span className={mutedText}>[{new Date(event.occurredAt).toLocaleString()}]</span>{" "}
+                        <span className={accentText}>[{event.status}]</span>{" "}
+                        <span>{event.source}</span>{" "}
+                        <span className={mutedText}>:: {event.detail}</span>
+                      </p>
+                    ))
+                  ) : (
+                    <p className={mutedText}>[no persisted webhook/newsletter worker events]</p>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div data-v0-admin-performance className={`border ${borderColor} p-4 space-y-3`}>
