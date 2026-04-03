@@ -131,7 +131,16 @@ export function PublicShell({
       <header
         className={`relative z-20 flex items-center justify-between border-b px-4 py-4 font-mono sm:px-6 md:px-8 ${borderColor}`}
       >
-        <h1 className="text-sm">{brandLabel}</h1>
+        <h1>
+          <button
+            type="button"
+            onClick={() => navigate("home")}
+            className={`text-sm ${hoverBg} px-2 py-1 -mx-2 -my-1 transition-colors`}
+            aria-label="Go to home"
+          >
+            {brandLabel}
+          </button>
+        </h1>
 
         <div className="flex items-center gap-3 sm:gap-6">
           <button
