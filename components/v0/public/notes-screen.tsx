@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { startTransition, useActionState, useMemo, useState } from "react"
+import { startTransition, useActionState, useEffect, useMemo, useState } from "react"
 
 import type { PostCardDTO } from "@/lib/contracts/posts"
 import { requestSubscription } from "@/lib/actions/subscriber.actions"
 
-import { digitalGardenNotes, tagFilters } from "@/components/v0/fixtures"
+import { digitalGardenNotes } from "@/components/v0/fixtures"
 import { mapPostCardToNoteRow } from "@/components/v0/public/mappers"
 import { PublicShell } from "@/components/v0/public/public-shell"
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller"
@@ -69,6 +69,27 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
     [notes],
   )
 
+
+
+  const tagFilters = useMemo(() => {
+    const dynamicTags = Array.from(
+      new Set(
+        noteRows
+          .flatMap((note) => note.filterTags)
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      ),
+    )
+
+    return ["All", ...dynamicTags]
+  }, [noteRows])
+
+  useEffect(() => {
+    if (!tagFilters.includes(activeTagFilter)) {
+      setActiveTagFilter("All")
+      setCurrentPage(1)
+    }
+  }, [activeTagFilter, tagFilters])
   const filteredNotes = useMemo(
     () => (activeTagFilter === "All" ? noteRows : noteRows.filter((note) => note.filterTags.includes(activeTagFilter))),
     [activeTagFilter, noteRows],
