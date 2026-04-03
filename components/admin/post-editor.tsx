@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 
 import { V0MarkdownEditor, type V0MarkdownEditorHandle } from "@/components/admin/v0-markdown-editor"
 import type { PostEditorInput } from "@/lib/contracts/posts"
-import { archivePost, savePost } from "@/lib/actions/post.actions"
+import { archivePost, deletePost, savePost } from "@/lib/actions/post.actions"
 import { buildMarkdownWriterPayload, deriveMarkdownSource } from "@/lib/content/markdown-blocks"
 import { TiptapEditor } from "@/components/admin/tiptap-editor"
 
@@ -137,6 +137,30 @@ export function PostEditor({
       }
 
       setMessage("Archived.")
+      router.refresh()
+    })
+  }
+
+  const onDelete = () => {
+    if (!form.id) return
+
+    const typedConfirmation = window.prompt(`Type DELETE to permanently remove \"${form.title || form.slug}\".`)
+
+    if (typedConfirmation !== "DELETE") {
+      setMessage("Permanent delete cancelled.")
+      return
+    }
+
+    startTransition(async () => {
+      const result = await deletePost(form.id!)
+
+      if (!result.success) {
+        setMessage(result.error)
+        return
+      }
+
+      setMessage("Deleted permanently.")
+      router.replace("/admin/posts")
       router.refresh()
     })
   }
@@ -472,6 +496,11 @@ export function PostEditor({
               Archive
             </button>
           ) : null}
+          {form.id ? (
+            <button type="button" onClick={onDelete} disabled={isPending} className={`${buttonClass} disabled:opacity-50`}>
+              Delete permanently
+            </button>
+          ) : null}
           <button type="submit" value="draft" disabled={isPending || isUploading} className={`${buttonClass} disabled:opacity-50`}>
             {isPending ? "Saving..." : "Save Draft"}
           </button>
@@ -484,6 +513,9 @@ export function PostEditor({
             {isPending ? "Publishing..." : "Publish"}
           </button>
           <span className={`text-xs ${mutedText}`}>[{form.type.toLowerCase()} :: {form.status.toLowerCase()}]</span>
+          <span className={`text-xs ${mutedText}`}>
+            [archive = reversible status, delete permanently = irreversible data removal]
+          </span>
         </div>
 
         {supportLinks.length > 0 || form.type !== "PROJECT" ? (
@@ -633,6 +665,11 @@ export function PostEditor({
                 Archive
               </button>
             ) : null}
+            {form.id ? (
+              <button type="button" onClick={onDelete} disabled={isPending} className={secondaryButtonClass}>
+                Delete permanently
+              </button>
+            ) : null}
             <button type="submit" disabled={isPending || isUploading} className={buttonClass}>
               {isPending ? "Saving..." : isV0 ? "Save Draft" : "Save"}
             </button>
@@ -645,11 +682,20 @@ export function PostEditor({
               Archive
             </button>
           ) : null}
+          {form.id ? (
+            <button type="button" onClick={onDelete} disabled={isPending} className={secondaryButtonClass}>
+              Delete permanently
+            </button>
+          ) : null}
           <button type="submit" disabled={isPending || isUploading} className={buttonClass}>
             {isPending ? "Saving..." : isV0 ? "Save Draft" : "Save"}
           </button>
         </div>
       )}
+
+      <p className={isV0 ? "text-xs text-white/50" : "text-xs text-zinc-500"}>
+        Archive changes post state to archived (reversible by saving as draft/published). Delete permanently removes post data and cannot be undone.
+      </p>
 
       {message ? (
         <p className={isV0 ? "border border-white/20 px-4 py-3 text-sm text-white/80" : "rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-zinc-300"}>

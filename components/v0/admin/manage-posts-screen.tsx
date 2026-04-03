@@ -51,6 +51,18 @@ function formatDate(value: string | null) {
   return new Date(value).toISOString().slice(0, 10)
 }
 
+function describeStatus(status: "DRAFT" | "PUBLISHED" | "ARCHIVED") {
+  if (status === "ARCHIVED") {
+    return "archived / recoverable"
+  }
+
+  if (status === "PUBLISHED") {
+    return "published / live"
+  }
+
+  return "draft / editable"
+}
+
 export function ManagePostsScreen({
   data,
   basePath,
@@ -130,6 +142,9 @@ export function ManagePostsScreen({
           </div>
 
           <div className="space-y-1">
+            <p className={`px-1 text-xs ${mutedText}`}>
+              [state legend: archived = recoverable via editor, delete permanently = irreversible and only available inside editor]
+            </p>
             {posts.length === 0 ? (
               <div className={`border border-dashed ${borderColor} px-4 py-6 text-sm ${mutedText}`}>[ NO_MATCHING_POSTS ]</div>
             ) : null}
@@ -156,7 +171,7 @@ export function ManagePostsScreen({
                           : "text-amber-700"
                   }`}
                 >
-                  [{post.status.toLowerCase()}]
+                  [{describeStatus(post.status)}]
                 </span>
                 <div className="flex items-center gap-2 text-xs shrink-0">
                   <Link href={`${basePath}/${post.id}`} className={`px-2 py-1 ${hoverBg}`}>
