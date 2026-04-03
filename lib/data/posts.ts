@@ -331,11 +331,25 @@ export async function getHomepagePosts() {
   }
 }
 
-export async function getPublishedPostsByType(type: PostKind) {
+function normalizePublicPostQuery(q?: string) {
+  return q?.trim() ?? ""
+}
+
+export async function getPublishedPostsByType(type: PostKind, options: { q?: string } = {}) {
+  const query = normalizePublicPostQuery(options.q)
   const posts = await prisma.post.findMany({
     where: {
       status: "PUBLISHED",
       type,
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query, mode: "insensitive" } },
+              { slug: { contains: query, mode: "insensitive" } },
+              { excerpt: { contains: query, mode: "insensitive" } },
+            ],
+          }
+        : {}),
     },
     select: {
       id: true,
@@ -358,11 +372,21 @@ export async function getPublishedPostsByType(type: PostKind) {
   return posts.map(mapPostCard)
 }
 
-export async function getPublishedProjectIndexItems() {
+export async function getPublishedProjectIndexItems(options: { q?: string } = {}) {
+  const query = normalizePublicPostQuery(options.q)
   const posts = await prisma.post.findMany({
     where: {
       status: "PUBLISHED",
       type: "PROJECT",
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query, mode: "insensitive" } },
+              { slug: { contains: query, mode: "insensitive" } },
+              { excerpt: { contains: query, mode: "insensitive" } },
+            ],
+          }
+        : {}),
     },
     select: {
       id: true,

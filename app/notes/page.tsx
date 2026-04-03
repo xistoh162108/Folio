@@ -11,6 +11,11 @@ export const metadata: Metadata = buildPublicMetadata({
   path: "/notes",
 })
 
-export default async function NotesPage() {
-  return <NotesScreenBound />
+export default async function NotesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
+  const { q } = await searchParams
+  return <NotesScreenBound q={q} />
 }

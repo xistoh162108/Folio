@@ -16,11 +16,17 @@ interface NotesScreenProps {
   isDarkMode?: boolean
   brandLabel?: string
   notes?: PostCardDTO[]
+  initialSearchQuery?: string
 }
 
 const notesPerPage = 5
 
-export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel = "xistoh.log", notes }: NotesScreenProps) {
+export function NotesScreen({
+  isDarkMode: initialIsDarkMode = true,
+  brandLabel = "xistoh.log",
+  notes,
+  initialSearchQuery = "",
+}: NotesScreenProps) {
   const { isDarkMode, toggleTheme } = useV0ThemeController(initialIsDarkMode)
   const [activeTagFilter, setActiveTagFilter] = useState<string>("All")
   const [currentPage, setCurrentPage] = useState(1)
@@ -100,6 +106,24 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
               <p className={`text-xs ${mutedText}`}>// digital garden</p>
               <h2 className="text-lg">Notes &amp; Seeds</h2>
               <p className={`text-sm ${mutedText}`}>[*] seedling | [+] growing | [&gt;] evergreen</p>
+              <form method="get" className="flex flex-wrap items-center gap-2 text-xs">
+                <span className={mutedText}>[search]</span>
+                <input
+                  aria-label="Search notes"
+                  name="q"
+                  defaultValue={initialSearchQuery}
+                  placeholder="title / slug / excerpt"
+                  className={`min-w-[12rem] flex-1 border-b ${borderColor} bg-transparent px-2 py-1 text-xs outline-none`}
+                />
+                <button type="submit" className={`px-2 py-1 ${hoverBg}`}>
+                  [apply]
+                </button>
+                {initialSearchQuery ? (
+                  <Link href="/notes" className={`px-2 py-1 ${hoverBg}`}>
+                    [clear]
+                  </Link>
+                ) : null}
+              </form>
             </section>
 
             <div className="flex gap-2 text-xs">

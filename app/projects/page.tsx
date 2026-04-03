@@ -11,6 +11,11 @@ export const metadata: Metadata = buildPublicMetadata({
   path: "/projects",
 })
 
-export default async function ProjectsPage() {
-  return <ProjectsScreenBound />
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
+  const { q } = await searchParams
+  return <ProjectsScreenBound q={q} />
 }

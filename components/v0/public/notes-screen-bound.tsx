@@ -2,8 +2,13 @@ import { NotesScreen } from "@/components/v0/public/notes-screen"
 import { getPublishedPostsByType } from "@/lib/data/posts"
 import { getV0ThemeIsDark } from "@/lib/site/v0-theme.server"
 
-export async function NotesScreenBound({ brandLabel = "xistoh.log" }: { brandLabel?: string } = {}) {
-  const [isDarkMode, notes] = await Promise.all([getV0ThemeIsDark(), getPublishedPostsByType("NOTE")])
+interface NotesScreenBoundProps {
+  brandLabel?: string
+  q?: string
+}
 
-  return <NotesScreen brandLabel={brandLabel} isDarkMode={isDarkMode} notes={notes} />
+export async function NotesScreenBound({ brandLabel = "xistoh.log", q }: NotesScreenBoundProps = {}) {
+  const [isDarkMode, notes] = await Promise.all([getV0ThemeIsDark(), getPublishedPostsByType("NOTE", { q })])
+
+  return <NotesScreen brandLabel={brandLabel} isDarkMode={isDarkMode} notes={notes} initialSearchQuery={q ?? ""} />
 }
