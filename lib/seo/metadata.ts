@@ -35,17 +35,20 @@ export function buildPublicMetadata({
   title,
   description,
   path,
+  rssPath,
   noIndex = false,
   images,
 }: {
   title?: string | null
   description: string
   path: string
+  rssPath?: string
   noIndex?: boolean
   images?: Array<string | null | undefined>
 }): Metadata {
   const fullTitle = buildMetadataTitle(title)
   const canonical = buildAbsoluteUrl(path)
+  const rss = rssPath ? buildAbsoluteUrl(rssPath) : null
   const resolvedImages = buildMetadataImages(images)
 
   return {
@@ -53,6 +56,11 @@ export function buildPublicMetadata({
     description,
     alternates: {
       canonical,
+      types: rss
+        ? {
+            "application/rss+xml": rss,
+          }
+        : undefined,
     },
     openGraph: {
       type: "website",

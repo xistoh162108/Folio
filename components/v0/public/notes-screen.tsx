@@ -9,6 +9,7 @@ import { requestSubscription } from "@/lib/actions/subscriber.actions"
 import { digitalGardenNotes, tagFilters } from "@/components/v0/fixtures"
 import { mapPostCardToNoteRow } from "@/components/v0/public/mappers"
 import { PublicShell } from "@/components/v0/public/public-shell"
+import { RssSubscribeActions } from "@/components/v0/public/rss-subscribe-actions"
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller"
 import { getV0RouteAccentPalette } from "@/lib/site/v0-route-palette"
 
@@ -100,6 +101,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
               <p className={`text-xs ${mutedText}`}>// digital garden</p>
               <h2 className="text-lg">Notes &amp; Seeds</h2>
               <p className={`text-sm ${mutedText}`}>[*] seedling | [+] growing | [&gt;] evergreen</p>
+              <RssSubscribeActions feedPath="/notes/rss.xml" isDarkMode={isDarkMode} />
             </section>
 
             <div className="flex gap-2 text-xs">

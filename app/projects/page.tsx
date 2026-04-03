@@ -9,6 +9,7 @@ export const metadata: Metadata = buildPublicMetadata({
   title: "Projects",
   description: "Selected projects, builds, and shipped work presented in the exact xistoh.log project shell.",
   path: "/projects",
+  rssPath: "/projects/rss.xml",
 })
 
 export default async function ProjectsPage() {

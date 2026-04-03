@@ -5,6 +5,7 @@ import Link from "next/link"
 import { projectsData } from "@/components/v0/fixtures"
 import { formatPostDate } from "@/components/v0/public/mappers"
 import { PublicShell } from "@/components/v0/public/public-shell"
+import { RssSubscribeActions } from "@/components/v0/public/rss-subscribe-actions"
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller"
 import type { PublishedProjectIndexItem } from "@/lib/data/posts"
 
@@ -47,6 +48,7 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
             <section className="space-y-3">
               <p className={`text-xs ${mutedText}`}>// projects</p>
               <h2 className="text-lg">Featured Work</h2>
+              <RssSubscribeActions feedPath="/projects/rss.xml" isDarkMode={isDarkMode} />
             </section>
 
             <div className="space-y-6">

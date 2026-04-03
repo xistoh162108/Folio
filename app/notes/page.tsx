@@ -9,6 +9,7 @@ export const metadata: Metadata = buildPublicMetadata({
   title: "Notes",
   description: "Published notes, seeds, and experiments in the exact xistoh.log reading language.",
   path: "/notes",
+  rssPath: "/notes/rss.xml",
 })
 
 export default async function NotesPage() {
