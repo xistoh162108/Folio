@@ -14,6 +14,117 @@ const CommentSchema = z.object({
   _honey: z.string().optional().default(""),
 })
 
+const CommentsQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional(),
+  take: z.coerce.number().int().min(1).max(50).optional(),
+  cursor: z.string().min(1).optional(),
+  direction: z.enum(["forward", "backward"]).optional(),
+})
+
+function mapComment(comment: { id: string; message: string; userAgent: string | null; createdAt: Date }) {
+  return {
+    id: comment.id,
+    message: comment.message,
+    sourceLabel: toLogSourceLabel(comment.userAgent),
+    createdAt: comment.createdAt.toISOString(),
+  }
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ postId: string }> },
+) {
+  const { postId } = await params
+
+  try {
+    const parsed = CommentsQuerySchema.parse(Object.fromEntries(new URL(request.url).searchParams.entries()))
+    const take = parsed.take ?? 20
+
+    if (parsed.cursor) {
+      const direction = parsed.direction ?? "forward"
+      const comments = await prisma.postComment.findMany({
+        where: {
+          postId,
+          deletedAt: null,
+        },
+        cursor: { id: parsed.cursor },
+        skip: 1,
+        take,
+        orderBy: direction === "backward" ? [{ createdAt: "asc" }, { id: "asc" }] : [{ createdAt: "desc" }, { id: "desc" }],
+        select: {
+          id: true,
+          message: true,
+          userAgent: true,
+          createdAt: true,
+        },
+      })
+
+      const normalized = direction === "backward" ? comments.reverse() : comments
+
+      return NextResponse.json({
+        success: true,
+        comments: normalized.map(mapComment),
+        query: {
+          take,
+          cursor: parsed.cursor,
+          direction,
+          order: "latest-first",
+        },
+      })
+    }
+
+    const page = parsed.page ?? 1
+    const [total, comments] = await Promise.all([
+      prisma.postComment.count({
+        where: {
+          postId,
+          deletedAt: null,
+        },
+      }),
+      prisma.postComment.findMany({
+        where: {
+          postId,
+          deletedAt: null,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip: (page - 1) * take,
+        take,
+        select: {
+          id: true,
+          message: true,
+          userAgent: true,
+          createdAt: true,
+        },
+      }),
+    ])
+
+    const totalPages = Math.max(1, Math.ceil(total / take))
+
+    return NextResponse.json({
+      success: true,
+      comments: comments.map(mapComment),
+      query: {
+        page,
+        take,
+        order: "latest-first",
+      },
+      pagination: {
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    })
+  } catch (error) {
+    if (isMissingTableError(error, "PostComment")) {
+      return NextResponse.json({ error: "Comment migrations have not been applied yet." }, { status: 503 })
+    }
+
+    const message = error instanceof Error ? error.message : "Could not list comments."
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ postId: string }> },
@@ -66,12 +177,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      comment: {
-        id: comment.id,
-        message: comment.message,
-        sourceLabel: toLogSourceLabel(comment.userAgent),
-        createdAt: comment.createdAt.toISOString(),
-      },
+      comment: mapComment(comment),
     })
   } catch (error) {
     if (error instanceof RateLimitExceededError) {

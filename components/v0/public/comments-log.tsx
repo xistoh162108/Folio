@@ -1,9 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import type { PostCommentDTO } from "@/lib/contracts/community"
 import { formatLogTimestamp } from "@/components/v0/public/mappers"
+
+const COMMENTS_PAGE_SIZE = 20
+
+interface CommentsPageResponse {
+  comments: PostCommentDTO[]
+  pagination?: {
+    total: number
+    totalPages: number
+    hasNextPage: boolean
+    hasPreviousPage: boolean
+  }
+}
 
 export function V0CommentsLog({
   postId,
@@ -17,17 +29,93 @@ export function V0CommentsLog({
   isDarkMode: boolean
 }) {
   const [comments, setComments] = useState(initialComments)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [message, setMessage] = useState("")
   const [pin, setPin] = useState("")
   const [honeypot, setHoneypot] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [isLoadingComments, setIsLoadingComments] = useState(false)
   const [deletePinById, setDeletePinById] = useState<Record<string, string>>({})
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20"
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"
+
+  useEffect(() => {
+    void loadCommentsByPage(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId])
+
+  async function loadCommentsByPage(nextPage: number) {
+    setIsLoadingComments(true)
+    setError(null)
+
+    try {
+      const query = new URLSearchParams({
+        page: String(nextPage),
+        take: String(COMMENTS_PAGE_SIZE),
+      })
+      const response = await fetch(`/api/posts/${postId}/comments?${query.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+      })
+
+      const data = (await response.json()) as CommentsPageResponse & { error?: string }
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not load comments.")
+      }
+
+      setComments(data.comments)
+      setPage(nextPage)
+      setTotalPages(data.pagination?.totalPages ?? 1)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Could not load comments.")
+    } finally {
+      setIsLoadingComments(false)
+    }
+  }
+
+  async function loadCommentsByCursor(direction: "forward" | "backward") {
+    const cursor = direction === "forward" ? comments.at(-1)?.id : comments[0]?.id
+    if (!cursor) {
+      return
+    }
+
+    setIsLoadingComments(true)
+    setError(null)
+
+    try {
+      const query = new URLSearchParams({
+        cursor,
+        take: String(COMMENTS_PAGE_SIZE),
+        direction,
+      })
+      const response = await fetch(`/api/posts/${postId}/comments?${query.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+      })
+
+      const data = (await response.json()) as CommentsPageResponse & { error?: string }
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not load comments.")
+      }
+
+      if (data.comments.length === 0) {
+        return
+      }
+
+      setComments(data.comments)
+      setPage(1)
+      setTotalPages(1)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Could not load comments.")
+    } finally {
+      setIsLoadingComments(false)
+    }
+  }
 
   async function createComment() {
     setPending(true)
@@ -49,7 +137,10 @@ export function V0CommentsLog({
         throw new Error(data.error ?? "Could not write comment.")
       }
 
-      setComments((current) => [data.comment as PostCommentDTO, ...current])
+      if (page === 1) {
+        setComments((current) => [data.comment as PostCommentDTO, ...current].slice(0, COMMENTS_PAGE_SIZE))
+      }
+
       setMessage("")
       setPin("")
       setHoneypot("")
@@ -161,6 +252,42 @@ export function V0CommentsLog({
         </div>
         {error ? <p className="text-xs text-[#FF3333]">[ ERROR: {error} ]</p> : null}
       </form>
+
+      <div className="flex flex-wrap gap-2 text-xs">
+        <button
+          type="button"
+          onClick={() => void loadCommentsByPage(Math.max(1, page - 1))}
+          disabled={isLoadingComments || page <= 1}
+          className={`${hoverBg} px-2 py-1 ${isLoadingComments || page <= 1 ? "opacity-50" : ""}`}
+        >
+          [prev page]
+        </button>
+        <button
+          type="button"
+          onClick={() => void loadCommentsByPage(page + 1)}
+          disabled={isLoadingComments || page >= totalPages}
+          className={`${hoverBg} px-2 py-1 ${isLoadingComments || page >= totalPages ? "opacity-50" : ""}`}
+        >
+          [next page]
+        </button>
+        <button
+          type="button"
+          onClick={() => void loadCommentsByCursor("backward")}
+          disabled={isLoadingComments || comments.length === 0}
+          className={`${hoverBg} px-2 py-1 ${isLoadingComments || comments.length === 0 ? "opacity-50" : ""}`}
+        >
+          [load newer]
+        </button>
+        <button
+          type="button"
+          onClick={() => void loadCommentsByCursor("forward")}
+          disabled={isLoadingComments || comments.length === 0}
+          className={`${hoverBg} px-2 py-1 ${isLoadingComments || comments.length === 0 ? "opacity-50" : ""}`}
+        >
+          [load older]
+        </button>
+        <p className={mutedText}>// latest-first [{page}/{totalPages}]</p>
+      </div>
 
       <div className={`border ${borderColor}`}>
         {comments.length === 0 ? <p className={`px-3 py-3 text-xs ${mutedText}`}>// no comments yet</p> : null}
