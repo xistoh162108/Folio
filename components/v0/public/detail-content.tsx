@@ -575,9 +575,10 @@ function renderBlock(
       return (
         <div
           key={block.id}
+          data-math-block={block.variant === "block" ? "true" : undefined}
           className={`border px-4 py-3 text-sm ${borderColor} ${isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"}`}
         >
-          <code>{block.variant === "block" ? `$$ ${block.expression} $$` : `$${block.expression}$`}</code>
+          <code>{block.expression}</code>
         </div>
       )
     case "image": {

@@ -87,4 +87,12 @@ https://github.com/openai/openai
     expect(payload.htmlContent).toContain('src="https://cdn.example.com/diagram.png"')
     expect(payload.htmlContent).toContain('href="/api/files/file-asset"')
   })
+
+  it("renders inline math safely while leaving escaped and double-dollar delimiters as text", () => {
+    const payload = buildMarkdownWriterPayload(String.raw`Price is \$5, inline $x + y$, and literal $$z$$.`)
+
+    expect(payload.htmlContent).toContain("Price is $5")
+    expect(payload.htmlContent).toContain('<span data-math-inline="true">x + y</span>')
+    expect(payload.htmlContent).toContain("literal $$z$$")
+  })
 })

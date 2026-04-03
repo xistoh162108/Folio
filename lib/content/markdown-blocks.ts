@@ -97,8 +97,8 @@ function inferEmbedProvider(url: string): EmbedBlock["provider"] {
 }
 
 export function renderInlineMarkdownHtml(text: string, assets: MarkdownWriterAsset[] = []) {
-  const escaped = escapeHtml(text)
-  return escaped
+  const renderWithoutMath = (value: string) =>
+    escapeHtml(value.replace(/\\\$/g, "$"))
     .replace(
       /\[([^\]]+)\]\(((?:asset:\/\/[A-Za-z0-9-]+|https?:\/\/[^\s)]+))\)/g,
       (_match, label: string, url: string) => {
@@ -109,8 +109,56 @@ export function renderInlineMarkdownHtml(text: string, assets: MarkdownWriterAss
     .replace(/`([^`]+)`/g, (_match, code: string) => `<code>${escapeHtml(code)}</code>`)
     .replace(/\*\*([^*]+)\*\*/g, (_match, value: string) => `<strong>${escapeHtml(value)}</strong>`)
     .replace(/\*([^*\n]+)\*/g, (_match, value: string) => `<em>${escapeHtml(value)}</em>`)
-    .replace(/\$([^$\n]+)\$/g, (_match, value: string) => `<span data-math-inline="true">${escapeHtml(value)}</span>`)
     .replace(/\n/g, "<br />")
+
+  const chunks: string[] = []
+  let cursor = 0
+
+  while (cursor < text.length) {
+    const open = text.indexOf("$", cursor)
+    if (open < 0) {
+      chunks.push(renderWithoutMath(text.slice(cursor)))
+      break
+    }
+
+    const escapedOpen = open > 0 && text[open - 1] === "\\"
+    const doubledOpen = text[open + 1] === "$"
+    if (escapedOpen || doubledOpen) {
+      chunks.push(renderWithoutMath(text.slice(cursor, open + 1)))
+      cursor = open + 1
+      continue
+    }
+
+    let close = open + 1
+    while (close < text.length) {
+      if (text[close] === "\n") {
+        close = -1
+        break
+      }
+      if (text[close] === "$" && text[close - 1] !== "\\") {
+        break
+      }
+      close += 1
+    }
+
+    if (close < 0 || close >= text.length) {
+      chunks.push(renderWithoutMath(text.slice(cursor)))
+      break
+    }
+
+    const expression = text.slice(open + 1, close).trim()
+    if (!expression) {
+      chunks.push(renderWithoutMath(text.slice(cursor, close + 1)))
+      cursor = close + 1
+      continue
+    }
+
+    chunks.push(renderWithoutMath(text.slice(cursor, open)))
+    chunks.push(`<span data-math-inline="true">${escapeHtml(expression)}</span>`)
+    cursor = close + 1
+  }
+
+  return chunks.join("")
 }
 
 function blockId(index: number) {
