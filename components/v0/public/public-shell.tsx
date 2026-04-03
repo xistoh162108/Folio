@@ -167,14 +167,14 @@ export function PublicShell({
       <div className="font-mono flex min-w-0 flex-col overflow-visible md:min-h-0 md:h-full md:flex-row md:items-stretch md:overflow-hidden">
         <div
           data-v0-shell-primary
-          className="relative order-2 z-20 min-w-0 overflow-visible md:order-1 md:min-h-0 md:h-full md:flex-none md:self-stretch md:w-[56%] md:overflow-y-auto md:overflow-x-visible lg:w-1/2"
+          className="relative order-2 z-20 min-w-0 overflow-visible md:order-1 md:min-h-0 md:h-full md:flex-none md:self-stretch md:w-[60%] md:overflow-y-auto md:overflow-x-visible lg:w-[56%] xl:w-[54%]"
         >
           {children}
         </div>
         <div
           ref={rightPanelRef}
           data-v0-jitter-slot
-          className={`relative order-1 h-40 min-h-[10rem] w-full shrink-0 overflow-hidden border-b sm:h-52 md:order-2 md:h-full md:min-h-0 md:flex-none md:self-stretch md:w-[44%] md:border-b-0 lg:w-1/2 ${borderColor}`}
+          className={`relative order-1 h-40 min-h-[10rem] w-full shrink-0 overflow-hidden border-b sm:h-52 md:order-2 md:h-full md:min-h-0 md:flex-none md:self-stretch md:w-[40%] md:border-b-0 lg:w-[44%] xl:w-[46%] ${borderColor}`}
           aria-hidden="true"
         />
       </div>

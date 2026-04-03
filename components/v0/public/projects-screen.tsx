@@ -43,7 +43,7 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
   return (
     <PublicShell currentPage="projects" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
       <div className="min-h-full px-4 py-6 sm:px-6 md:h-full md:overflow-y-auto md:px-8">
-        <div className="space-y-6 max-w-lg md:max-w-none">
+        <div className="max-w-lg space-y-6 md:max-w-2xl xl:max-w-3xl">
             <section className="space-y-3">
               <p className={`text-xs ${mutedText}`}>// projects</p>
               <h2 className="text-lg">Featured Work</h2>
@@ -56,8 +56,8 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
                     <Link href={project.detailHref} className={`inline-block text-sm ${hoverBg} px-1 -mx-1 text-left`}>
                       {project.title} -&gt;
                     </Link>
-                    <p className={`text-sm ${mutedText}`}>{project.description}</p>
-                    <div className="flex gap-4 text-xs">
+                    <p className={`max-w-[72ch] text-sm ${mutedText}`}>{project.description}</p>
+                    <div className="flex flex-wrap gap-4 text-xs xl:flex-nowrap">
                       {project.links.map((link, index) => (
                         <a
                           key={`${project.id}-${index}`}

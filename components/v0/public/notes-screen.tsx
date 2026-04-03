@@ -95,7 +95,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
   return (
     <PublicShell currentPage="notes" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
       <div className="min-h-full px-4 py-6 pb-8 sm:px-6 md:h-full md:overflow-y-auto md:px-8 md:pb-32">
-        <div className="space-y-6 max-w-lg md:max-w-none">
+        <div className="max-w-lg space-y-6 md:max-w-2xl xl:max-w-3xl">
             <section className="space-y-3">
               <p className={`text-xs ${mutedText}`}>// digital garden</p>
               <h2 className="text-lg">Notes &amp; Seeds</h2>
@@ -126,7 +126,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                     key={note.id}
                     href={note.href}
                     data-v0-note-row
-                    className={`-mx-2 grid w-full grid-cols-[11ch_4ch_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1 px-2 py-2 text-left text-sm transition-colors md:flex md:flex-nowrap ${hoverBg}`}
+                  className={`-mx-2 grid w-full grid-cols-[11ch_4ch_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1 px-2 py-2 text-left text-sm transition-colors md:flex md:flex-wrap xl:flex-nowrap ${hoverBg}`}
                   >
                     <span className={`${mutedText} col-start-1 row-start-1 w-[11ch] shrink-0 whitespace-nowrap md:w-20`}>{note.date}</span>
                     <span className={`${mutedText} col-start-2 row-start-1 w-[4ch] shrink-0 whitespace-nowrap md:w-8`}>{note.statusSymbol}</span>
@@ -136,7 +136,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
                       <span className="min-w-0">{note.tags.join(" ")}</span>
                     </div>
                     <span className={`${mutedText} hidden shrink-0 whitespace-nowrap text-xs md:inline`}>[v: {note.views.toLocaleString()}]</span>
-                    <span className={`${mutedText} hidden text-xs md:w-auto md:shrink-0 md:whitespace-nowrap md:inline`}>
+                    <span className={`${mutedText} hidden min-w-0 text-xs md:inline md:basis-full md:pl-[calc(11ch+1rem)] lg:basis-auto lg:pl-0 lg:whitespace-nowrap`}>
                       {note.tags.join(" ")}
                     </span>
                   </Link>
@@ -174,7 +174,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
       </div>
 
       <div
-        className={`mt-8 border-t px-4 py-4 font-mono sm:px-6 md:fixed md:bottom-0 md:left-0 md:z-30 md:mt-0 md:w-[56%] md:px-6 lg:w-1/2 lg:px-8 ${bgColor} ${borderColor}`}
+        className={`mt-8 border-t px-4 py-4 font-mono sm:px-6 md:fixed md:bottom-0 md:left-0 md:z-30 md:mt-0 md:w-[60%] md:px-6 lg:w-[56%] lg:px-8 xl:w-[54%] ${bgColor} ${borderColor}`}
       >
         <form
           onSubmit={(event) => {
@@ -182,7 +182,7 @@ export function NotesScreen({ isDarkMode: initialIsDarkMode = true, brandLabel =
             startTransition(() => formAction({ email, _honey: honey, topics }))
           }}
           data-v0-notes-subscribe
-          className="max-w-lg space-y-2 lg:max-w-none"
+          className="max-w-lg space-y-2 md:max-w-2xl xl:max-w-3xl"
         >
           <div className="flex flex-col items-start gap-3 2xl:flex-row 2xl:items-center 2xl:gap-6">
             <div className="flex min-w-0 w-full flex-wrap items-center gap-3 md:gap-4 2xl:flex-1 2xl:flex-nowrap">

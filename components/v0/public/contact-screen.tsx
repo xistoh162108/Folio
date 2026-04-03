@@ -77,7 +77,7 @@ export function ContactScreen({
       <div className="min-h-full md:h-full md:overflow-y-auto">
         <div className="flex min-h-full flex-col px-4 py-6 sm:px-6 md:px-8">
         <div className="flex flex-1 flex-col justify-center">
-            <div data-v0-contact-column className="max-w-lg space-y-8">
+            <div data-v0-contact-column className="max-w-lg space-y-8 md:max-w-xl lg:max-w-2xl">
               <section className="space-y-3">
                 <p className={`text-xs ${mutedText}`}>// contact</p>
                 <h2 className="text-lg">Get in Touch</h2>
