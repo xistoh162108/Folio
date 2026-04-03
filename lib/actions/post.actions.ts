@@ -73,6 +73,34 @@ type PreparedLink = {
   metadata: PreviewMetadata | null
 }
 
+function resolveCoverFromAssets(
+  requestedCoverImageUrl: string,
+  assets: Array<Record<string, unknown>>,
+): string | null {
+  const normalizedRequested = requestedCoverImageUrl.trim()
+  if (!normalizedRequested) {
+    return null
+  }
+
+  const imageAssetUrls = new Set(
+    assets.flatMap((asset) => {
+      const kind = typeof asset.kind === "string" ? asset.kind : null
+      const url = typeof asset.url === "string" ? asset.url : null
+      if (kind !== "IMAGE" || !url || url.trim().length === 0) {
+        return []
+      }
+
+      return [url.trim()]
+    }),
+  )
+
+  if (!imageAssetUrls.has(normalizedRequested)) {
+    throw new Error("Cover image must be selected from this post's uploaded images.")
+  }
+
+  return normalizedRequested
+}
+
 async function connectTags(tx: Prisma.TransactionClient, tags: string[]) {
   const normalized = [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))]
 
@@ -365,6 +393,7 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
     const keepAssetIds = validated.assets
       .map((asset) => asset.id)
       .filter((assetId): assetId is string => typeof assetId === "string" && assetId.length > 0)
+    const resolvedCoverImageUrl = resolveCoverFromAssets(validated.coverImageUrl, validated.assets)
     const mergedLinks = mergeLinks({
       links: validated.links,
       githubUrl: validated.githubUrl,
@@ -388,7 +417,7 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
             htmlContent: resolvedHtmlContent,
             type: validated.type,
             status: validated.status,
-            coverImageUrl: validated.coverImageUrl || null,
+            coverImageUrl: resolvedCoverImageUrl,
             githubUrl: findFirstLinkByType(preparedLinks, "GITHUB"),
             demoUrl: findWebsiteFallback(preparedLinks),
             docsUrl: findFirstLinkByType(preparedLinks, "DOCS"),
@@ -430,7 +459,7 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
         status: validated.status,
         title: validated.title,
         excerpt: validated.excerpt,
-        coverImageUrl: validated.coverImageUrl,
+        coverImageUrl: resolvedCoverImageUrl,
         content: resolvedContent,
         activeLinkCount: preparedLinks.length,
       })
@@ -454,7 +483,7 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
       const assetSync = await syncPostAssets(tx, {
         postId: validated.id,
         keepAssetIds,
-        coverImageUrl: validated.coverImageUrl || null,
+        coverImageUrl: resolvedCoverImageUrl,
         isEmptyDraft,
       })
       const publishedAt =

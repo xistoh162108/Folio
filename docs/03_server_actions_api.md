@@ -12,6 +12,7 @@ This app uses Server Actions for authenticated or form-bound mutations and Route
   - creates or updates a post
   - snapshots `PostRevision`
   - syncs tags, links, and retained assets
+  - enforces that `coverImageUrl` matches one uploaded image asset URL for the same post
   - marks removed assets for cleanup
   - records audit
 - `archivePost(id)`

@@ -178,6 +178,7 @@ export function PostEditor({
       }
 
       setForm((current) => {
+        const nextAssetUrl = result.url ?? `/api/files/${result.assetId}`
         const nextAssets: PostEditorInput["assets"] = [
           ...current.assets.filter((asset) => asset.id !== result.assetId),
           {
@@ -186,13 +187,14 @@ export function PostEditor({
             originalName: result.originalName,
             mime: result.mime,
             size: result.size,
-            url: result.url ?? `/api/files/${result.assetId}`,
+            url: nextAssetUrl,
             createdAt: new Date().toISOString(),
           },
         ]
 
         return {
           ...current,
+          coverImageUrl: kind === "image" && !current.coverImageUrl ? nextAssetUrl : current.coverImageUrl,
           assets: nextAssets,
         }
       })
@@ -204,7 +206,7 @@ export function PostEditor({
       requestAnimationFrame(() => {
         insertMarkdownSnippet(snippet)
       })
-      setMessage(kind === "image" ? "Image uploaded and inserted into the body." : "File uploaded.")
+      setMessage(kind === "image" ? "Image uploaded, inserted into the body, and available for cover selection." : "File uploaded.")
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed.")
     } finally {
@@ -224,6 +226,7 @@ export function PostEditor({
 
   const imageAssets = form.assets.filter((asset) => asset.kind === "IMAGE")
   const fileAssets = form.assets.filter((asset) => asset.kind === "FILE")
+  const coverOptions = imageAssets.filter((asset): asset is typeof asset & { url: string } => Boolean(asset.url))
 
   const removeAsset = (assetId: string) => {
     setForm((current) => {
@@ -386,6 +389,18 @@ export function PostEditor({
 
             <div className="space-y-2">
               <label className={`text-xs ${mutedText}`}>Preview Card</label>
+              <select
+                value={form.coverImageUrl ?? ""}
+                onChange={(event) => setForm((current) => ({ ...current, coverImageUrl: event.target.value }))}
+                className={compactFieldClass}
+              >
+                <option value="">No cover image</option>
+                {coverOptions.map((asset) => (
+                  <option key={asset.id} value={asset.url}>
+                    {asset.originalName}
+                  </option>
+                ))}
+              </select>
               <div className={`border-2 border-dashed ${borderColor} p-6 text-center space-y-2`}>
                 {form.coverImageUrl ? (
                   <div className="space-y-3">
@@ -393,10 +408,7 @@ export function PostEditor({
                     <p className={`text-xs ${mutedText} break-all`}>{form.coverImageUrl}</p>
                   </div>
                 ) : (
-                  <>
-                    <p className={`text-sm ${mutedText}`}>Drop preview image here</p>
-                    <p className={`text-xs ${mutedText} mt-1`}>or click to upload</p>
-                  </>
+                  <p className={`text-sm ${mutedText}`}>Choose a stored image above to set the preview cover.</p>
                 )}
               </div>
             </div>
@@ -405,9 +417,9 @@ export function PostEditor({
 
         <div className={`border-2 border-dashed ${borderColor} p-6 text-center space-y-3`}>
           <div className="space-y-1">
-            <p className={`text-sm ${mutedText}`}>{isUploading ? "[ uploading_ ]" : "Drag & Drop Image Upload"}</p>
-            <p className={`text-xs ${mutedText}`}>or click to browse files</p>
-            <p className={`text-xs ${mutedText}`}>uploaded assets insert `asset://` tokens at the cursor</p>
+            <p className={`text-sm ${mutedText}`}>{isUploading ? "[ uploading_ ]" : "Upload assets"}</p>
+            <p className={`text-xs ${mutedText}`}>uploaded images are inserted as `asset://` tokens at the cursor</p>
+            <p className={`text-xs ${mutedText}`}>cover recommendation: 16:9 ratio, at least 1600×900, up to 8MB</p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
             <label className={`${buttonClass} cursor-pointer`}>
@@ -701,12 +713,19 @@ export function PostEditor({
           </select>
         </label>
         <label className="space-y-2">
-          <span className={isV0 ? "text-xs text-white/50" : "text-xs uppercase tracking-[0.18em] text-zinc-500"}>Cover image URL</span>
-          <input
+          <span className={isV0 ? "text-xs text-white/50" : "text-xs uppercase tracking-[0.18em] text-zinc-500"}>Cover image</span>
+          <select
             value={form.coverImageUrl ?? ""}
             onChange={(event) => setForm((current) => ({ ...current, coverImageUrl: event.target.value }))}
             className={fieldClass}
-          />
+          >
+            <option value="">No cover image</option>
+            {coverOptions.map((asset) => (
+              <option key={asset.id} value={asset.url}>
+                {asset.originalName}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 
@@ -810,7 +829,7 @@ export function PostEditor({
         <div className={panelClass}>
           <div className="space-y-1">
             <p className={isV0 ? "text-xs text-white/50" : "text-xs uppercase tracking-[0.18em] text-zinc-500"}>Image upload</p>
-            <p className={isV0 ? "text-sm text-white/60" : "text-sm text-zinc-400"}>JPEG, PNG, WEBP up to 8MB. Uploading an image also sets the cover URL.</p>
+            <p className={isV0 ? "text-sm text-white/60" : "text-sm text-zinc-400"}>JPEG, PNG, WEBP up to 8MB. Cover source is one stored image path from this post. Recommended cover: 16:9 at 1600×900 or larger.</p>
           </div>
           <input
             type="file"
