@@ -3,7 +3,7 @@
 import Link from "next/link"
 
 import { projectsData } from "@/components/v0/fixtures"
-import { formatPostDate } from "@/components/v0/public/mappers"
+import { formatV0Tag } from "@/components/v0/public/mappers"
 import { PublicShell } from "@/components/v0/public/public-shell"
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller"
 import type { PublishedProjectIndexItem } from "@/lib/data/posts"
@@ -23,7 +23,8 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
       id: project.id,
       title: project.title,
       detailHref: `/projects/${project.slug}`,
-      description: project.excerpt ?? `Published ${formatPostDate(project.publishedAt, project.updatedAt)}`,
+      description: project.excerpt?.trim() ? project.excerpt.trim() : null,
+      tags: project.tags.map(formatV0Tag),
       links:
         project.links.length > 0
           ? project.links.map((link) => ({ label: link.label, href: link.url }))
@@ -34,6 +35,7 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
       title: project.title,
       detailHref: "#",
       description: project.description,
+      tags: [],
       links: project.urls.map((url) => ({
         label: `${url.domain}${url.path}`,
         href: "#",
@@ -56,7 +58,11 @@ export function ProjectsScreen({ isDarkMode: initialIsDarkMode = true, brandLabe
                     <Link href={project.detailHref} className={`inline-block text-sm ${hoverBg} px-1 -mx-1 text-left`}>
                       {project.title} -&gt;
                     </Link>
-                    <p className={`text-sm ${mutedText}`}>{project.description}</p>
+                    <p className={`text-sm ${mutedText}`}>{project.description ?? "—"}</p>
+                    <div className="space-y-1">
+                      <p className={`text-xs ${mutedText}`}>// tech stack</p>
+                      <p className={`text-xs ${mutedText}`}>{project.tags.length > 0 ? project.tags.join(" ") : "—"}</p>
+                    </div>
                     <div className="flex gap-4 text-xs">
                       {project.links.map((link, index) => (
                         <a
