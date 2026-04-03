@@ -13,6 +13,15 @@ interface CommunityScreenProps {
   brandLabel?: string
 }
 
+function makeHref(basePath: string, query: CommunityModerationSnapshot["query"], patch: Partial<CommunityModerationSnapshot["query"]>) {
+  const nextQuery = { ...query, ...patch }
+  const params = new URLSearchParams()
+  params.set("commentsPage", String(nextQuery.commentsPage))
+  params.set("guestbookPage", String(nextQuery.guestbookPage))
+
+  return `${basePath}?${params.toString()}`
+}
+
 function formatTimestamp(value: string) {
   return new Date(value).toISOString().replace("T", " ").slice(0, 16)
 }
@@ -39,7 +48,7 @@ export function CommunityScreen({
           <section className="space-y-3">
             <div className={`flex items-center justify-between text-xs ${mutedText}`}>
               <p>--- COMMENTS ---</p>
-              <p>[{snapshot.comments.length}] active</p>
+              <p>[{snapshot.counts.comments}] active</p>
             </div>
             <div className="space-y-1">
               {snapshot.comments.length === 0 ? (
@@ -71,12 +80,49 @@ export function CommunityScreen({
                 )
               })}
             </div>
+            <div className={`flex flex-wrap items-center justify-between gap-3 border ${borderColor} px-3 py-2 text-xs`}>
+              <div className={`flex flex-wrap items-center gap-3 ${mutedText}`}>
+                <span>[showing {snapshot.comments.length}]</span>
+                <span>[per-page {snapshot.pagination.comments.pageSize}]</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={mutedText}>
+                  [{snapshot.pagination.comments.page}/{snapshot.pagination.comments.totalPages}]
+                </span>
+                <Link
+                  href={makeHref("/admin/community", snapshot.query, {
+                    commentsPage: Math.max(1, snapshot.pagination.comments.page - 1),
+                  })}
+                  aria-label="Prev comments page"
+                  aria-disabled={snapshot.pagination.comments.page === 1}
+                  className={`px-2 py-1 border ${
+                    snapshot.pagination.comments.page === 1 ? `${borderColor} ${mutedText} pointer-events-none` : `${borderColor} ${hoverBg}`
+                  }`}
+                >
+                  [&lt;]
+                </Link>
+                <Link
+                  href={makeHref("/admin/community", snapshot.query, {
+                    commentsPage: Math.min(snapshot.pagination.comments.totalPages, snapshot.pagination.comments.page + 1),
+                  })}
+                  aria-label="Next comments page"
+                  aria-disabled={snapshot.pagination.comments.page === snapshot.pagination.comments.totalPages}
+                  className={`px-2 py-1 border ${
+                    snapshot.pagination.comments.page === snapshot.pagination.comments.totalPages
+                      ? `${borderColor} ${mutedText} pointer-events-none`
+                      : `${borderColor} ${hoverBg}`
+                  }`}
+                >
+                  [&gt;]
+                </Link>
+              </div>
+            </div>
           </section>
 
           <section className="space-y-3">
             <div className={`flex items-center justify-between text-xs ${mutedText}`}>
               <p>--- GUESTBOOK ---</p>
-              <p>[{snapshot.guestbookEntries.length}] active</p>
+              <p>[{snapshot.counts.guestbookEntries}] active</p>
             </div>
             <div className="space-y-1">
               {snapshot.guestbookEntries.length === 0 ? (
@@ -100,6 +146,48 @@ export function CommunityScreen({
                   </div>
                 </div>
               ))}
+            </div>
+            <div className={`flex flex-wrap items-center justify-between gap-3 border ${borderColor} px-3 py-2 text-xs`}>
+              <div className={`flex flex-wrap items-center gap-3 ${mutedText}`}>
+                <span>[showing {snapshot.guestbookEntries.length}]</span>
+                <span>[per-page {snapshot.pagination.guestbookEntries.pageSize}]</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={mutedText}>
+                  [{snapshot.pagination.guestbookEntries.page}/{snapshot.pagination.guestbookEntries.totalPages}]
+                </span>
+                <Link
+                  href={makeHref("/admin/community", snapshot.query, {
+                    guestbookPage: Math.max(1, snapshot.pagination.guestbookEntries.page - 1),
+                  })}
+                  aria-label="Prev guestbook page"
+                  aria-disabled={snapshot.pagination.guestbookEntries.page === 1}
+                  className={`px-2 py-1 border ${
+                    snapshot.pagination.guestbookEntries.page === 1
+                      ? `${borderColor} ${mutedText} pointer-events-none`
+                      : `${borderColor} ${hoverBg}`
+                  }`}
+                >
+                  [&lt;]
+                </Link>
+                <Link
+                  href={makeHref("/admin/community", snapshot.query, {
+                    guestbookPage: Math.min(
+                      snapshot.pagination.guestbookEntries.totalPages,
+                      snapshot.pagination.guestbookEntries.page + 1,
+                    ),
+                  })}
+                  aria-label="Next guestbook page"
+                  aria-disabled={snapshot.pagination.guestbookEntries.page === snapshot.pagination.guestbookEntries.totalPages}
+                  className={`px-2 py-1 border ${
+                    snapshot.pagination.guestbookEntries.page === snapshot.pagination.guestbookEntries.totalPages
+                      ? `${borderColor} ${mutedText} pointer-events-none`
+                      : `${borderColor} ${hoverBg}`
+                  }`}
+                >
+                  [&gt;]
+                </Link>
+              </div>
             </div>
           </section>
         </div>
