@@ -3,6 +3,28 @@
 import { useEffect, useRef } from "react"
 import { usePathname } from "next/navigation"
 
+const ANALYTICS_SESSION_KEY = "folio_analytics_sess"
+const LEGACY_ANALYTICS_SESSION_KEYS = ["jimin_garden_sess", "xistoh_log_sess"] as const
+
+function ensureAnalyticsSessionId() {
+  let sessionId = sessionStorage.getItem(ANALYTICS_SESSION_KEY)
+  if (sessionId) {
+    return sessionId
+  }
+
+  for (const legacyKey of LEGACY_ANALYTICS_SESSION_KEYS) {
+    const legacyValue = sessionStorage.getItem(legacyKey)
+    if (legacyValue) {
+      sessionStorage.setItem(ANALYTICS_SESSION_KEY, legacyValue)
+      return legacyValue
+    }
+  }
+
+  sessionId = crypto.randomUUID()
+  sessionStorage.setItem(ANALYTICS_SESSION_KEY, sessionId)
+  return sessionId
+}
+
 export function AnalyticsTracker() {
   const pathname = usePathname()
   const latestPathRef = useRef<string | null>(null)
@@ -15,11 +37,7 @@ export function AnalyticsTracker() {
     if (latestPathRef.current === pathname && process.env.NODE_ENV === 'development') return
     latestPathRef.current = pathname
 
-    let sessionId = sessionStorage.getItem("jimin_garden_sess")
-    if (!sessionId) {
-      sessionId = crypto.randomUUID()
-      sessionStorage.setItem("jimin_garden_sess", sessionId)
-    }
+    const sessionId = ensureAnalyticsSessionId()
 
     const startedAt = performance.now()
     let heartbeatSent = false

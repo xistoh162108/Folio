@@ -28,6 +28,13 @@ const AnalyticsSchema = z.discriminatedUnion("eventType", [
   }),
 ])
 
+const PAGEVIEW_DEDUPE_WINDOW_MS = 12 * 60 * 60 * 1000
+
+function normalizePath(path: string) {
+  if (path.length <= 1) return path
+  return path.replace(/\/+$/, "")
+}
+
 function isBotUserAgent(userAgent: string) {
   const value = userAgent.toLowerCase()
   return (
@@ -40,12 +47,13 @@ function isBotUserAgent(userAgent: string) {
 }
 
 function getPostPathInfo(path: string) {
-  const noteMatch = path.match(/^\/notes\/([^/?#]+)/)
+  const normalizedPath = normalizePath(path)
+  const noteMatch = normalizedPath.match(/^\/notes\/([^/?#]+)/)
   if (noteMatch) {
     return { type: "NOTE" as const, slug: decodeURIComponent(noteMatch[1]) }
   }
 
-  const projectMatch = path.match(/^\/projects\/([^/?#]+)/)
+  const projectMatch = normalizedPath.match(/^\/projects\/([^/?#]+)/)
   if (projectMatch) {
     return { type: "PROJECT" as const, slug: decodeURIComponent(projectMatch[1]) }
   }
@@ -94,6 +102,7 @@ async function parsePayload(request: Request): Promise<AnalyticsEventInput> {
 export async function POST(request: Request) {
   try {
     const payload = await parsePayload(request)
+    const normalizedPath = normalizePath(payload.path)
     const userAgent = request.headers.get("user-agent") ?? payload.userAgentHint ?? null
     const ip = getClientIp(request.headers)
     const countryCode =
@@ -101,7 +110,7 @@ export async function POST(request: Request) {
       request.headers.get("cf-ipcountry") ??
       request.headers.get("x-country-code")
 
-    if (payload.path.startsWith("/admin")) {
+    if (normalizedPath.startsWith("/admin")) {
       return NextResponse.json({ success: true, skipped: "admin-path" })
     }
 
@@ -118,8 +127,8 @@ export async function POST(request: Request) {
     const deviceType = parseDeviceType(userAgent)
     const shouldCountView = payload.eventType === "PAGEVIEW" && !isBot
 
-    await prisma.$transaction(async (tx) => {
-      const postPath = getPostPathInfo(payload.path)
+    await prisma.$transaction(async (tx: any) => {
+      const postPath = getPostPathInfo(normalizedPath)
       const resolvedPost =
         payload.postId || postPath
           ? await tx.post.findFirst({
@@ -138,7 +147,7 @@ export async function POST(request: Request) {
 
       if (shouldCountView) {
         if (resolvedPost?.id && resolvedPost.status === "PUBLISHED") {
-          const recentWindow = new Date(Date.now() - 12 * 60 * 60 * 1000)
+          const recentWindow = new Date(Date.now() - PAGEVIEW_DEDUPE_WINDOW_MS)
           const existing = await tx.analytics.findFirst({
             where: {
               sessionId: payload.sessionId,
@@ -169,7 +178,7 @@ export async function POST(request: Request) {
         data: {
           sessionId: payload.sessionId,
           eventType: payload.eventType,
-          path: payload.path,
+          path: normalizedPath,
           postId: resolvedPost?.id ?? payload.postId,
           referrer: payload.referrer,
           referrerHost,
