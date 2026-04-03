@@ -43,11 +43,11 @@ async function handleNewsletterWorker(request: Request) {
               OR delivery."processingAt" < NOW() - INTERVAL '15 minutes'
             )
             AND campaign.status = 'SENDING'
-          ORDER BY delivery."createdAt" ASC, delivery.id ASC
+          ORDER BY delivery."queueOrder" ASC, delivery."createdAt" ASC, delivery.id ASC
           LIMIT ${BATCH_SIZE}
           FOR UPDATE SKIP LOCKED
         )
-        RETURNING id, "campaignId", "subscriberId", email, "createdAt"
+        RETURNING id, "campaignId", "subscriberId", email, "createdAt", "queueOrder"
       )
       SELECT claimed.id,
              claimed."campaignId" AS "campaignId",
@@ -61,7 +61,7 @@ async function handleNewsletterWorker(request: Request) {
         ON campaign.id = claimed."campaignId"
       LEFT JOIN "Subscriber" AS subscriber
         ON subscriber.id = claimed."subscriberId"
-      ORDER BY claimed."createdAt" ASC, claimed.id ASC;
+      ORDER BY claimed."queueOrder" ASC, claimed."createdAt" ASC, claimed.id ASC;
     `
 
     if (deliveries.length === 0) {

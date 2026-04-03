@@ -361,6 +361,7 @@ model NewsletterDelivery {
   campaignId   String
   subscriberId String?
   email        String
+  queueOrder   Int                      @default(0)
   status       NewsletterDeliveryStatus @default(PENDING)
   errorMessage String?
   processingAt DateTime?
@@ -371,7 +372,7 @@ model NewsletterDelivery {
   campaign     NewsletterCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   subscriber   Subscriber?              @relation(fields: [subscriberId], references: [id], onDelete: SetNull)
 
-  @@index([campaignId, status, createdAt, id])
+  @@index([campaignId, status, queueOrder, createdAt, id])
   @@unique([campaignId, email])
 }
 

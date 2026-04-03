@@ -3,7 +3,16 @@
 import { useMemo, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 
-import { createCampaign, retryDelivery, sendTestCampaign, startCampaign } from "@/lib/actions/newsletter.actions"
+import {
+  adminUnsubscribeSubscriber,
+  createCampaign,
+  editDeliveryRecipient,
+  moveDeliveryInQueue,
+  removeDeliveryFromQueue,
+  retryDelivery,
+  sendTestCampaign,
+  startCampaign,
+} from "@/lib/actions/newsletter.actions"
 import type { CampaignSummaryDTO, DeliveryRowDTO, NewsletterSubscriberRowDTO } from "@/lib/contracts/newsletter"
 
 interface NewsletterManagerProps {
@@ -20,41 +29,32 @@ interface NewsletterManagerProps {
 type EditorMode = "richtext" | "html"
 type ViewMode = "compose" | "subscribers" | "preview"
 type PreviewDevice = "desktop" | "mobile"
+type RecipientMode = "topics" | "selected"
+type ImagePosition = "top" | "middle" | "bottom"
 
 const ALL_TOPIC = "all-seeds"
-
-function buildHtmlFromPlainText(value: string) {
-  const paragraphs = value
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-
-  if (paragraphs.length === 0) {
-    return "<div style=\"font-family: monospace; padding: 20px;\"><p>Your content here...</p></div>"
-  }
-
-  return `<div style="font-family: monospace; padding: 20px;">${paragraphs
-    .map((paragraph) => `<p>${paragraph.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br />")}</p>`)
-    .join("")}</div>`
-}
+const PAGE_SIZE = 12
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
 }
 
 function formatDate(value: string | null | undefined) {
-  if (!value) {
-    return "--"
-  }
-
+  if (!value) return "--"
   return new Date(value).toISOString().slice(0, 10)
 }
 
 function generateProgressBar(current: number, total: number, width = 10) {
   const ratio = total > 0 ? current / total : 0
   const filled = Math.max(0, Math.min(width, Math.round(ratio * width)))
-  const empty = width - filled
-  return `[${"=".repeat(filled)}${"-".repeat(empty)}]`
+  return `[${"=".repeat(filled)}${"-".repeat(width - filled)}]`
+}
+
+function paged<T>(rows: T[], page: number, size: number) {
+  const totalPages = Math.max(1, Math.ceil(rows.length / size))
+  const safePage = Math.max(1, Math.min(page, totalPages))
+  const start = (safePage - 1) * size
+  return { rows: rows.slice(start, start + size), totalPages, page: safePage }
 }
 
 export function V0NewsletterManager({
@@ -72,14 +72,22 @@ export function V0NewsletterManager({
   const [viewMode, setViewMode] = useState<ViewMode>("compose")
   const [editorMode, setEditorMode] = useState<EditorMode>("richtext")
   const [previewDevice, setPreviewDevice] = useState<PreviewDevice>("desktop")
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>("topics")
   const [selectedTopics, setSelectedTopics] = useState<string[]>([ALL_TOPIC])
+  const [selectedSubscriberIds, setSelectedSubscriberIds] = useState<string[]>([])
   const [subject, setSubject] = useState("")
   const [emailBody, setEmailBody] = useState("")
-  const [htmlBody, setHtmlBody] = useState(`<div style="font-family: monospace; padding: 20px;">
-  <h1>Newsletter Title</h1>
-  <p>Your content here...</p>
-</div>`)
-  const [message, setMessage] = useState<string | null>(null)
+  const [htmlBody, setHtmlBody] = useState(`<div style="font-family: monospace; padding: 20px;"><h1>Newsletter Title</h1><p>Your content here...</p></div>`)
+  const [attachments, setAttachments] = useState<Array<{ label: string; url: string }>>([])
+  const [attachmentLabel, setAttachmentLabel] = useState("")
+  const [attachmentUrl, setAttachmentUrl] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+  const [imagePosition, setImagePosition] = useState<ImagePosition>("middle")
+  const [inlineImages, setInlineImages] = useState<Array<{ url: string; position: ImagePosition }>>([])
+  const [composeMessage, setComposeMessage] = useState<string | null>(null)
+  const [subscriberPage, setSubscriberPage] = useState(1)
+  const [campaignPage, setCampaignPage] = useState(1)
+  const [deliveryPage, setDeliveryPage] = useState(1)
 
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20"
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
@@ -93,27 +101,17 @@ export function V0NewsletterManager({
 
   const topicRows = useMemo(() => {
     const normalized = new Map(topics.map((topic) => [topic.normalizedName, topic.name]))
-    if (!normalized.has(ALL_TOPIC)) {
-      normalized.set(ALL_TOPIC, "All Seeds")
-    }
-
-    return [...normalized.entries()].map(([normalizedName, name]) => ({
-      normalizedName,
-      name,
-    }))
+    if (!normalized.has(ALL_TOPIC)) normalized.set(ALL_TOPIC, "All Seeds")
+    return [...normalized.entries()].map(([normalizedName, name]) => ({ normalizedName, name }))
   }, [topics])
 
-  const selectedTopicNames = useMemo(() => {
-    return topicRows
-      .filter((topic) => selectedTopics.includes(topic.normalizedName))
-      .map((topic) => topic.name)
-  }, [selectedTopics, topicRows])
+  const selectedTopicNames = useMemo(
+    () => topicRows.filter((topic) => selectedTopics.includes(topic.normalizedName)).map((topic) => topic.name),
+    [selectedTopics, topicRows],
+  )
 
-  const targetSubscribers = useMemo(() => {
-    if (selectedTopics.includes(ALL_TOPIC)) {
-      return subscribers
-    }
-
+  const topicTargetSubscribers = useMemo(() => {
+    if (selectedTopics.includes(ALL_TOPIC)) return subscribers
     const selectedNames = selectedTopicNames.filter((name) => name !== "All Seeds")
     return subscribers.filter(
       (subscriber) =>
@@ -121,58 +119,74 @@ export function V0NewsletterManager({
     )
   }, [selectedTopicNames, selectedTopics, subscribers])
 
+  const targetSubscribers = recipientMode === "selected" ? subscribers.filter((s) => selectedSubscriberIds.includes(s.id)) : topicTargetSubscribers
+
   const subscriberTopicCounts = useMemo(() => {
     const counts = new Map<string, number>()
-
     for (const topic of topicRows) {
-      if (topic.name === "All Seeds") {
-        counts.set(topic.name, activeSubscriberCount)
-        continue
-      }
-
-      counts.set(
-        topic.name,
-        subscribers.filter((subscriber) => subscriber.topics.includes("All Seeds") || subscriber.topics.includes(topic.name)).length,
-      )
+      if (topic.name === "All Seeds") counts.set(topic.name, activeSubscriberCount)
+      else counts.set(topic.name, subscribers.filter((s) => s.topics.includes("All Seeds") || s.topics.includes(topic.name)).length)
     }
-
     return counts
   }, [activeSubscriberCount, subscribers, topicRows])
 
   const renderWithRefresh = (task: () => Promise<{ success: boolean; error?: string; message?: string }>) => {
-    setMessage(null)
+    setComposeMessage(null)
     startTransition(async () => {
       const result = await task()
-
-      if (!result.success) {
-        setMessage(result.error ?? "Operation failed.")
-        return
-      }
-
-      setMessage(result.message ?? "Completed.")
+      if (!result.success) return setComposeMessage(result.error ?? "Operation failed.")
+      setComposeMessage(result.message ?? "Completed.")
       router.refresh()
     })
   }
 
-  const toggleTopic = (normalizedName: string) => {
-    if (normalizedName === ALL_TOPIC) {
-      setSelectedTopics([ALL_TOPIC])
-      return
-    }
+  const currentHtml = useMemo(() => {
+    const main = editorMode === "html" ? htmlBody : `<div style="font-family: monospace; padding: 20px;">${emailBody
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => `<p>${p.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br />")}</p>`)
+      .join("")}</div>`
 
-    setSelectedTopics((current) => {
-      const withoutAll = current.filter((topic) => topic !== ALL_TOPIC)
-      if (withoutAll.includes(normalizedName)) {
-        const next = withoutAll.filter((topic) => topic !== normalizedName)
-        return next.length > 0 ? next : [ALL_TOPIC]
-      }
+    const imageHtml = (position: ImagePosition) =>
+      inlineImages
+        .filter((image) => image.position === position)
+        .map((image) => `<p><img src="${image.url}" alt="newsletter image" style="max-width:100%;height:auto;" /></p>`)
+        .join("")
 
-      return [...withoutAll, normalizedName]
-    })
+    const attachmentHtml =
+      attachments.length > 0
+        ? `<hr/><p><strong>Attachments</strong></p><ul>${attachments.map((a) => `<li><a href="${a.url}">${a.label || a.url}</a></li>`).join("")}</ul>`
+        : ""
+
+    return `${imageHtml("top")}${main}${imageHtml("middle")}${attachmentHtml}${imageHtml("bottom")}`
+  }, [attachments, editorMode, emailBody, htmlBody, inlineImages])
+
+  const currentText = emailBody.trim() || stripHtml(currentHtml)
+
+  const applyTextFormat = (kind: "bold" | "italic" | "underline" | "h1" | "h2") => {
+    const textarea = document.getElementById("newsletter-richtext") as HTMLTextAreaElement | null
+    if (!textarea) return
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selected = emailBody.slice(start, end) || "text"
+    const mapped =
+      kind === "bold"
+        ? `**${selected}**`
+        : kind === "italic"
+          ? `*${selected}*`
+          : kind === "underline"
+            ? `<u>${selected}</u>`
+            : kind === "h1"
+              ? `\n# ${selected}\n`
+              : `\n## ${selected}\n`
+    const next = `${emailBody.slice(0, start)}${mapped}${emailBody.slice(end)}`
+    setEmailBody(next)
   }
 
-  const currentHtml = editorMode === "html" ? htmlBody : buildHtmlFromPlainText(emailBody)
-  const currentText = emailBody.trim() || stripHtml(htmlBody)
+  const subscribersPaginated = paged(subscribers, subscriberPage, PAGE_SIZE)
+  const campaignsPaginated = paged(campaigns, campaignPage, PAGE_SIZE)
+  const deliveriesPaginated = paged(deliveries, deliveryPage, PAGE_SIZE)
 
   return (
     <div className="space-y-6 font-mono">
@@ -181,50 +195,28 @@ export function V0NewsletterManager({
         <h2 className="text-lg mt-1">Email Campaign Manager</h2>
       </div>
 
-      {!migrationReady ? (
-        <div className={`border ${borderColor} p-4 text-xs`}>
-          <p className={accentColor}>[MIGRATION REQUIRED]</p>
-          <p className={`mt-2 ${mutedText}`}>
-            Newsletter campaign and delivery tables are not fully available in the current database.
-          </p>
-        </div>
-      ) : null}
-
-      {message ? (
-        <div className={`border ${borderColor} p-4 text-xs ${message.startsWith("[") ? "" : accentColor}`}>{message}</div>
-      ) : null}
+      {composeMessage ? <div className={`border ${borderColor} p-4 text-xs ${accentColor}`}>{composeMessage}</div> : null}
 
       <div className={`flex border-b ${borderColor}`}>
         {(["compose", "subscribers", "preview"] as ViewMode[]).map((mode) => (
-          <button
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            className={`v0-control-tab ${
-              viewMode === mode ? `${activeBg} border-b-2 ${isDarkMode ? "border-white" : "border-black"}` : hoverBg
-            }`}
-          >
-            {mode === "compose" && "[+] Compose"}
-            {mode === "subscribers" && "Subscribers"}
-            {mode === "preview" && "Preview"}
+          <button key={mode} onClick={() => setViewMode(mode)} className={`v0-control-tab ${viewMode === mode ? `${activeBg} border-b-2` : hoverBg}`}>
+            {mode}
           </button>
         ))}
       </div>
 
       {viewMode === "compose" ? (
-        <div className="space-y-6">
-          <section className="space-y-3">
+        <div className="space-y-4">
+          <div className="flex gap-2 text-xs">
+            <button onClick={() => setRecipientMode("topics")} className={`${compactButtonClass} ${recipientMode === "topics" ? accentColor : mutedText}`}>[topics]</button>
+            <button onClick={() => setRecipientMode("selected")} className={`${compactButtonClass} ${recipientMode === "selected" ? accentColor : mutedText}`}>[selected subscribers]</button>
+          </div>
+
+          <section className="space-y-2">
             <p className={`text-xs ${mutedText}`}>// recipients</p>
             <div className="flex flex-wrap gap-2">
               {topicRows.map((topic) => (
-                <button
-                  key={topic.normalizedName}
-                  onClick={() => toggleTopic(topic.normalizedName)}
-                  className={`v0-control-inline-button transition-colors ${
-                    selectedTopics.includes(topic.normalizedName)
-                      ? `${accentBorder} ${accentColor}`
-                      : `${borderColor} ${mutedText}`
-                  }`}
-                >
+                <button key={topic.normalizedName} onClick={() => setSelectedTopics((current) => topic.normalizedName === ALL_TOPIC ? [ALL_TOPIC] : current.includes(topic.normalizedName) ? current.filter((name) => name !== topic.normalizedName) : [...current.filter((name) => name !== ALL_TOPIC), topic.normalizedName])} className={`v0-control-inline-button ${selectedTopics.includes(topic.normalizedName) ? `${accentBorder} ${accentColor}` : `${borderColor} ${mutedText}`}`}>
                   [{topic.name}]
                 </button>
               ))}
@@ -232,298 +224,137 @@ export function V0NewsletterManager({
             <p className={`text-xs ${accentColor}`}>Target: {targetSubscribers.length} users</p>
           </section>
 
-          <section className="space-y-2">
-            <p className={`text-xs ${mutedText}`}>// subject</p>
-            <input
-              type="text"
-              value={subject}
-              onChange={(event) => setSubject(event.target.value)}
-              placeholder="Subject: Your newsletter title..."
-              className={fieldClass}
-            />
-          </section>
+          <input type="text" value={subject} onChange={(event) => setSubject(event.target.value)} placeholder="Subject" className={fieldClass} />
 
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className={`text-xs ${mutedText}`}>// body</p>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => setEditorMode("richtext")}
-                  className={`v0-control-button-compact transition-colors ${
-                    editorMode === "richtext" ? `${accentBorder} ${accentColor}` : `${borderColor} ${mutedText}`
-                  }`}
-                >
-                  Rich Text
-                </button>
-                <button
-                  onClick={() => setEditorMode("html")}
-                  className={`v0-control-button-compact transition-colors ${
-                    editorMode === "html" ? `${accentBorder} ${accentColor}` : `${borderColor} ${mutedText}`
-                  }`}
-                >
-                  Raw HTML
-                </button>
-              </div>
+          <div className="space-y-2">
+            <div className="flex gap-1">
+              <button onClick={() => setEditorMode("richtext")} className={compactButtonClass}>Rich Text</button>
+              <button onClick={() => setEditorMode("html")} className={compactButtonClass}>Raw HTML</button>
             </div>
-
             {editorMode === "richtext" ? (
-              <div className="space-y-2">
+              <>
                 <div className={`flex items-center gap-1 border ${borderColor} p-2`}>
-                  {["B", "I", "U", "H1", "H2", "link", "list", "code"].map((buttonLabel) => (
-                    <button key={buttonLabel} className={`v0-control-button-compact ${hoverBg}`}>
-                      {buttonLabel}
-                    </button>
-                  ))}
+                  <button onClick={() => applyTextFormat("bold")} className={compactButtonClass}>B</button>
+                  <button onClick={() => applyTextFormat("italic")} className={compactButtonClass}>I</button>
+                  <button onClick={() => applyTextFormat("underline")} className={compactButtonClass}>U</button>
+                  <button onClick={() => applyTextFormat("h1")} className={compactButtonClass}>H1</button>
+                  <button onClick={() => applyTextFormat("h2")} className={compactButtonClass}>H2</button>
                 </div>
-                <textarea
-                  value={emailBody}
-                  onChange={(event) => setEmailBody(event.target.value)}
-                  placeholder="Start composing your email content..."
-                  className={`v0-control-area h-48 ${borderColor}`}
-                />
-              </div>
+                <textarea id="newsletter-richtext" value={emailBody} onChange={(event) => setEmailBody(event.target.value)} className={`v0-control-area h-40 ${borderColor}`} />
+              </>
             ) : (
-              <div className="relative">
-                <div className={`flex items-center justify-between px-4 py-2 border-t border-x ${borderColor} ${isDarkMode ? "bg-[#1a1a1a]" : "bg-gray-100"}`}>
-                  <span className={`text-xs ${mutedText}`}>// html</span>
-                  <span className={`text-xs ${mutedText}`}>{htmlBody.length} chars</span>
-                </div>
-                <textarea
-                  value={htmlBody}
-                  onChange={(event) => setHtmlBody(event.target.value)}
-                  spellCheck={false}
-                  className={`v0-control-area h-48 border font-mono text-xs leading-6 ${borderColor} ${
-                    isDarkMode ? "bg-[#1a1a1a] text-[#c0caf5]" : "bg-gray-50 text-gray-800"
-                  }`}
-                  style={{ tabSize: 2 }}
-                />
-              </div>
+              <textarea value={htmlBody} onChange={(event) => setHtmlBody(event.target.value)} className={`v0-control-area h-40 ${borderColor}`} />
             )}
-          </section>
+          </div>
 
-          <section className="space-y-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() =>
-                  renderWithRefresh(() =>
-                    sendTestCampaign({
-                      email: testEmail,
-                      subject,
-                      html: currentHtml,
-                      text: currentText,
-                    }),
-                  )
-                }
-                disabled={isPending || !subject || !testEmail}
-                className={`${panelButtonClass} disabled:opacity-50`}
-              >
-                [ Send Test to Self ]
-              </button>
-              <button
-                onClick={() =>
-                  renderWithRefresh(async () => {
-                    const created = await createCampaign({
-                      subject,
-                      html: currentHtml,
-                      text: currentText,
-                      topics: selectedTopics,
-                    })
-
-                    if (!created.success) {
-                      return { success: false, error: created.error }
-                    }
-
-                    if (!created.campaignId) {
-                      return { success: true, message: created.message ?? "Campaign created." }
-                    }
-
-                    const started = await startCampaign({ campaignId: created.campaignId })
-                    if (!started.success) {
-                      return { success: false, error: started.error }
-                    }
-
-                    return { success: true, message: started.message ?? "Campaign started." }
-                  })
-                }
-                disabled={isPending || !subject || !migrationReady}
-                className={`v0-control-button ${
-                  isPending || !subject || !migrationReady
-                    ? `border ${borderColor} ${mutedText} cursor-not-allowed`
-                    : `${isDarkMode ? "bg-[#D4FF00] text-black" : "bg-[#3F5200] text-white"}`
-                }`}
-              >
-                {isPending ? "Sending..." : `Launch Campaign (${targetSubscribers.length})`}
-              </button>
+          <div className={`border ${borderColor} p-3 space-y-2`}>
+            <p className={`text-xs ${mutedText}`}>// attachments & images</p>
+            <div className="flex gap-2">
+              <input value={attachmentLabel} onChange={(e) => setAttachmentLabel(e.target.value)} placeholder="Attachment label" className={fieldClass} />
+              <input value={attachmentUrl} onChange={(e) => setAttachmentUrl(e.target.value)} placeholder="https://..." className={fieldClass} />
+              <button className={compactButtonClass} onClick={() => { if (!attachmentUrl) return; setAttachments((c) => [...c, { label: attachmentLabel, url: attachmentUrl }]); setAttachmentLabel(""); setAttachmentUrl("") }}>[add file]</button>
             </div>
+            <div className="flex gap-2">
+              <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Image url" className={fieldClass} />
+              <select value={imagePosition} onChange={(e) => setImagePosition(e.target.value as ImagePosition)} className={fieldClass}><option value="top">top</option><option value="middle">middle</option><option value="bottom">bottom</option></select>
+              <button className={compactButtonClass} onClick={() => { if (!imageUrl) return; setInlineImages((c) => [...c, { url: imageUrl, position: imagePosition }]); setImageUrl("") }}>[add image]</button>
+            </div>
+          </div>
 
-            <p className={`text-xs ${mutedText}`}>Test target: {testEmail || "missing session email"}</p>
-          </section>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => renderWithRefresh(() => sendTestCampaign({ email: testEmail, subject, html: currentHtml, text: currentText }))} disabled={isPending || !subject || !testEmail} className={`${panelButtonClass} disabled:opacity-50`}>[ Send Test to Self ]</button>
+            <button onClick={() => renderWithRefresh(async () => {
+              const created = await createCampaign({ subject, html: currentHtml, text: currentText, topics: selectedTopics, subscriberIds: recipientMode === "selected" ? selectedSubscriberIds : undefined })
+              if (!created.success || !created.campaignId) return { success: created.success, error: created.error, message: created.message }
+              return startCampaign({ campaignId: created.campaignId })
+            })} disabled={isPending || !subject || !migrationReady} className={`${panelButtonClass} disabled:opacity-50`}>{isPending ? "Sending..." : `Launch Campaign (${targetSubscribers.length})`}</button>
+            <button onClick={() => renderWithRefresh(async () => {
+              if (selectedSubscriberIds.length !== 1) return { success: false, error: "Select exactly one subscriber first." }
+              const created = await createCampaign({ subject, html: currentHtml, text: currentText, topics: [ALL_TOPIC], subscriberIds: selectedSubscriberIds })
+              if (!created.success || !created.campaignId) return { success: created.success, error: created.error, message: created.message }
+              return startCampaign({ campaignId: created.campaignId })
+            })} className={panelButtonClass} disabled={isPending || selectedSubscriberIds.length !== 1 || !subject}>[ Send to selected subscriber ]</button>
+          </div>
 
-          <section className="space-y-3">
-            <p className={`text-xs ${mutedText}`}>// queue</p>
-            <div className="space-y-1">
-              {campaigns.length === 0 ? (
-                <div className={`border border-dashed ${borderColor} px-4 py-4 text-xs ${mutedText}`}>No campaigns yet.</div>
-              ) : null}
-              {campaigns.map((campaign) => (
-                <div key={campaign.id} className={`border ${borderColor} px-3 py-3 space-y-2 ${hoverBg}`}>
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <span>{campaign.subject}</span>
-                    <span className={campaign.status === "COMPLETED" ? accentColor : mutedText}>[{campaign.status.toLowerCase()}]</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    {campaign.topics.map((topic) => (
-                      <span key={topic} className={mutedText}>
-                        [{topic}]
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <span className={mutedText}>
-                      {generateProgressBar(campaign.sentCount + campaign.failedCount, campaign.deliveryCount)} {campaign.sentCount}/
-                      {campaign.deliveryCount} sent
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className={mutedText}>{formatDate(campaign.createdAt)}</span>
-                      <button
-                        onClick={() => renderWithRefresh(() => startCampaign({ campaignId: campaign.id }))}
-                        disabled={isPending || campaign.deliveryCount === 0 || campaign.status === "SENDING"}
-                        className={`${compactButtonClass} disabled:opacity-50`}
-                      >
-                        [start]
-                      </button>
-                    </div>
-                  </div>
+          <section className="space-y-2">
+            <p className={`text-xs ${mutedText}`}>// queue (campaigns)</p>
+            {campaignsPaginated.rows.map((campaign) => (
+              <div key={campaign.id} className={`border ${borderColor} px-3 py-3 space-y-2`}>
+                <div className="flex items-center justify-between text-xs"><span>{campaign.subject}</span><span className={mutedText}>[{campaign.status.toLowerCase()}]</span></div>
+                <div className="flex items-center justify-between text-xs"><span>{generateProgressBar(campaign.sentCount + campaign.failedCount, campaign.deliveryCount)}</span><span>{formatDate(campaign.createdAt)}</span></div>
+                <div className="flex gap-2">
+                  <button className={compactButtonClass} onClick={() => renderWithRefresh(() => startCampaign({ campaignId: campaign.id }))}>[start]</button>
+                  <button className={compactButtonClass} onClick={() => renderWithRefresh(() => startCampaign({ campaignId: campaign.id, resendMode: "unsent-only" }))}>[resend-unsent]</button>
+                  <button className={compactButtonClass} onClick={() => renderWithRefresh(() => startCampaign({ campaignId: campaign.id, resendMode: "all" }))}>[re-run all]</button>
                 </div>
-              ))}
+              </div>
+            ))}
+            <div className="flex gap-2 text-xs">
+              <button onClick={() => setCampaignPage((p) => Math.max(1, p - 1))} className={compactButtonClass}>prev</button>
+              <span className={mutedText}>{campaignsPaginated.page}/{campaignsPaginated.totalPages}</span>
+              <button onClick={() => setCampaignPage((p) => Math.min(campaignsPaginated.totalPages, p + 1))} className={compactButtonClass}>next</button>
             </div>
           </section>
 
-          <section className="space-y-3">
+          <section className="space-y-2">
             <p className={`text-xs ${mutedText}`}>// deliveries</p>
-            <div className="space-y-1">
-              {deliveries.length === 0 ? (
-                <div className={`border border-dashed ${borderColor} px-4 py-4 text-xs ${mutedText}`}>No deliveries yet.</div>
-              ) : null}
-              {deliveries.slice(0, 10).map((delivery) => (
-                <div key={delivery.id} className={`border ${borderColor} px-3 py-3 space-y-2 ${hoverBg}`}>
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <span>{delivery.email}</span>
-                    <span className={delivery.status === "SENT" ? accentColor : delivery.status === "FAILED" ? "text-red-400" : mutedText}>
-                      [{delivery.status.toLowerCase()}]
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <span className={mutedText}>{delivery.campaignId}</span>
-                    <div className="flex items-center gap-2">
-                      <span className={mutedText}>{formatDate(delivery.sentAt ?? delivery.createdAt)}</span>
-                      {delivery.status === "FAILED" ? (
-                        <button
-                          onClick={() => renderWithRefresh(() => retryDelivery(delivery.id))}
-                          disabled={isPending}
-                          className={`${compactButtonClass} disabled:opacity-50`}
-                        >
-                          [retry]
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                  {delivery.errorMessage ? <p className="text-xs text-red-400">{delivery.errorMessage}</p> : null}
+            {deliveriesPaginated.rows.map((delivery) => (
+              <div key={delivery.id} className={`border ${borderColor} px-3 py-2 space-y-2 ${hoverBg}`}>
+                <div className="flex items-center justify-between text-xs"><span>{delivery.email}</span><span className={mutedText}>[{delivery.status}]</span></div>
+                <div className="flex gap-2">
+                  <button className={compactButtonClass} onClick={() => renderWithRefresh(() => moveDeliveryInQueue(delivery.id, "up"))}>[↑]</button>
+                  <button className={compactButtonClass} onClick={() => renderWithRefresh(() => moveDeliveryInQueue(delivery.id, "down"))}>[↓]</button>
+                  <button className={compactButtonClass} onClick={() => { const updated = prompt("Edit recipient email", delivery.email); if (updated) renderWithRefresh(() => editDeliveryRecipient(delivery.id, updated)) }}>[edit]</button>
+                  <button className={compactButtonClass} onClick={() => renderWithRefresh(() => removeDeliveryFromQueue(delivery.id))}>[remove]</button>
+                  {delivery.status === "FAILED" ? <button className={compactButtonClass} onClick={() => renderWithRefresh(() => retryDelivery(delivery.id))}>[retry]</button> : null}
                 </div>
-              ))}
+              </div>
+            ))}
+            <div className="flex gap-2 text-xs">
+              <button onClick={() => setDeliveryPage((p) => Math.max(1, p - 1))} className={compactButtonClass}>prev</button>
+              <span className={mutedText}>{deliveriesPaginated.page}/{deliveriesPaginated.totalPages}</span>
+              <button onClick={() => setDeliveryPage((p) => Math.min(deliveriesPaginated.totalPages, p + 1))} className={compactButtonClass}>next</button>
             </div>
           </section>
         </div>
       ) : null}
 
       {viewMode === "subscribers" ? (
-        <div className="space-y-6">
+        <div className="space-y-3">
           <div className="grid grid-cols-3 gap-4 text-sm">
-            <div className={`border ${borderColor} p-4`}>
-              <p className={`text-xs ${mutedText}`}>Total</p>
-              <p className="text-xl mt-1">{activeSubscriberCount}</p>
-            </div>
-            <div className={`border ${borderColor} p-4`}>
-              <p className={`text-xs ${mutedText}`}>{topicRows[1]?.name ?? "Topic A"}</p>
-              <p className="text-xl mt-1">{subscriberTopicCounts.get(topicRows[1]?.name ?? "") ?? 0}</p>
-            </div>
-            <div className={`border ${borderColor} p-4`}>
-              <p className={`text-xs ${mutedText}`}>{topicRows[2]?.name ?? "Topic B"}</p>
-              <p className="text-xl mt-1">{subscriberTopicCounts.get(topicRows[2]?.name ?? "") ?? 0}</p>
-            </div>
+            <div className={`border ${borderColor} p-4`}><p className={`text-xs ${mutedText}`}>Total</p><p className="text-xl mt-1">{activeSubscriberCount}</p></div>
+            <div className={`border ${borderColor} p-4`}><p className={`text-xs ${mutedText}`}>{topicRows[1]?.name ?? "Topic A"}</p><p className="text-xl mt-1">{subscriberTopicCounts.get(topicRows[1]?.name ?? "") ?? 0}</p></div>
+            <div className={`border ${borderColor} p-4`}><p className={`text-xs ${mutedText}`}>{topicRows[2]?.name ?? "Topic B"}</p><p className="text-xl mt-1">{subscriberTopicCounts.get(topicRows[2]?.name ?? "") ?? 0}</p></div>
           </div>
 
           <div className={`border ${borderColor}`}>
             <table className="w-full text-sm">
-              <thead>
-                <tr className={`border-b ${borderColor}`}>
-                  <th className={`p-3 text-left text-xs ${mutedText}`}>Email</th>
-                  <th className={`p-3 text-left text-xs ${mutedText}`}>Topics</th>
-                  <th className={`p-3 text-left text-xs ${mutedText}`}>Date</th>
-                </tr>
-              </thead>
+              <thead><tr className={`border-b ${borderColor}`}><th className={`p-3 text-left text-xs ${mutedText}`}>Select</th><th className={`p-3 text-left text-xs ${mutedText}`}>Email</th><th className={`p-3 text-left text-xs ${mutedText}`}>Topics</th><th className={`p-3 text-left text-xs ${mutedText}`}>Actions</th></tr></thead>
               <tbody>
-                {subscribers.map((subscriber) => (
-                  <tr key={subscriber.id} className={`border-b ${borderColor} ${hoverBg} transition-colors`}>
+                {subscribersPaginated.rows.map((subscriber) => (
+                  <tr key={subscriber.id} className={`border-b ${borderColor}`}>
+                    <td className="p-3"><input type="checkbox" checked={selectedSubscriberIds.includes(subscriber.id)} onChange={() => setSelectedSubscriberIds((current) => current.includes(subscriber.id) ? current.filter((id) => id !== subscriber.id) : [...current, subscriber.id])} /></td>
                     <td className="p-3 text-xs">{subscriber.email}</td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap gap-2">
-                        {subscriber.topics.map((topic) => (
-                          <span key={topic} className={`text-xs ${mutedText}`}>
-                            [{topic}]
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className={`p-3 text-xs ${mutedText}`}>{formatDate(subscriber.subscribedAt)}</td>
+                    <td className="p-3 text-xs">{subscriber.topics.join(", ")}</td>
+                    <td className="p-3 text-xs"><button className={compactButtonClass} onClick={() => renderWithRefresh(() => adminUnsubscribeSubscriber(subscriber.id))}>[admin-unsubscribe]</button></td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex gap-2 text-xs">
+            <button onClick={() => setSubscriberPage((p) => Math.max(1, p - 1))} className={compactButtonClass}>prev</button>
+            <span className={mutedText}>{subscribersPaginated.page}/{subscribersPaginated.totalPages}</span>
+            <button onClick={() => setSubscriberPage((p) => Math.min(subscribersPaginated.totalPages, p + 1))} className={compactButtonClass}>next</button>
           </div>
         </div>
       ) : null}
 
       {viewMode === "preview" ? (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className={`text-xs ${mutedText}`}>// preview</p>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setPreviewDevice("desktop")}
-                className={`v0-control-button-compact transition-colors ${
-                  previewDevice === "desktop" ? `${accentBorder} ${accentColor}` : `${borderColor} ${mutedText}`
-                }`}
-              >
-                Desktop
-              </button>
-              <button
-                onClick={() => setPreviewDevice("mobile")}
-                className={`v0-control-button-compact transition-colors ${
-                  previewDevice === "mobile" ? `${accentBorder} ${accentColor}` : `${borderColor} ${mutedText}`
-                }`}
-              >
-                Mobile
-              </button>
-            </div>
-          </div>
-
-          <div className={`border ${borderColor} ${isDarkMode ? "bg-[#1a1a1a]" : "bg-white"} overflow-hidden`}>
-            <div className={`flex items-center gap-2 px-4 py-2 border-b ${borderColor} ${isDarkMode ? "bg-[#0d0d0d]" : "bg-gray-100"}`}>
-              <span className={`text-xs ${mutedText}`}>From:</span>
-              <span className="text-xs">{testEmail || "admin@xistoh.com"}</span>
-            </div>
-            <div className={`flex items-center gap-2 px-4 py-2 border-b ${borderColor} ${isDarkMode ? "bg-[#0d0d0d]" : "bg-gray-100"}`}>
-              <span className={`text-xs ${mutedText}`}>Subject:</span>
-              <span className="text-xs">{subject || "(No subject)"}</span>
-            </div>
-
-            <div className={`mx-auto p-6 ${previewDevice === "mobile" ? "max-w-[375px]" : "w-full"}`}>
-              <div className="text-sm" dangerouslySetInnerHTML={{ __html: currentHtml }} />
-            </div>
-          </div>
-
-          <p className={`text-xs ${mutedText}`}>// {previewDevice === "mobile" ? "375px width" : "full width"} preview</p>
+          <div className="flex items-center justify-between"><p className={`text-xs ${mutedText}`}>// preview</p><div className="flex gap-1"><button onClick={() => setPreviewDevice("desktop")} className={compactButtonClass}>Desktop</button><button onClick={() => setPreviewDevice("mobile")} className={compactButtonClass}>Mobile</button></div></div>
+          <div className={`border ${borderColor} ${isDarkMode ? "bg-[#1a1a1a]" : "bg-white"} overflow-hidden`}><div className={`mx-auto p-6 ${previewDevice === "mobile" ? "max-w-[375px]" : "w-full"}`}><div className="text-sm" dangerouslySetInnerHTML={{ __html: currentHtml }} /></div></div>
         </div>
       ) : null}
     </div>

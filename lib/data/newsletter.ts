@@ -36,7 +36,7 @@ export async function getNewsletterDashboardData(): Promise<NewsletterDashboardD
       unsubscribedAt: null,
     },
     orderBy: [{ confirmedAt: "desc" }, { createdAt: "desc" }],
-    take: 50,
+    take: 250,
     select: {
       id: true,
       email: true,
@@ -61,7 +61,7 @@ export async function getNewsletterDashboardData(): Promise<NewsletterDashboardD
     const [campaigns, deliveries] = await Promise.all([
       prisma.newsletterCampaign.findMany({
         orderBy: { createdAt: "desc" },
-        take: 10,
+        take: 250,
         select: {
           id: true,
           subject: true,
@@ -74,13 +74,15 @@ export async function getNewsletterDashboardData(): Promise<NewsletterDashboardD
         },
       }),
       prisma.newsletterDelivery.findMany({
-        orderBy: [{ createdAt: "desc" }],
-        take: 50,
+        orderBy: [{ queueOrder: "asc" }, { createdAt: "desc" }],
+        take: 500,
         select: {
           id: true,
           campaignId: true,
+          subscriberId: true,
           email: true,
           status: true,
+          queueOrder: true,
           errorMessage: true,
           createdAt: true,
           sentAt: true,
@@ -111,8 +113,10 @@ export async function getNewsletterDashboardData(): Promise<NewsletterDashboardD
       deliveries: deliveries.map((delivery) => ({
         id: delivery.id,
         campaignId: delivery.campaignId,
+        subscriberId: delivery.subscriberId,
         email: delivery.email,
         status: delivery.status,
+        queueOrder: delivery.queueOrder,
         errorMessage: delivery.errorMessage,
         createdAt: delivery.createdAt.toISOString(),
         sentAt: delivery.sentAt?.toISOString() ?? null,
