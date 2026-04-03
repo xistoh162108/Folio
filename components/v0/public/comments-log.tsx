@@ -28,6 +28,10 @@ export function V0CommentsLog({
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20"
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"
+  const primaryText = isDarkMode ? "text-white/90" : "text-black/90"
+  const inputText = isDarkMode ? "text-white" : "text-black"
+  const inputPlaceholder = isDarkMode ? "placeholder:text-white/50" : "placeholder:text-black/60"
+  const inputFocus = isDarkMode ? "focus:border-[#D4FF00]/60" : "focus:border-[#3F5200]/60"
 
   async function createComment() {
     setPending(true)
@@ -134,9 +138,9 @@ export function V0CommentsLog({
           rows={3}
           maxLength={500}
           disabled={pending}
-          className={`w-full bg-transparent border-b ${borderColor} pb-1 pt-0 text-sm outline-none resize-none transition-colors leading-tight ${
-            isDarkMode ? "placeholder:text-white/30 focus:border-[#D4FF00]/50" : "placeholder:text-black/30 focus:border-[#3F5200]/50"
-          } ${pending ? "opacity-50" : ""}`}
+          className={`w-full bg-transparent border-b ${borderColor} ${inputText} ${inputPlaceholder} pb-1 pt-0 text-sm outline-none resize-none transition-colors leading-tight ${inputFocus} ${
+            pending ? "opacity-50" : ""
+          }`}
         />
         <div className="flex flex-wrap items-center gap-4 text-xs">
           <input
@@ -146,9 +150,9 @@ export function V0CommentsLog({
             inputMode="numeric"
             maxLength={4}
             disabled={pending}
-            className={`bg-transparent border-b ${borderColor} py-1 outline-none transition-colors ${
-              isDarkMode ? "placeholder:text-white/30 focus:border-[#D4FF00]/50" : "placeholder:text-black/30 focus:border-[#3F5200]/50"
-            } ${pending ? "opacity-50" : ""}`}
+            className={`bg-transparent border-b ${borderColor} ${inputText} ${inputPlaceholder} py-1 outline-none transition-colors ${inputFocus} ${
+              pending ? "opacity-50" : ""
+            }`}
           />
           <button
             type="submit"
@@ -168,7 +172,7 @@ export function V0CommentsLog({
           <div
             key={comment.id}
             data-comment-row={comment.id}
-            className={`grid gap-3 px-3 py-3 text-sm md:grid-cols-[180px_1fr] ${
+            className={`grid gap-3 px-3 py-3 text-sm ${primaryText} md:grid-cols-[180px_1fr] ${
               index === 0 ? "" : `border-t ${borderColor}`
             }`}
           >
@@ -190,9 +194,7 @@ export function V0CommentsLog({
                   placeholder="PIN_"
                   inputMode="numeric"
                   maxLength={4}
-                  className={`bg-transparent border-b ${borderColor} py-1 outline-none transition-colors ${
-                    isDarkMode ? "placeholder:text-white/30 focus:border-[#D4FF00]/50" : "placeholder:text-black/30 focus:border-[#3F5200]/50"
-                  }`}
+                  className={`bg-transparent border-b ${borderColor} ${inputText} ${inputPlaceholder} py-1 outline-none transition-colors ${inputFocus}`}
                 />
                 <button
                   type="button"
