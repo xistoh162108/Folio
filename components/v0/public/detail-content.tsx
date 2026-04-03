@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 
+import { normalizeCodeForDetailRendering, renderHighlightedCodeHtml } from "@/lib/content/code-rendering"
 import { renderInlineMarkdownHtml } from "@/lib/content/markdown-blocks"
 import { isBlockDocument } from "@/lib/content/post-content"
 import type { ContentBlock, EmbedBlock, ImageBlock } from "@/lib/contracts/content-blocks"
@@ -56,36 +57,6 @@ function getPlainText(nodes: ContentNode[] = []): string {
 
 function parseInlineHtml(html: string): string {
   return decodeHtml(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())
-}
-
-function syntaxHighlight(code: string, isDarkMode: boolean) {
-  const accentClass = isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"
-  const mutedClass = isDarkMode ? "text-white/35" : "text-black/40"
-  return escapeHtml(code)
-    .replace(
-      /\b(import|from|def|return|class|if|else|for|while|try|except|with|as|in|and|or|not|True|False|None)\b/g,
-      `<span class="${accentClass}">$1</span>`,
-    )
-    .replace(
-      /\b(np|numpy|math|os|sys)\b/g,
-      `<span class="${accentClass}">$1</span>`,
-    )
-    .replace(
-      /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g,
-      `<span class="${accentClass}">$1</span>`,
-    )
-    .replace(
-      /(["'])(.*?)\1/g,
-      `<span class="${accentClass}">$1$2$1</span>`,
-    )
-    .replace(
-      /#.*$/gm,
-      `<span class="${mutedClass}">$&</span>`,
-    )
-    .replace(
-      /\b(\d+\.?\d*)\b/g,
-      `<span class="${accentClass}">$1</span>`,
-    )
 }
 
 function applyMarks(content: string, marks: ContentMark[] | undefined, isDarkMode: boolean): string {
@@ -327,7 +298,8 @@ function DetailCodeBlock({
   hoverBg: string
   mutedText: string
 }) {
-  const highlightedCode = syntaxHighlight(code, isDarkMode)
+  const safeCode = normalizeCodeForDetailRendering(code)
+  const highlightedCode = renderHighlightedCodeHtml(safeCode, isDarkMode)
 
   return (
     <div className="relative group">
@@ -335,7 +307,7 @@ function DetailCodeBlock({
         <span className={`text-xs ${mutedText}`}>// {language ?? ""}</span>
         <button
           type="button"
-          onClick={() => void onCopy(code, index)}
+          onClick={() => void onCopy(safeCode, index)}
           className={`px-2 py-0.5 text-xs transition-colors ${hoverBg} ${
             copiedCode === index ? (isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]") : mutedText
           }`}

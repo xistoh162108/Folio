@@ -5,6 +5,7 @@ import { useState } from "react"
 import type { ReactNode } from "react"
 
 import type { PostDetailDTO } from "@/lib/contracts/posts"
+import { normalizeCodeForDetailRendering, renderHighlightedCodeHtml } from "@/lib/content/code-rendering"
 
 import { samplePostContent } from "@/components/v0/fixtures"
 import { V0DetailContent } from "@/components/v0/public/detail-content"
@@ -159,34 +160,8 @@ export function DetailNoteScreen({
                     if (block.startsWith("```")) {
                       const lines = block.split("\n")
                       const lang = lines[0].replace("```", "")
-                      const code = lines.slice(1, -1).join("\n")
-                      const accentClass = isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"
-                      const commentClass = isDarkMode ? "text-white/35" : "text-black/40"
-                      const highlightedCode = code
-                        .replace(
-                          /\b(import|from|def|return|class|if|else|for|while|try|except|with|as|in|and|or|not|True|False|None)\b/g,
-                          `<span class="${accentClass}">$1</span>`,
-                        )
-                        .replace(
-                          /\b(np|numpy|math|os|sys)\b/g,
-                          `<span class="${accentClass}">$1</span>`,
-                        )
-                        .replace(
-                          /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g,
-                          `<span class="${accentClass}">$1</span>`,
-                        )
-                        .replace(
-                          /(["'])(.*?)\1/g,
-                          `<span class="${accentClass}">$1$2$1</span>`,
-                        )
-                        .replace(
-                          /#.*$/gm,
-                          `<span class="${commentClass}">$&</span>`,
-                        )
-                        .replace(
-                          /\b(\d+\.?\d*)\b/g,
-                          `<span class="${accentClass}">$1</span>`,
-                        )
+                      const code = normalizeCodeForDetailRendering(lines.slice(1, -1).join("\n"))
+                      const highlightedCode = renderHighlightedCodeHtml(code, isDarkMode)
 
                       return (
                         <div key={index} className="relative group">
