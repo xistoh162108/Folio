@@ -805,8 +805,8 @@ export function V0NewsletterManager({
             </div>
           </div>
 
-          <div className={`border ${borderColor}`}>
-            <table className="w-full text-sm">
+          <div className={`border ${borderColor} overflow-hidden`}>
+            <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className={`border-b ${borderColor}`}>
                   <th className={`p-3 text-left text-xs ${mutedText}`}>Email</th>
@@ -818,7 +818,7 @@ export function V0NewsletterManager({
               </thead>
               <tbody>
                 {dashboard.subscribers.map((subscriber) => (
-                  <tr key={subscriber.id} className={`border-b ${borderColor} ${hoverBg} transition-colors`}>
+                  <tr key={subscriber.id} className={`border-b ${borderColor} ${hoverBg} transition-colors last:border-b-0`}>
                     <td className="p-3 text-xs">{subscriber.email}</td>
                     <td className="p-3">
                       <div className="flex flex-wrap gap-2">
