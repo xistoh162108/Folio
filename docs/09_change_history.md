@@ -93,6 +93,7 @@ Meaning:
 - current repo truth additionally includes:
   - project detail pages now expose the same published-date and estimated read-time metadata grammar already used on note detail pages
   - the change reuses the existing `formatDetailMeta()` contract instead of introducing a second detail-meta path
+  - the root favicon/manifest set now includes multi-format browser, touch, Android, and Windows tile assets with live metadata wiring
 
 ## Current readiness summary
 

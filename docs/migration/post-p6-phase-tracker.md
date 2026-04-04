@@ -1474,3 +1474,28 @@ Finalize SEO, responsive parity evidence, and CI coverage for the integrated lin
   - rejected: introducing a separate project-specific metadata widget
   - rejected: adding a new read-time data field to Prisma or DTO contracts
   - rejected: replacing the current detail header grammar instead of extending it minimally
+
+### Post-T1 follow-up — Favicon and manifest completion (2026-04-04)
+
+- status: done
+- objective: align the public favicon/touch/manifest asset set with the deployed exact-v0 runtime and common browser/device expectations
+- execution notes:
+  - updated:
+    - `app/layout.tsx`
+    - `public/site.webmanifest`
+    - `public/icon.svg`
+    - `public/apple-icon.png`
+    - `docs/00_system_overview.md`
+    - `docs/09_change_history.md`
+  - added:
+    - `public/favicon.svg`
+    - `public/favicon.png`
+    - `public/apple-touch-icon-152x152.png`
+    - `public/apple-touch-icon-167x167.png`
+    - `public/apple-touch-icon-180x180.png`
+    - `public/mstile-144x144.png`
+  - retained the canonical `/favicon.ico` entry while wiring PNG, SVG, Apple touch, Android chrome, manifest, and Windows tile metadata
+- explicit redesign rejections (this follow-up):
+  - rejected: replacing the existing brand/icon artwork itself
+  - rejected: introducing a separate PWA shell or install-first UX
+  - rejected: changing route-level visual identity to accommodate icon asset cleanup

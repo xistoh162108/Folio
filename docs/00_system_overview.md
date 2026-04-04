@@ -57,6 +57,8 @@ This is the fastest current-state map of `xistoh.log`.
 - SEO/support routes
   - `/robots.txt`
   - `/sitemap.xml`
+  - `/site.webmanifest`
+  - multi-format favicon bundle rooted at `/favicon.ico`, `/favicon.svg`, `/favicon-16x16.png`, `/favicon-32x32.png`, and touch/android icon variants
 
 ### Protected admin surface
 

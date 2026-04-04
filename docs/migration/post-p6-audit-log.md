@@ -1959,3 +1959,56 @@ Why accepted:
 
 - accepted: project detail should inherit the same read-time grammar as note detail for consistency inside the exact-v0 reading surface
 - rejected: adding a second project-only metadata component or a dedicated persisted read-time field
+
+---
+
+## Post-T1 Audit Addendum — Favicon and manifest completion (2026-04-04)
+
+### Status
+
+- accepted
+
+### What changed
+
+- updated:
+  - `app/layout.tsx`
+  - `public/site.webmanifest`
+  - `public/icon.svg`
+  - `public/apple-icon.png`
+  - `docs/00_system_overview.md`
+  - `docs/09_change_history.md`
+- added:
+  - `public/favicon.svg`
+  - `public/favicon.png`
+  - `public/apple-touch-icon-152x152.png`
+  - `public/apple-touch-icon-167x167.png`
+  - `public/apple-touch-icon-180x180.png`
+  - `public/mstile-144x144.png`
+
+### Minimality and scope guardrails
+
+- asset completion only:
+  - no route structure, shell grammar, or runtime palette changes
+- metadata wiring only:
+  - retained `/favicon.ico` as the canonical classic icon while adding PNG/SVG/touch/manifest/tile coverage
+- recovery of existing assets:
+  - the previously checked-in `icon.svg` and `apple-icon.png` were base64-encoded text payloads; they were restored to real SVG/PNG assets rather than replaced with new artwork
+
+### Verification performed
+
+- [x] verified generated file set in `public/`
+- [x] verified expected icon dimensions:
+  - `16x16`
+  - `32x32`
+  - `152x152`
+  - `167x167`
+  - `180x180`
+  - `192x192`
+  - `512x512`
+- [x] `pnpm typecheck` passed
+- [x] `pnpm build` passed
+
+### Decisions / approvals / rejections
+
+- accepted: adding the standard multi-size icon bundle and manifest is a minimal production completion step for the existing exact-v0 site
+- rejected: adding PWA-specific UX chrome or changing the icon artwork itself in this follow-up
