@@ -1924,3 +1924,38 @@ Why accepted:
 - accepted: scroll fixes via ownership and container constraints only
 - rejected: introducing drawer/hamburger/mobile app-shell redesign patterns
 - rejected: restyling panels/typography/spacing to mask structural scroll faults
+
+---
+
+## Post-T1 Audit Addendum — Project detail read-time parity (2026-04-04)
+
+### Status
+
+- accepted
+
+### What changed
+
+- updated:
+  - `components/v0/public/detail-project-screen.tsx`
+  - `tests/unit/detail-meta.test.ts`
+  - `docs/00_system_overview.md`
+  - `docs/09_change_history.md`
+- project detail pages now render the same published-date and estimated read-time header grammar already used on note detail pages
+
+### Minimality and scope guardrails
+
+- contract reuse only:
+  - reused the existing `formatDetailMeta()` mapper and `PostDetailDTO.htmlContent`
+- no schema change:
+  - no Prisma field, migration, or DTO expansion was introduced
+- no redesign:
+  - kept the existing project detail shell and summary behavior, only replacing the placeholder `// project` line when real post data exists
+
+### Verification performed
+
+- [x] `pnpm test tests/unit/detail-meta.test.ts` passed
+
+### Decisions / approvals / rejections
+
+- accepted: project detail should inherit the same read-time grammar as note detail for consistency inside the exact-v0 reading surface
+- rejected: adding a second project-only metadata component or a dedicated persisted read-time field

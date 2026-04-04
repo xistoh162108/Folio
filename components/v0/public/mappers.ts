@@ -54,6 +54,11 @@ export function formatDetailMeta(post: PostDetailDTO) {
   }
 }
 
+export function formatDetailMetaLine(post: PostDetailDTO) {
+  const meta = formatDetailMeta(post)
+  return `// ${meta.date} - ${meta.readTime}`
+}
+
 export function formatLogTimestamp(value: string) {
   return new Date(value).toLocaleString("en-US", {
     year: "numeric",

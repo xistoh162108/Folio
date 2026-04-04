@@ -42,6 +42,7 @@ This is the fastest current-state map of `xistoh.log`.
   - inline RSS affordance
 - `/projects/[slug]`
   - published project detail
+  - note-style published date and estimated read-time metadata
   - summary from `Post.excerpt` only when present
   - likes, comments, assets, links, rendered code/math
   - no public admin moderation affordance

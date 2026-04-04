@@ -1457,3 +1457,20 @@ Finalize SEO, responsive parity evidence, and CI coverage for the integrated lin
   - rejected: introducing drawer/hamburger/app-shell variants to "solve" scroll issues
   - rejected: re-spacing, re-typography, or card/chrome redesign as a scroll workaround
   - rejected: any second responsive navigation model; ownership fixes remain structural only
+
+### Post-T1 follow-up — Project detail read-time parity (2026-04-04)
+
+- status: done
+- objective: expose the same published-date and estimated read-time metadata grammar on `/projects/[slug]` that note detail pages already use
+- execution notes:
+  - updated:
+    - `components/v0/public/detail-project-screen.tsx`
+    - `tests/unit/detail-meta.test.ts`
+    - `docs/00_system_overview.md`
+    - `docs/09_change_history.md`
+  - reused the existing `formatDetailMeta()` contract from the note-detail path
+  - kept the exact-v0 project detail shell, summary rules, and section ordering intact
+- explicit redesign rejections (this follow-up):
+  - rejected: introducing a separate project-specific metadata widget
+  - rejected: adding a new read-time data field to Prisma or DTO contracts
+  - rejected: replacing the current detail header grammar instead of extending it minimally

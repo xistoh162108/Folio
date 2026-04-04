@@ -85,6 +85,15 @@ Meaning:
   - shared-height search/reset controls on Notes and Projects
   - normalized sender identity `xistoh <hello@xistoh.com>`
 
+### Post-T1 follow-up patches
+
+Meaning:
+
+- small exact-v0-consistent public runtime refinements accepted after `T1`
+- current repo truth additionally includes:
+  - project detail pages now expose the same published-date and estimated read-time metadata grammar already used on note detail pages
+  - the change reuses the existing `formatDetailMeta()` contract instead of introducing a second detail-meta path
+
 ## Current readiness summary
 
 As of the last final verification:

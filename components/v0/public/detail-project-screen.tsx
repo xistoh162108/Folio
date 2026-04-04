@@ -10,6 +10,10 @@ import {
   V0DetailContent,
   hasRenderableDetailContent,
 } from "@/components/v0/public/detail-content";
+import {
+  formatDetailMeta,
+  formatDetailMetaLine,
+} from "@/components/v0/public/mappers";
 import { PublicShell } from "@/components/v0/public/public-shell";
 import type { V0RuntimeDescriptor } from "@/components/v0/runtime/v0-experience-runtime";
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller";
@@ -42,6 +46,8 @@ export function DetailProjectScreen({
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50";
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20";
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5";
+  const detailMeta = post ? formatDetailMeta(post) : null;
+  const detailMetaLine = post ? formatDetailMetaLine(post) : null;
   const shouldRenderContent = post
     ? hasRenderableDetailContent({
         content: post.content,
@@ -115,7 +121,20 @@ export function DetailProjectScreen({
 
             <section className="space-y-6">
               <div className="space-y-3">
-                <p className={`text-xs ${mutedText}`}>// project</p>
+                {detailMeta ? (
+                  <div className="flex items-center gap-4">
+                    <p className={`text-xs ${mutedText}`}>
+                      {detailMetaLine}
+                    </p>
+                    <span
+                      className={`text-xs ${isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"}`}
+                    >
+                      [v: {(post?.views ?? 0).toLocaleString()}]
+                    </span>
+                  </div>
+                ) : (
+                  <p className={`text-xs ${mutedText}`}>// project</p>
+                )}
                 <h1 className="text-xl">
                   {post?.title ?? sampleProjectContent.title}
                 </h1>
