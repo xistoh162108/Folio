@@ -2,9 +2,9 @@
 
 ## Status
 
-- Last updated: 2026-03-29
-- Current overall status: R1-R9 complete
-- Cross-phase QA follow-up for R2 continuity exactness and R5 production-equivalent storage proof is recorded in the audit log.
+- Last updated: 2026-04-05
+- Current overall status: R1-R9 accepted baseline; H0-H8 complete
+- Cross-phase QA follow-up for R2 continuity exactness and database-backed Playwright proof in this local environment is recorded in the audit log.
 
 ## Governance rule
 
@@ -35,6 +35,20 @@ No phase is complete unless:
 | R7    | Profile/CV and admin scroll/runtime fixes                            | done   | R3                  |
 | R8    | Performance diagnostics and admin transition acceleration            | done   | R2 + R3 + R7        |
 | R9    | SEO, responsive parity CI, and final lock                            | done   | R4 + R6 + R7 + R8   |
+
+## Hardening lineage summary
+
+| Phase | Title                                                     | Status | Blocking dependency |
+| ----- | --------------------------------------------------------- | ------ | ------------------- |
+| H0    | Governance reset and exact-v0 hardening issue matrix      | done   | R1-R9 baseline      |
+| H1    | Theme, brand navigation, public-link exposure, wrap fixes | done   | H0                  |
+| H2    | Home composition, search/tags/pagination, RSS             | done   | H0 + H1             |
+| H3    | Comments, guestbook, moderation pagination, view audit    | done   | H0 + H2             |
+| H4    | Editor/delete/renderer integrity                          | done   | H2 + H3             |
+| H5    | Profile/CV and resume management                          | done   | H0                  |
+| H6    | Newsletter/subscriber/email hardening                     | done   | H0 + H1             |
+| H7    | Admin performance, service log, final admin scroll close  | done   | H3 + H4 + H5 + H6   |
+| H8    | Final QA, parity review, documentation lock               | done   | H1-H7               |
 
 ---
 
@@ -112,6 +126,428 @@ Replace the prior post-P6 enhancement lineage with the new integrated governance
 - [x] baseline audit logged
 - [x] locked defaults logged
 - [x] status updated here
+
+---
+
+## H0 — Governance reset and exact-v0 hardening issue matrix
+
+### Status
+
+- done
+
+### Objective
+
+Reopen the post-P6 line with a hardening lineage that treats documentation as a release gate for every load-bearing change.
+
+### Scope
+
+- issue matrix for the production hardening backlog
+- hardening lineage `H0-H8`
+- documentation rule for product/runtime/schema/route/feed/email/renderer/query changes
+
+### Concrete tasks
+
+- record the 41-item hardening issue matrix in the canonical plan set
+- lock the owner decisions for:
+  - Light default theme
+  - home brand-link ownership
+  - Home-only Instagram exposure
+  - Notes/Projects RSS
+  - Home recent-notes/projects/logs composition
+- define documentation acceptance rules for load-bearing changes only
+
+### Acceptance criteria
+
+- the hardening issue matrix is recorded
+- `H0-H8` exists in the canonical docs
+- no undocumented load-bearing change is allowed going forward
+- audit entry for `H0` is accepted
+
+### Post-implementation audit checklist
+
+- [x] hardening lineage recorded
+- [x] documentation gate recorded
+- [x] owner decisions aligned across canonical docs
+
+---
+
+## H1 — Theme, brand navigation, public-link exposure, wrap fixes
+
+### Status
+
+- done
+
+### Objective
+
+Correct first-load theme, brand navigation, Instagram exposure, and shell-adjacent wrap ownership without changing the exact-v0 world.
+
+### Scope
+
+- Light default theme
+- home-link brand mark
+- Home-only Instagram exposure
+- Contact/Guestbook width usage
+- notes/footer shared wrap/baseline corrections
+
+### Concrete tasks
+
+- switch theme fallback to Light while preserving persistence and no-FOUC
+- make public/admin brand mark resolve to `/`
+- remove Instagram from Contact and Guestbook while keeping Home exposure
+- widen Contact and Guestbook one token step inside the existing shell grammar
+- retain existing public/admin switch removal and lock it in docs/tests
+
+### Acceptance criteria
+
+- first load is Light
+- brand resolves home
+- Instagram is Home-only
+- Contact/Guestbook/note-strip wrap behavior no longer wastes space or collides at desktop-like widths
+
+### Post-implementation audit checklist
+
+- [x] product-rule change recorded
+- [x] runtime/public-link behavior recorded
+- [x] responsive/baseline behavior recorded
+
+---
+
+## H2 — Home composition, search/tags/pagination, RSS
+
+### Status
+
+- done
+
+### Objective
+
+Make Notes and Projects real publishing surfaces that scale, while keeping them inside the same exact-v0 terminal world.
+
+### Scope
+
+- Home composition
+- Notes/Projects search
+- Notes/Projects tag filters
+- Notes/Projects server pagination
+- project short-description truth
+- separate Notes/Projects RSS feeds and autodiscovery
+
+### Concrete tasks
+
+- expand Home to 5 recent notes, 2 recent projects, and 2 recent visitor logs
+- add server-backed `q`, `tag`, and `page` query behavior to Notes and Projects
+- use project `excerpt` as the only short description and remove fake fallback prose
+- expose project tags and project views in the list
+- add `/notes/rss.xml` and `/projects/rss.xml`
+- add feed autodiscovery and terminal-native `[rss ->]` affordances
+
+### Acceptance criteria
+
+- Home matches the locked product rules
+- Notes/Projects query states work without design-language drift
+- filtered/paginated query states avoid duplicate-canonical ambiguity
+- RSS routes validate and remain exact-v0-consistent
+
+### Post-implementation audit checklist
+
+- [x] route/canonical/feed behavior recorded
+- [x] home product-rule change recorded
+- [x] pagination/search/filter behavior recorded
+- [x] non-literal RSS/search extension justification recorded
+
+---
+
+## H3 — Comments, guestbook, moderation pagination, and view audit
+
+### Status
+
+- done
+
+### Objective
+
+Allow community surfaces to scale without switching to a card/feed product language, and audit view counting through existing analytics runtime behavior.
+
+### Scope
+
+- note/project comment pagination
+- guestbook latest-first pagination
+- admin/community pagination
+- delete-control consistency
+- comment contrast token correction
+- note/project view-count audit
+
+### Concrete tasks
+
+- add paginated GET reads for note/project comments
+- add paginated GET reads for guestbook
+- add independent admin/community pagination for comments and guestbook
+- normalize admin delete-button sizing across both moderation sections
+- make comment body foreground explicit in the public log
+- add analytics route proof for first-view increment and duplicate suppression
+
+### Acceptance criteria
+
+- comments, guestbook, and admin/community no longer hard-stop at fixed snapshots
+- guestbook stays latest-first and terminal-native
+- comment text remains readable across theme states
+- analytics route proof exists for note/project view-count increment behavior
+
+### Post-implementation audit checklist
+
+- [x] pagination/runtime behavior recorded
+- [x] moderation control consistency recorded
+- [x] view-count audit evidence recorded
+- [x] blocked e2e environment caveat recorded in audit
+
+---
+
+## H4 — Editor/delete/renderer integrity
+
+### Status
+
+- done
+
+### Objective
+
+Close ambiguous delete semantics, isolate editor action state, and align Markdown-first authoring with published code/math rendering without leaving dead support UI.
+
+### Scope
+
+- permanent delete workflow
+- per-action pending state
+- code and math rendering integrity
+- code-copy terminal wording
+- uploaded asset and cover workflow cleanup
+- editor shell dead-UI removal
+
+### Concrete tasks
+
+- add explicit permanent delete beside archive in the existing editor shell
+- ensure only the active editor action changes button state
+- align canonical writer HTML with published reader expectations for code-language metadata
+- replace escaped math placeholders with rendered KaTeX output
+- change code-copy feedback from `copied` to `yanked`
+- collapse upload, insertion, asset visibility, and cover selection into one `[assets]` support block
+
+### Acceptance criteria
+
+- delete/archive is no longer ambiguous
+- only the active editor action shows a pending label
+- uploaded assets are visibly insertable and images can be selected as cover from the same workflow
+- code blocks preserve language metadata from writer to reader
+- math renders as math in the published reader
+- no dead preview/attachment UI remains in the active v0 editor path
+
+### Post-implementation audit checklist
+
+- [x] delete/archive behavior recorded
+- [x] renderer/parser behavior recorded
+- [x] assets/cover workflow recorded
+- [x] targeted proof captured in audit
+
+---
+
+## H5 — Profile/CV and resume management
+
+### Status
+
+- done
+
+### Objective
+
+Align the profile editor with what the public runtime actually renders and make `/resume.pdf` directly manageable without introducing a second route or schema fork.
+
+### Scope
+
+- Experience editor/runtime alignment
+- direct resume PDF upload/remove management
+- `/resume.pdf` uploaded-override + generated-fallback behavior
+- settings-shell usability guard
+
+### Concrete tasks
+
+- remove `Role / Position`, `Description`, and `Year` from the active Experience editor model
+- make `Short Label` + `Period` the active Experience contract used by Home and generated resume output
+- keep the existing Prisma columns for compatibility while mapping saves into the existing schema
+- add `/api/admin/profile/resume` for admin-only upload/remove actions
+- keep `/resume.pdf` as the only public resume route and serve uploaded override first
+
+### Acceptance criteria
+
+- Experience editing matches the public runtime model
+- admins can upload and remove a real resume PDF from settings
+- `/resume.pdf` serves uploaded override when present and generated fallback otherwise
+- no second public resume route or non-v0 settings UI is introduced
+
+### Post-implementation audit checklist
+
+- [x] profile/runtime contract change recorded
+- [x] resume workflow recorded
+- [x] route ownership recorded
+- [x] targeted proof captured in audit
+
+---
+
+## H6 — Newsletter/subscriber/email hardening
+
+### Status
+
+- done
+
+### Objective
+
+Bring subscription lifecycle, newsletter email framing, and `/admin/newsletter` operations up to production-ready behavior without leaving the exact-v0 terminal world.
+
+### Scope
+
+- newsletter audience taxonomy replacement
+- public subscribe/confirm/unsubscribe state machine
+- welcome/signature/banner email lifecycle
+- newsletter queue/targeting/asset workflow
+- paginated subscriber/campaign/delivery management
+
+### Concrete tasks
+
+- replace old newsletter segmentation with:
+  - `All`
+  - `Project & Info`
+  - `Log`
+- normalize legacy topic aliases into the locked canonical topic set
+- update public subscribe strips and request actions to use the new taxonomy
+- make repeat subscribe/confirm/unsubscribe flows resolve to explicit success-state language instead of raw errors
+- send a welcome email after successful confirmation
+- apply one exact-v0 mail frame with:
+  - static Jitter banner
+  - shared signature
+  - natural unsubscribe wording
+- extend `/admin/newsletter` to support:
+  - draft-backed queue ordering
+  - topic or selected-recipient targeting
+  - send-unsent-only reruns
+  - image/file uploads
+  - attachment toggles
+  - subscriber unsubscribe/delete
+  - paginated campaigns, deliveries, and subscribers
+- keep newsletter compose/preview Markdown-first inside the same admin shell
+
+### Acceptance criteria
+
+- public subscribe flows use the locked topic taxonomy and explicit status-machine copy
+- successful confirmation sends a welcome email
+- newsletter emails use the shared exact-v0 frame and natural unsubscribe wording
+- `/admin/newsletter` supports queue edits, reruns, attachments, targeted sends, and pagination without introducing a second design language
+- load-bearing H6 docs and audit evidence are recorded
+
+### Post-implementation audit checklist
+
+- [x] taxonomy and lifecycle rule changes recorded
+- [x] schema/data-contract changes recorded
+- [x] route ownership and worker/upload ownership recorded
+- [x] email-frame/lifecycle changes recorded
+- [x] targeted proof captured in audit
+
+---
+
+## H7 — Admin performance, service log, final admin scroll close
+
+### Status
+
+- done
+
+### Objective
+
+Turn admin diagnostics into a real attribution surface and close remaining shell-level scroll containment drift without changing the exact-v0 admin language.
+
+### Scope
+
+- lightweight service log in analytics
+- per-surface admin performance attribution
+- final admin route wrapper containment cleanup
+
+### Concrete tasks
+
+- extend admin analytics with a service-log projection built from:
+  - `AuditLog`
+  - `WebhookDelivery`
+  - `NewsletterCampaign`
+  - `NewsletterDelivery`
+- extend admin performance diagnostics to measure:
+  - session lookup
+  - posts index
+  - post editor load
+  - settings editor load
+  - newsletter dashboard load
+  - community moderation load
+- keep diagnostics terminal-native and inline; no monitoring dashboard widgets
+- tighten admin route wrappers with explicit `min-h-0` and bottom breathing room so long content surfaces remain reachable
+- close the remaining newsletter unsubscribe-notification and campaign-delete operational correctness risks surfaced during H0-H6 audit
+
+### Acceptance criteria
+
+- `/admin/analytics` exposes a lightweight service log in the same v0 language
+- performance diagnostics attribute multiple admin surfaces instead of one opaque server number
+- admin content/settings/newsletter/community wrappers keep a single reachable scroll owner
+- no new admin design language is introduced
+- H7 docs and audit evidence are recorded
+
+### Post-implementation audit checklist
+
+- [x] analytics/service-log behavior recorded
+- [x] performance attribution behavior recorded
+- [x] scroll-owner containment change recorded
+- [x] targeted proof captured in audit
+
+---
+
+## H8 — Final QA, parity review, documentation lock
+
+### Status
+
+- done
+
+### Objective
+
+Re-run the full hardening proof set, close the last production-facing runtime gap discovered during final smoke, and lock the canonical post-P6 docs to the implemented H0-H8 state.
+
+### Scope
+
+- final build/unit/runtime smoke review
+- H0-H7 sub-agent production-readiness audit
+- public resume fallback hardening
+- documentation lock for final accepted behavior
+
+### Concrete tasks
+
+- re-audit H0-H7 for:
+  - API and functional correctness
+  - user-flow risk
+  - exact-v0 design consistency
+  - docs/schema/ORM/transaction alignment
+  - shell-only or non-substantive feature risk
+- rerun:
+  - `pnpm db:validate`
+  - `pnpm db:generate`
+  - `pnpm lint`
+  - `pnpm typecheck`
+  - `pnpm build`
+  - `pnpm test`
+- run production-build route smoke and ops smoke against a live local `next start`
+- harden `/resume.pdf` so public read-path fallback stays generated when override storage is unreadable or unconfigured, while admin write paths remain fail-closed
+- update spec/compat/route/tracker/audit docs to the final H0-H8 accepted state
+
+### Acceptance criteria
+
+- H0-H7 sub-agent audit reports no production blockers and no exact-v0 blocker
+- production build, unit suite, and local ops smoke pass
+- public core routes, feeds, admin auth redirect, and `/resume.pdf` succeed on a live production build
+- canonical docs match the implemented H0-H8 runtime behavior
+- remaining risk is limited to external environment proof gaps rather than accepted code/runtime failure
+
+### Post-implementation audit checklist
+
+- [x] H0-H7 sub-agent verdict recorded
+- [x] final build/unit/runtime smoke recorded
+- [x] public resume fallback hardening recorded
+- [x] final documentation lock recorded
 
 ---
 

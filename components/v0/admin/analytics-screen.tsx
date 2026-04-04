@@ -85,8 +85,8 @@ export function AnalyticsScreen({
 
   return (
     <AdminShell currentSection="overview" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <div className="min-h-full p-4 sm:p-6 md:h-full md:overflow-y-auto">
-        <div className="space-y-6 font-mono">
+      <div className="min-h-full p-4 sm:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
+        <div className="space-y-6 pb-10 font-mono">
             <div>
               <p className={`text-xs ${mutedText}`}>// analytics</p>
               <h2 className="text-lg mt-1">Terminal Dashboard</h2>
@@ -192,6 +192,33 @@ export function AnalyticsScreen({
                   ? `last_worker :: ${readiness.lastWorkerActivity.label} :: ${readiness.lastWorkerActivity.source}`
                   : "last_worker :: no persisted activity"}
               </p>
+            </div>
+
+            <div data-v0-service-log className={`border ${borderColor} p-4 space-y-3`}>
+              <div className="flex items-center justify-between">
+                <p className={`text-xs ${mutedText}`}>--- SERVICE LOG ---</p>
+                <span className={`text-xs ${mutedText}`}>[{readiness.serviceLog.length}]</span>
+              </div>
+
+              {readiness.serviceLog.length === 0 ? (
+                <p className={`text-xs ${mutedText}`}>No recent service activity has been recorded yet.</p>
+              ) : (
+                <div className="space-y-1.5 text-xs">
+                  {readiness.serviceLog.map((entry) => (
+                    <div key={entry.id} className={`space-y-1 px-1 py-1 ${hoverBg}`}>
+                      <div className="flex items-center gap-3">
+                        <span className="w-20 shrink-0">{new Date(entry.occurredAt).toISOString().slice(11, 19)}</span>
+                        <span className={entry.status === "success" ? accentText : entry.status === "error" ? "text-[#FF3333]" : mutedText}>
+                          [{entry.status}]
+                        </span>
+                        <span className="w-40 truncate">{entry.label}</span>
+                        <span className="flex-1 truncate">{entry.source}</span>
+                      </div>
+                      <p className={`pl-0 text-[11px] sm:pl-[17rem] ${mutedText}`}>{entry.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div data-v0-admin-performance className={`border ${borderColor} p-4 space-y-3`}>

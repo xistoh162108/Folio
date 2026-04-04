@@ -4,9 +4,10 @@ import Link from "next/link";
 import { startTransition, useActionState, useMemo, useState } from "react";
 
 import type { PostCardDTO } from "@/lib/contracts/posts";
+import type { PublicTagFilterOption } from "@/lib/data/posts";
 import { requestSubscription } from "@/lib/actions/subscriber.actions";
 
-import { digitalGardenNotes, tagFilters } from "@/components/v0/fixtures";
+import { digitalGardenNotes } from "@/components/v0/fixtures";
 import { mapPostCardToNoteRow } from "@/components/v0/public/mappers";
 import { PublicShell } from "@/components/v0/public/public-shell";
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller";
@@ -16,24 +17,40 @@ interface NotesScreenProps {
   isDarkMode?: boolean;
   brandLabel?: string;
   notes?: PostCardDTO[];
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+  searchQuery?: string;
+  selectedTag?: string | null;
+  tagOptions?: PublicTagFilterOption[];
+  rssHref?: string;
 }
-
-const notesPerPage = 5;
 
 export function NotesScreen({
   isDarkMode: initialIsDarkMode = true,
   brandLabel = "xistoh.log",
   notes,
+  pagination = {
+    page: 1,
+    pageSize: 5,
+    total: notes?.length ?? digitalGardenNotes.length,
+    totalPages: 1,
+  },
+  searchQuery = "",
+  selectedTag = null,
+  tagOptions = [],
+  rssHref = "/notes/rss.xml",
 }: NotesScreenProps) {
   const { isDarkMode, toggleTheme } = useV0ThemeController(initialIsDarkMode);
-  const [activeTagFilter, setActiveTagFilter] = useState<string>("All");
-  const [currentPage, setCurrentPage] = useState(1);
   const [email, setEmail] = useState("");
   const [honey, setHoney] = useState("");
   const [topics, setTopics] = useState({
     all: true,
-    aiInfosec: false,
-    projectsLogs: false,
+    projectInfo: false,
+    log: false,
   });
   const [state, formAction, pending] = useActionState(
     async (
@@ -56,6 +73,35 @@ export function NotesScreen({
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5";
   const activeBg = isDarkMode ? "bg-white/10" : "bg-black/10";
   const accentColor = getV0RouteAccentPalette("notes", isDarkMode).color;
+  const resolvedTagOptions = useMemo(
+    () => [{ label: "All", value: "all" }, ...tagOptions],
+    [tagOptions],
+  );
+  const buildListHref = (next: {
+    q?: string | null;
+    tag?: string | null;
+    page?: number | null;
+  }) => {
+    const params = new URLSearchParams();
+    const q = (next.q ?? searchQuery).trim();
+    const tag = next.tag === undefined ? selectedTag : next.tag;
+    const page = next.page ?? 1;
+
+    if (q) {
+      params.set("q", q);
+    }
+
+    if (tag) {
+      params.set("tag", tag);
+    }
+
+    if (page > 1) {
+      params.set("page", String(page));
+    }
+
+    const queryString = params.toString();
+    return queryString ? `/notes?${queryString}` : "/notes";
+  };
 
   const noteRows = useMemo(
     () =>
@@ -78,23 +124,9 @@ export function NotesScreen({
     [notes],
   );
 
-  const filteredNotes = useMemo(
-    () =>
-      activeTagFilter === "All"
-        ? noteRows
-        : noteRows.filter((note) => note.filterTags.includes(activeTagFilter)),
-    [activeTagFilter, noteRows],
-  );
-
-  const totalPages = Math.ceil(filteredNotes.length / notesPerPage);
-  const paginatedNotes = filteredNotes.slice(
-    (currentPage - 1) * notesPerPage,
-    currentPage * notesPerPage,
-  );
-
   const toggleTopic = (topic: keyof typeof topics) => {
     if (topic === "all") {
-      setTopics({ all: true, aiInfosec: false, projectsLogs: false });
+      setTopics({ all: true, projectInfo: false, log: false });
       return;
     }
 
@@ -121,33 +153,61 @@ export function NotesScreen({
       <div className="min-h-full px-4 py-6 pb-8 sm:px-6 md:h-full md:px-8 md:pb-32">
         <div className="space-y-6 max-w-lg md:max-w-none">
           <section className="space-y-3">
-            <p className={`text-xs ${mutedText}`}>// digital garden</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className={`text-xs ${mutedText}`}>// digital garden</p>
+              <a href={rssHref} className={`text-xs ${mutedText} ${hoverBg} px-1`}>
+                [rss -&gt;]
+              </a>
+            </div>
             <h2 className="text-lg">Notes &amp; Seeds</h2>
             <p className={`text-sm ${mutedText}`}>
               [*] seedling | [+] growing | [&gt;] evergreen
             </p>
+            <p className={`text-xs ${mutedText}`}>
+              // seedling = new log, growing = active branch, evergreen = stable note
+            </p>
           </section>
 
-          <div className="flex gap-2 text-xs">
-            {tagFilters.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => {
-                  setActiveTagFilter(tag);
-                  setCurrentPage(1);
-                }}
-                className={`px-2 py-1 border ${borderColor} transition-colors ${
-                  activeTagFilter === tag ? activeBg : hoverBg
+          <form action="/notes" className="flex flex-wrap items-center gap-3 text-xs">
+            <input
+              type="search"
+              name="q"
+              defaultValue={searchQuery}
+              placeholder="search notes_"
+              className={`v0-control-inline-input min-w-[14rem] flex-1 ${borderColor} ${
+                isDarkMode
+                  ? "text-white placeholder:text-white/30"
+                  : "text-black placeholder:text-black/30"
+              }`}
+            />
+            {selectedTag ? <input type="hidden" name="tag" value={selectedTag} /> : null}
+            <button type="submit" className={`v0-control-inline-button ${borderColor} ${hoverBg}`}>
+              search
+            </button>
+            {(searchQuery || selectedTag) ? (
+              <Link href="/notes" className={`px-2 py-1 border ${borderColor} ${hoverBg}`}>
+                [reset]
+              </Link>
+            ) : null}
+          </form>
+
+          <div className="flex flex-wrap gap-2 text-xs">
+            {resolvedTagOptions.map((tag) => (
+              <Link
+                key={tag.value}
+                href={tag.value === "all" ? buildListHref({ tag: null, page: 1 }) : buildListHref({ tag: tag.value, page: 1 })}
+                className={`px-2 py-1 border transition-colors ${borderColor} ${
+                  (tag.value === "all" && !selectedTag) || selectedTag === tag.value ? activeBg : hoverBg
                 }`}
               >
-                [{tag}]
-              </button>
+                [{tag.label}]
+              </Link>
             ))}
           </div>
 
           <div className="space-y-1">
-            {paginatedNotes.length > 0 ? (
-              paginatedNotes.map((note) => (
+            {noteRows.length > 0 ? (
+              noteRows.map((note) => (
                 <Link
                   key={note.id}
                   href={note.href}
@@ -189,38 +249,36 @@ export function NotesScreen({
               ))
             ) : (
               <div className={`py-2 px-2 -mx-2 text-sm ${mutedText}`}>
-                {noteRows.length === 0
-                  ? "[ NO_PUBLISHED_NOTES ]"
-                  : "[ NO_MATCHING_NOTES ]"}
+                {notes?.length === 0 ? "[ NO_MATCHING_NOTES ]" : "[ NO_PUBLISHED_NOTES ]"}
               </div>
             )}
           </div>
 
-          {totalPages > 1 ? (
+          {pagination.totalPages > 1 ? (
             <div
               className={`flex items-center justify-center gap-2 text-xs ${mutedText} pt-4`}
             >
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className={`px-2 py-1 ${currentPage === 1 ? "opacity-30" : hoverBg}`}
+              <Link
+                href={buildListHref({ page: Math.max(1, pagination.page - 1) })}
+                aria-disabled={pagination.page === 1}
+                className={`px-2 py-1 ${pagination.page === 1 ? "pointer-events-none opacity-30" : hoverBg}`}
               >
                 [&lt;]
-              </button>
+              </Link>
               <span>
-                {(currentPage - 1) * notesPerPage + 1}-
-                {Math.min(currentPage * notesPerPage, filteredNotes.length)} /{" "}
-                {filteredNotes.length}
+                {(pagination.page - 1) * pagination.pageSize + 1}-
+                {Math.min(pagination.page * pagination.pageSize, pagination.total)} /{" "}
+                {pagination.total}
               </span>
-              <button
-                onClick={() =>
-                  setCurrentPage(Math.min(totalPages, currentPage + 1))
-                }
-                disabled={currentPage === totalPages}
-                className={`px-2 py-1 ${currentPage === totalPages ? "opacity-30" : hoverBg}`}
+              <Link
+                href={buildListHref({ page: Math.min(pagination.totalPages, pagination.page + 1) })}
+                aria-disabled={pagination.page === pagination.totalPages}
+                className={`px-2 py-1 ${
+                  pagination.page === pagination.totalPages ? "pointer-events-none opacity-30" : hoverBg
+                }`}
               >
                 [&gt;]
-              </button>
+              </Link>
             </div>
           ) : null}
         </div>
@@ -298,34 +356,34 @@ export function NotesScreen({
               <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
                 <button
                   type="button"
-                  onClick={() => toggleTopic("aiInfosec")}
+                  onClick={() => toggleTopic("projectInfo")}
                   className={`v0-control-toggle ${borderColor} ${
-                    topics.aiInfosec
+                    topics.projectInfo
                       ? isDarkMode
                         ? "bg-white/20"
                         : "bg-black/20"
                       : ""
                   }`}
                 >
-                  {topics.aiInfosec ? "*" : ""}
+                  {topics.projectInfo ? "*" : ""}
                 </button>
-                <span className={mutedText}>AI</span>
+                <span className={mutedText}>Project &amp; Info</span>
               </label>
               <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
                 <button
                   type="button"
-                  onClick={() => toggleTopic("projectsLogs")}
+                  onClick={() => toggleTopic("log")}
                   className={`v0-control-toggle ${borderColor} ${
-                    topics.projectsLogs
+                    topics.log
                       ? isDarkMode
                         ? "bg-white/20"
                         : "bg-black/20"
                       : ""
                   }`}
                 >
-                  {topics.projectsLogs ? "*" : ""}
+                  {topics.log ? "*" : ""}
                 </button>
-                <span className={mutedText}>Projects</span>
+                <span className={mutedText}>Log</span>
               </label>
               {statusText ? (
                 <span

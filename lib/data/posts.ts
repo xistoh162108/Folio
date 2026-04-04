@@ -8,7 +8,7 @@ import { deriveMarkdownSource } from "@/lib/content/markdown-blocks"
 import { inferLinkType } from "@/lib/content/link-preview"
 import { collectBlockDocumentResources, resolvePostContentMode } from "@/lib/content/post-content"
 import { parsePreviewMetadata } from "@/lib/content/preview-metadata"
-import type { PostCommentDTO } from "@/lib/contracts/community"
+import type { PaginatedCollectionStateDTO, PostCommentDTO } from "@/lib/contracts/community"
 import type { PostAssetDTO, PostCardDTO, PostDetailDTO, PostEditorInput, PostKind, PostLinkDTO } from "@/lib/contracts/posts"
 import {
   type AdminPostsQuery,
@@ -64,6 +64,67 @@ export type PublishedProjectIndexItem = PostCardDTO & {
     label: string
     url: string
   }>
+}
+
+export interface PublicTagFilterOption {
+  label: string
+  value: string
+}
+
+export interface PublicPostsQuery {
+  q: string
+  tag: string | null
+  page: number
+  pageSize: number
+}
+
+export interface PublicPostsResult {
+  posts: PostCardDTO[]
+  tags: PublicTagFilterOption[]
+  pagination: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+  }
+  query: PublicPostsQuery
+}
+
+export interface PublicPostsQueryInput {
+  q?: string | null
+  tag?: string | null
+  page?: string | number | null
+  pageSize?: number | null
+}
+
+const DEFAULT_PUBLIC_POSTS_PAGE_SIZE = 5
+
+function normalizePublicTagValue(value?: string | null) {
+  if (!value?.trim()) {
+    return null
+  }
+
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/^#/, "")
+    .replace(/\s+/g, "")
+}
+
+export function normalizePublicPostsQuery(input: PublicPostsQueryInput = {}): PublicPostsQuery {
+  const pageValue =
+    typeof input.page === "number"
+      ? input.page
+      : typeof input.page === "string"
+        ? Number.parseInt(input.page, 10)
+        : 1
+
+  return {
+    q: input.q?.trim() ?? "",
+    tag: normalizePublicTagValue(input.tag),
+    page: Number.isFinite(pageValue) && pageValue > 0 ? pageValue : 1,
+    pageSize: input.pageSize && input.pageSize > 0 ? input.pageSize : DEFAULT_PUBLIC_POSTS_PAGE_SIZE,
+  }
 }
 
 function mapProjectIndexEntry(post: {
@@ -163,6 +224,18 @@ type LinkPreviewRecord = {
   metadata: Prisma.JsonValue | null
 }
 
+export interface PostCommentsQueryInput {
+  page?: string | number | null
+  pageSize?: number | null
+}
+
+export interface PaginatedPostCommentsResult {
+  comments: PostCommentDTO[]
+  pagination: PaginatedCollectionStateDTO
+}
+
+const DEFAULT_POST_COMMENTS_PAGE_SIZE = 20
+
 function mapComments(
   comments: Array<{
     id: string
@@ -177,6 +250,78 @@ function mapComments(
     sourceLabel: toLogSourceLabel(comment.userAgent),
     createdAt: comment.createdAt.toISOString(),
   }))
+}
+
+function normalizePostCommentsQuery(input: PostCommentsQueryInput = {}) {
+  const pageValue =
+    typeof input.page === "number"
+      ? input.page
+      : typeof input.page === "string"
+        ? Number.parseInt(input.page, 10)
+        : 1
+
+  return {
+    page: Number.isFinite(pageValue) && pageValue > 0 ? pageValue : 1,
+    pageSize: input.pageSize && input.pageSize > 0 ? input.pageSize : DEFAULT_POST_COMMENTS_PAGE_SIZE,
+  }
+}
+
+export async function getPostCommentsPage(postId: string, input: PostCommentsQueryInput = {}): Promise<PaginatedPostCommentsResult> {
+  const query = normalizePostCommentsQuery(input)
+
+  try {
+    const total = await prisma.postComment.count({
+      where: {
+        postId,
+        deletedAt: null,
+      },
+    })
+    const totalPages = Math.max(1, Math.ceil(total / query.pageSize))
+    const page = Math.min(query.page, totalPages)
+    const comments = await prisma.postComment.findMany({
+      where: {
+        postId,
+        deletedAt: null,
+      },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * query.pageSize,
+      take: query.pageSize,
+      select: {
+        id: true,
+        message: true,
+        userAgent: true,
+        createdAt: true,
+      },
+    })
+
+    return {
+      comments: mapComments(comments),
+      pagination: {
+        page,
+        pageSize: query.pageSize,
+        total,
+        totalPages,
+        hasPrevious: page > 1,
+        hasNext: page < totalPages,
+      },
+    }
+  } catch (error) {
+    if (isMissingTableError(error, "PostComment")) {
+      return {
+        comments: [],
+        pagination: {
+          page: 1,
+          pageSize: query.pageSize,
+          total: 0,
+          totalPages: 1,
+          hasPrevious: false,
+          hasNext: false,
+        },
+      }
+    }
+
+    throw error
+  }
 }
 
 function mapStoredLinks(links: PostLinkRecord[], previews: Map<string, LinkPreviewRecord>): PostLinkDTO[] {
@@ -276,12 +421,8 @@ function mapPostDetail(post: {
   }[]
   links: PostLinkDTO[]
   likeCount: number
-  comments: Array<{
-    id: string
-    message: string
-    userAgent: string | null
-    createdAt: Date
-  }>
+  comments: PostCommentDTO[]
+  commentsPagination: PaginatedCollectionStateDTO
 }): PostDetailDTO {
   return {
     ...mapPostCard(post),
@@ -297,7 +438,8 @@ function mapPostDetail(post: {
     links: post.links,
     assets: mapAssets(post.assets),
     likeCount: post.likeCount,
-    comments: mapComments(post.comments),
+    comments: post.comments,
+    commentsPagination: post.commentsPagination,
   }
 }
 
@@ -356,6 +498,122 @@ export async function getPublishedPostsByType(type: PostKind) {
   })
 
   return posts.map(mapPostCard)
+}
+
+export async function getPublicPosts(type: PostKind, input: PublicPostsQueryInput = {}): Promise<PublicPostsResult> {
+  const query = normalizePublicPostsQuery(input)
+  const where: Prisma.PostWhereInput = {
+    status: "PUBLISHED",
+    type,
+  }
+
+  if (query.q) {
+    where.OR = [
+      { title: { contains: query.q, mode: "insensitive" } },
+      { slug: { contains: query.q, mode: "insensitive" } },
+      { excerpt: { contains: query.q, mode: "insensitive" } },
+      {
+        tags: {
+          some: {
+            name: { contains: query.q, mode: "insensitive" },
+          },
+        },
+      },
+    ]
+  }
+
+  if (query.tag) {
+    where.tags = {
+      some: {
+        normalizedName: query.tag,
+      },
+    }
+  }
+
+  const [total, posts, tags] = await Promise.all([
+    prisma.post.count({ where }),
+    prisma.post.findMany({
+      where,
+      select: {
+        id: true,
+        slug: true,
+        type: true,
+        status: true,
+        title: true,
+        excerpt: true,
+        tags: {
+          select: { name: true },
+        },
+        views: true,
+        coverImageUrl: true,
+        publishedAt: true,
+        updatedAt: true,
+      },
+      orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+    }),
+    prisma.tag.findMany({
+      where: {
+        posts: {
+          some: {
+            status: "PUBLISHED",
+            type,
+          },
+        },
+      },
+      select: {
+        name: true,
+        normalizedName: true,
+      },
+      orderBy: [{ normalizedName: "asc" }],
+    }),
+  ])
+
+  const totalPages = Math.max(1, Math.ceil(total / query.pageSize))
+  const page = Math.min(query.page, totalPages)
+  const pagedPosts =
+    page === query.page
+      ? posts
+      : await prisma.post.findMany({
+          where,
+          select: {
+            id: true,
+            slug: true,
+            type: true,
+            status: true,
+            title: true,
+            excerpt: true,
+            tags: {
+              select: { name: true },
+            },
+            views: true,
+            coverImageUrl: true,
+            publishedAt: true,
+            updatedAt: true,
+          },
+          orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }],
+          skip: (page - 1) * query.pageSize,
+          take: query.pageSize,
+        })
+
+  return {
+    posts: pagedPosts.map(mapPostCard),
+    tags: tags.map((tag) => ({
+      label: tag.name,
+      value: tag.normalizedName,
+    })),
+    pagination: {
+      page,
+      pageSize: query.pageSize,
+      total,
+      totalPages,
+    },
+    query: {
+      ...query,
+      page,
+    },
+  }
 }
 
 export async function getPublishedProjectIndexItems() {
@@ -503,6 +761,8 @@ const getPublishedPostDetailCached = cache(async (type: PostKind, slug: string) 
     }
   }
 
+  const commentsResult = await getPostCommentsPage(post.id)
+
   return mapPostDetail({
     ...post,
     assets,
@@ -513,26 +773,8 @@ const getPublishedPostDetailCached = cache(async (type: PostKind, slug: string) 
       previews: previewMap,
     }),
     likeCount: post._count.likes,
-    comments: await prisma.postComment.findMany({
-      where: {
-        postId: post.id,
-        deletedAt: null,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: {
-        id: true,
-        message: true,
-        userAgent: true,
-        createdAt: true,
-      },
-    }).catch((error) => {
-      if (isMissingTableError(error, "PostComment")) {
-        return []
-      }
-
-      throw error
-    }),
+    comments: commentsResult.comments,
+    commentsPagination: commentsResult.pagination,
   })
 })
 

@@ -34,7 +34,6 @@ export default async function ContactPage() {
       githubHref={publicLinks.githubHref}
       initialGuestbookEntries={guestbookEntries}
       isDarkMode={isDarkMode}
-      instagramHref={publicLinks.instagramHref}
       linkedinHref={publicLinks.linkedinHref}
     />
   )

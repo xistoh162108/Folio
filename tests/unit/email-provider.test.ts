@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { TEST_EMAIL_OUTBOX_PATH, clearTestArtifacts, readJsonLines } from "@/lib/testing/sinks"
 import { buildConfirmSubscriptionEmail } from "@/lib/email/templates/confirm-subscription"
 import { buildUnsubscribeEmail } from "@/lib/email/templates/unsubscribe"
+import { buildWelcomeSubscriptionEmail } from "@/lib/email/templates/welcome-subscription"
 
 const emailsSendMock = vi.fn()
 
@@ -60,6 +61,37 @@ describe("email provider", () => {
       subject: "Hello",
       html: "<p>Hello</p>",
     })
+  })
+
+  it("persists attachment metadata in the test outbox", async () => {
+    Object.assign(process.env, { NODE_ENV: "test", EMAIL_DRIVER: "test", APP_URL: "http://127.0.0.1:3001" })
+
+    const { sendTransactionalEmail } = await import("@/lib/email/provider")
+    await sendTransactionalEmail({
+      to: "reader@example.com",
+      subject: "Hello",
+      html: "<p>Hello</p>",
+      text: "Hello",
+      attachments: [
+        {
+          filename: "brief.pdf",
+          content: Buffer.from("attachment-binary"),
+          contentType: "application/pdf",
+        },
+      ],
+    })
+
+    const outbox = await readJsonLines<{
+      attachments: Array<{ filename: string; contentType: string | null; size: number }>
+    }>(TEST_EMAIL_OUTBOX_PATH)
+
+    expect(outbox[0]?.attachments).toEqual([
+      {
+        filename: "brief.pdf",
+        contentType: "application/pdf",
+        size: Buffer.from("attachment-binary").byteLength,
+      },
+    ])
   })
 
   it("returns a config error in production when Resend is not configured", async () => {
@@ -190,5 +222,17 @@ describe("email templates", () => {
     expect(template.subject).toContain("unsubscribed")
     expect(template.html).toContain("https://jimin.garden")
     expect(template.text).toContain("Subscription cancelled")
+  })
+
+  it("builds a welcome email inside the shared exact-v0 frame", () => {
+    const template = buildWelcomeSubscriptionEmail({
+      homeUrl: "https://jimin.garden",
+      unsubscribeUrl: "https://jimin.garden/unsubscribe?token=def",
+    })
+
+    expect(template.subject).toContain("Nice to meet you")
+    expect(template.html).toContain("Jimin Park")
+    expect(template.html).toContain("Need a quieter inbox?")
+    expect(template.text).toContain("Unsubscribe: https://jimin.garden/unsubscribe?token=def")
   })
 })

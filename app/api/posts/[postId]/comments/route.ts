@@ -2,6 +2,7 @@ import { hash } from "bcrypt"
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
+import { getPostCommentsPage } from "@/lib/data/posts"
 import { isMissingTableError } from "@/lib/db/errors"
 import { prisma } from "@/lib/db/prisma"
 import { assertRateLimit, getClientIp, RateLimitExceededError } from "@/lib/security/rate-limit"
@@ -13,6 +14,22 @@ const CommentSchema = z.object({
   pin: z.string().regex(/^\d{4}$/),
   _honey: z.string().optional().default(""),
 })
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ postId: string }> },
+) {
+  const { postId } = await params
+  const { searchParams } = new URL(request.url)
+  const page = searchParams.get("page")
+  const pageSize = searchParams.get("pageSize")
+  const result = await getPostCommentsPage(postId, {
+    page,
+    pageSize: pageSize ? Number.parseInt(pageSize, 10) : undefined,
+  })
+
+  return NextResponse.json(result)
+}
 
 export async function POST(
   request: Request,

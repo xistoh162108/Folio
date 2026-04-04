@@ -1,171 +1,177 @@
 # 03. Actions, APIs, and Workers
 
-This app uses Server Actions for authenticated or form-bound mutations and Route Handlers for uploads, analytics, signed downloads, auth, public community APIs, and worker execution.
+This repository uses:
+
+- Server Actions for authenticated or form-bound mutations
+- Route Handlers for uploads, public writes, auth, workers, downloads, and feeds
+- read-side server-component queries in `lib/data/*` for public/admin list/detail loading
+
+There is no separate public JSON API for notes/projects listing. Those surfaces are rendered directly from `lib/data/posts.ts`.
 
 ## Server Actions
 
 ### Posts
 
 - `createDraftPost()`
-  - creates a fresh `DRAFT` post and audit log entry
+  - creates a real draft row and audit entry
 - `savePost(input)`
-  - creates or updates a post
-  - snapshots `PostRevision`
-  - syncs tags, links, and retained assets
-  - marks removed assets for cleanup
-  - records audit
-- `archivePost(id)`
-  - moves a post to `ARCHIVED`
-  - records audit
-
-Callers:
-
-- admin post list
-- admin post editor
+  - persists markdown/block/html state
+  - syncs tags, links, retained assets, cover image
+  - writes revision and audit state
+- `archivePost(postId)`
+  - archives the post
+- `deletePostPermanently(postId)`
+  - destructive delete
+  - blocks DB delete if storage cleanup fails
 
 ### Subscribers
 
 - `requestSubscription(payload)`
-  - validates email, honeypot, and topic selection
-  - upserts the subscriber
-  - sends a confirmation email through `EmailProvider`
+  - validates honeypot and topic selection
+  - upserts subscriber state
+  - sends confirm email
 - `confirmSubscription(token)`
-  - validates the hashed confirm token and confirms the subscriber
+  - confirms subscriber
+  - sends welcome email on first real confirmation
 - `unsubscribeSubscription(token)`
-  - unsubscribes the subscriber and attempts to send a confirmation email
+  - unsubscribes subscriber
+  - sends unsubscribe confirmation
 
-Callers:
+### Newsletter admin
 
-- `components/v0/public/subscription-module.tsx`
-- `/subscribe/confirm`
-- `/unsubscribe`
+- `upsertCampaign(input)`
+  - creates or updates a draft campaign
+- `startCampaign(input)`
+  - queues draft campaign for delivery
+- `rerunCampaign(input)`
+  - creates a rerun cycle
+- `deleteCampaign(input)`
+  - deletes draft/completed campaign and campaign-owned assets safely
+- `reorderCampaign(input)`
+  - queue ordering within draft campaigns
+- `sendTestCampaign(input)`
+  - sends one preview email
+- `retryDelivery(deliveryId)`
+  - requeues a failed delivery row
+- `unsubscribeSubscriberAsAdmin(input)`
+  - unsubscribes one subscriber
+  - sends unsubscribe notice
+- `deleteSubscriberAsAdmin(input)`
+  - removes subscriber row
+- `toggleNewsletterAssetAttachment(input)`
+  - switches between inline vs attached send mode
+- `removeNewsletterAsset(input)`
+  - removes one uploaded newsletter asset
+
+### Profile
+
+- `savePrimaryProfile(input)`
+  - saves the DB-backed profile runtime/editor state
+  - active experience contract is `label + period`
 
 ### Contact
 
 - `submitContactMessage(payload)`
-  - validates form and honeypot
-  - inserts `ContactMessage`
-  - inserts `WebhookDelivery`
-  - attempts to trigger the webhook worker
-  - attempts to send a transactional acknowledgement email
-
-Caller:
-
-- `components/contact-form.tsx`
-
-### Newsletter
-
-- `createCampaign(input)`
-  - creates the campaign and delivery fan-out only
-- `startCampaign(input)`
-  - flips the campaign to `SENDING` and dispatches the newsletter worker
-- `sendTestCampaign(input)`
-  - sends a single test email through the configured provider
-- `retryDelivery(deliveryId)`
-  - resets a failed delivery row to `PENDING`
-  - reopens the campaign
-  - dispatches the newsletter worker
-
-Caller:
-
-- `components/v0/admin/newsletter-manager.tsx`
+  - validates form/honeypot
+  - stores `ContactMessage`
+  - enqueues `WebhookDelivery`
+  - attempts acknowledgement email
 
 ### Community moderation
 
-- `softDeleteComment(commentId)`
-- `softDeleteGuestbookEntry(entryId)`
-
-Caller:
-
-- `/admin/community`
+- `deleteCommentAsAdmin(formData)`
+- `deleteGuestbookEntryAsAdmin(formData)`
 
 ## Route Handlers
 
 ### Auth
 
 - `GET/POST /api/auth/[...nextauth]`
-- NextAuth credentials provider backed by the `User` table
+  - credentials auth backed by `User`
 
 ### Analytics
 
 - `POST /api/analytics`
-- single write path for raw analytics events
-- skips `/admin` paths intentionally
-- returns:
-  - `200` for success
-  - `200` with `skipped` for intentional admin-path skip
-  - `400` for invalid payloads
-  - `429` for rate limiting
-  - `503` for schema/config drift
-  - `500` for unexpected failures
-
-Caller:
-
-- `components/analytics-tracker.tsx`
+  - canonical analytics write path
+  - skips `/admin` events intentionally
 
 ### Uploads and downloads
 
 - `POST /api/admin/uploads`
-  - requires admin session
-  - upload policy:
-    - images: `image/jpeg`, `image/png`, `image/webp`, max 8 MB
-    - files: `application/pdf`, `text/plain`, max 20 MB
+  - admin post asset uploads
+- `POST /api/admin/newsletter/uploads`
+  - admin newsletter asset uploads
+- `POST /api/admin/profile/resume`
+  - upload PDF resume override
+- `DELETE /api/admin/profile/resume`
+  - remove uploaded resume override
 - `GET /api/files/[assetId]`
-  - rejects assets already marked with `pendingDeleteAt`
-  - checks requester access
-  - returns a 10-minute signed Supabase download URL
+  - signed file download mediator
+  - respects `PUBLISHED` / admin visibility rules
 
-Caller:
+### Public community APIs
 
-- admin post editor
-- public and admin post detail download links
-
-### Community APIs
-
+- `GET /api/guestbook?page=`
+  - paginated guestbook reads
 - `POST /api/guestbook`
-  - creates guestbook entries
+  - create guestbook entry
+- `GET /api/posts/[postId]/comments?page=`
+  - paginated comment reads
 - `POST /api/posts/[postId]/comments`
-  - creates comments
+  - create comment
 - `POST /api/comments/[commentId]/delete`
-  - deletes comment by PIN flow
+  - PIN-based comment delete
 - `POST /api/posts/[postId]/like`
-  - toggles a session like row
+  - session like toggle
+
+### Admin moderation APIs
+
 - `POST /api/admin/comments/[commentId]`
-  - admin comment soft delete
 - `POST /api/admin/guestbook/[entryId]`
-  - admin guestbook soft delete
-
-Callers:
-
-- `components/v0/public/guestbook-screen.tsx`
-- `components/v0/public/comments-log.tsx`
-- `components/v0/public/post-like-button.tsx`
-- admin community UI
 
 ### Workers
 
-- `POST /api/worker/webhook`
-  - processes pending webhook rows in batches with backoff
-- `POST /api/worker/asset-cleanup`
-  - marks or deletes stale assets
-  - deletes in `pendingDeleteAt ASC, createdAt ASC, id ASC` order
-  - treats missing storage objects as successful cleanup
-- `POST /api/worker/newsletter`
-  - claims pending deliveries in `createdAt ASC, id ASC`
-  - sends up to 20 deliveries per run
-  - refreshes campaign aggregates
-  - self-dispatches when more work remains
+- `GET/POST /api/worker/webhook`
+  - webhook queue processing
+- `GET/POST /api/worker/newsletter`
+  - newsletter delivery processing
+  - self-dispatches when work remains
+- `GET/POST /api/worker/asset-cleanup`
+  - deferred storage cleanup
 
-`GET` is still accepted for worker routes, but automation, systemd, cron, and smoke checks should use `POST`.
+Worker automation should use `POST` plus `Authorization: Bearer ${CRON_SECRET}`.
 
-### Test-only support
+### Test-only helper
 
 - `GET /api/test-storage`
-  - helper route used by the test storage driver during local QA and E2E
+  - local/test storage probe only
 
-## Email provider integration
+## Feed routes
 
-`lib/email/provider.ts` is the abstraction boundary. It exposes:
+- `GET /notes/rss.xml`
+- `GET /projects/rss.xml`
+
+These are publishing surfaces, not generic blog add-ons. Feed autodiscovery is emitted from page metadata on `/notes` and `/projects`.
+
+## Read-side query surfaces
+
+There is no public REST list API for core content. Server components load from:
+
+- `getHomepagePosts()`
+- `getPublicPosts()`
+- `getPublishedPostDetail()`
+- `getPostCommentsPage()`
+- `getGuestbookEntriesPage()`
+- `getCommunityModerationSnapshot()`
+- `getNewsletterDashboardData()`
+- `getPrimaryProfileRuntimeSnapshot()`
+- `getPrimaryProfileSettingsEditorState()`
+- `getAdminReadinessDashboard()`
+- `getAdminPerformanceDashboard()`
+
+## Email integration
+
+Abstraction boundary:
 
 - `sendTransactionalEmail()`
 - `sendTestEmail()`
@@ -173,21 +179,27 @@ Callers:
 
 Drivers:
 
-- production default: Resend
-- local/test: test driver sink
+- `resend`
+- `test`
 
-Production must fail closed if:
+Shared email framing now includes:
 
-- `APP_URL` is missing
-- `EMAIL_FROM` is missing
-- `RESEND_API_KEY` is missing
+- exact-v0 static banner
+- exact-v0 signature block
+- natural unsubscribe phrasing
 
-## Worker dispatch model
+Applied lifecycle templates:
 
-Interactive flows do not wait for worker completion. They call `kickWorkerRoute()` instead:
+- subscribe confirm
+- welcome / confirmation-complete
+- unsubscribe
+- newsletter campaign
+- admin unsubscribe notification
 
-- contact submit -> `/api/worker/webhook`
-- post save with removed assets -> `/api/worker/asset-cleanup`
-- campaign start or retry -> `/api/worker/newsletter`
+## Current runtime contracts worth knowing
 
-In production, self-dispatch uses `APP_URL` and fails closed if it is missing. Development and test may fall back to local values.
+- newsletter visible topics are normalized by `lib/newsletter/topics.ts`
+- project short description comes from `Post.excerpt`
+- profile Instagram exposure is Home-only even though verified links remain in DB
+- resume override is storage-backed and intentionally has no dedicated Prisma table
+- RSS query states stay on canonical `/notes` and `/projects` routes; filtered/paginated variants are `noindex`

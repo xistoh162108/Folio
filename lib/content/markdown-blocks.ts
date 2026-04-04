@@ -1,4 +1,5 @@
 import type { BlockDocument, ContentBlock, EmbedBlock, ImageBlock } from "@/lib/contracts/content-blocks"
+import { renderBlockMathHtml, renderInlineMathHtml } from "@/lib/content/math-render"
 import { POST_BLOCK_CONTENT_VERSION } from "@/lib/contracts/content-blocks"
 
 const STANDALONE_URL_RE = /^https?:\/\/\S+$/i
@@ -97,8 +98,14 @@ function inferEmbedProvider(url: string): EmbedBlock["provider"] {
 }
 
 export function renderInlineMarkdownHtml(text: string, assets: MarkdownWriterAsset[] = []) {
-  const escaped = escapeHtml(text)
-  return escaped
+  const mathTokens: string[] = []
+  const sourceWithMathTokens = text.replace(/\$([^$\n]+)\$/g, (_match, value: string) => {
+    const token = `@@V0_MATH_${mathTokens.length}@@`
+    mathTokens.push(renderInlineMathHtml(value))
+    return token
+  })
+  const escaped = escapeHtml(sourceWithMathTokens)
+  const rendered = escaped
     .replace(
       /\[([^\]]+)\]\(((?:asset:\/\/[A-Za-z0-9-]+|https?:\/\/[^\s)]+))\)/g,
       (_match, label: string, url: string) => {
@@ -109,8 +116,9 @@ export function renderInlineMarkdownHtml(text: string, assets: MarkdownWriterAss
     .replace(/`([^`]+)`/g, (_match, code: string) => `<code>${escapeHtml(code)}</code>`)
     .replace(/\*\*([^*]+)\*\*/g, (_match, value: string) => `<strong>${escapeHtml(value)}</strong>`)
     .replace(/\*([^*\n]+)\*/g, (_match, value: string) => `<em>${escapeHtml(value)}</em>`)
-    .replace(/\$([^$\n]+)\$/g, (_match, value: string) => `<span data-math-inline="true">${escapeHtml(value)}</span>`)
     .replace(/\n/g, "<br />")
+
+  return mathTokens.reduce((current, html, index) => current.replace(`@@V0_MATH_${index}@@`, html), rendered)
 }
 
 function blockId(index: number) {
@@ -484,11 +492,13 @@ export function renderBlockDocumentToHtml(document: BlockDocument, assets: Markd
           return `<${tag}>${block.items.map((item) => `<li>${renderInlineMarkdownHtml(item, assets)}</li>`).join("")}</${tag}>`
         }
         case "code":
-          return `<pre><code${block.language ? ` data-language="${escapeAttribute(block.language)}"` : ""}>${escapeHtml(block.code)}</code></pre>`
+          return `<pre><code${
+            block.language
+              ? ` class="language-${escapeAttribute(block.language)}" data-language="${escapeAttribute(block.language)}"`
+              : ""
+          }>${escapeHtml(block.code)}</code></pre>`
         case "math":
-          return block.variant === "block"
-            ? `<div data-math-block="true"><code>${escapeHtml(block.expression)}</code></div>`
-            : `<span data-math-inline="true">${escapeHtml(block.expression)}</span>`
+          return block.variant === "block" ? renderBlockMathHtml(block.expression) : renderInlineMathHtml(block.expression)
         case "image":
           return `<figure data-block="image"><img src="${escapeAttribute(block.url ?? (block.assetId ? resolveMarkdownHref(toAssetProtocolUrl(block.assetId), assets) : ""))}" alt="${escapeAttribute(block.alt ?? "")}" />${
             block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""

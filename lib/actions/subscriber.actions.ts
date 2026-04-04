@@ -6,18 +6,20 @@ import { z } from "zod"
 import { getEmailBaseUrl, isEmailDeliveryConfigured, sendTransactionalEmail } from "../email/provider"
 import { buildConfirmSubscriptionEmail } from "../email/templates/confirm-subscription"
 import { buildUnsubscribeEmail } from "../email/templates/unsubscribe"
+import { buildWelcomeSubscriptionEmail } from "../email/templates/welcome-subscription"
 import { normalizeEmail } from "../utils/normalizers"
 import { generateToken, hashToken } from "../utils/crypto"
-import { slugify } from "../utils/normalizers"
 import { assertRateLimit, getClientIp, RateLimitExceededError } from "@/lib/security/rate-limit"
+import { ensureNewsletterTopics } from "@/lib/newsletter/service"
+import { serializeNewsletterTopicState } from "@/lib/newsletter/topics"
 
 const SubscribeSchema = z.object({
   email: z.string().min(1, "Email is required").email("Invalid email").transform(normalizeEmail),
   _honey: z.string().max(0, "Bot detected"), // Exact empty string required
   topics: z.object({
     all: z.boolean(),
-    aiInfosec: z.boolean(),
-    projectsLogs: z.boolean()
+    projectInfo: z.boolean(),
+    log: z.boolean()
   }).optional()
 })
 
@@ -42,7 +44,7 @@ export async function requestSubscription(payload: { email: string, _honey: stri
     })
 
     if (existing?.isConfirmed) {
-      return { success: false, code: "already_subscribed", error: "Already subscribed." }
+      return { success: true, code: "subscribed", message: "Subscribed. This inbox is already in the loop." }
     }
 
     const token = generateToken()
@@ -50,28 +52,15 @@ export async function requestSubscription(payload: { email: string, _honey: stri
     // 24 hour expiration
     const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24)
 
-    const topicNames = validated.topics?.all
-      ? ["All Seeds"]
-      : [
-          validated.topics?.aiInfosec ? "AI & InfoSec" : null,
-          validated.topics?.projectsLogs ? "Projects & Logs" : null,
-        ].filter((topic): topic is string => Boolean(topic))
-
-    const normalizedTopics = topicNames.length > 0 ? topicNames : ["All Seeds"]
+    const normalizedTopics = serializeNewsletterTopicState({
+      all: validated.topics?.all ?? true,
+      projectInfo: validated.topics?.projectInfo ?? false,
+      log: validated.topics?.log ?? false,
+    })
 
     const subscriber = await prisma.$transaction(async (tx) => {
-      const topicRecords = await Promise.all(
-        normalizedTopics.map((topic) =>
-          tx.newsletterTopic.upsert({
-            where: { normalizedName: slugify(topic) },
-            update: { name: topic },
-            create: {
-              name: topic,
-              normalizedName: slugify(topic),
-            },
-          }),
-        ),
-      )
+      const canonicalTopics = await ensureNewsletterTopics(tx as any)
+      const topicRecords = normalizedTopics.map((topic) => canonicalTopics.find((record) => record.normalizedName === topic)!)
 
       return tx.subscriber.upsert({
         where: { email: validated.email },
@@ -128,7 +117,7 @@ export async function requestSubscription(payload: { email: string, _honey: stri
       message:
         emailResult.provider === "test"
           ? "Verification email was generated in the local test outbox."
-          : "Verification email sent. Please check your inbox.",
+          : "Verification email sent. One step left.",
     }
   } catch (error) {
     if (error instanceof RateLimitExceededError) {
@@ -153,7 +142,7 @@ export async function confirmSubscription(plaintextToken: string) {
     if (!subscriber) return { success: false, code: "invalid", error: "Invalid verification token." }
 
     if (subscriber.isConfirmed) {
-      return { success: false, code: "already_confirmed", error: "Already confirmed." }
+      return { success: true, code: "subscribed", message: "Subscribed. This address is already active." }
     }
 
     if (subscriber.confirmTokenExpiresAt && subscriber.confirmTokenExpiresAt < new Date()) {
@@ -172,6 +161,23 @@ export async function confirmSubscription(plaintextToken: string) {
       },
     })
 
+    try {
+      const baseUrl = getEmailBaseUrl()
+      const homeUrl = new URL("/", baseUrl).toString()
+      const unsubscribeUrl = new URL("/unsubscribe", baseUrl)
+      unsubscribeUrl.searchParams.set("token", subscriber.unsubscribeToken)
+
+      await sendTransactionalEmail({
+        to: subscriber.email,
+        ...buildWelcomeSubscriptionEmail({
+          homeUrl,
+          unsubscribeUrl: unsubscribeUrl.toString(),
+        }),
+      })
+    } catch (error) {
+      console.error("[Welcome Email Error]", error)
+    }
+
     return { success: true, code: "confirmed", message: "Subscription fully confirmed." }
   } catch (_error) {
     return { success: false, code: "failed", error: "Failed to confirm subscription." }
@@ -187,7 +193,7 @@ export async function unsubscribeSubscription(plaintextToken: string) {
     })
 
     if (!subscriber) return { success: false, code: "invalid", error: "Invalid unsubscribe token." }
-    if (subscriber.unsubscribedAt) return { success: false, code: "already_unsubscribed", error: "Already unsubscribed." }
+    if (subscriber.unsubscribedAt) return { success: true, code: "already_unsubscribed", message: "This address was already unsubscribed." }
 
     await prisma.subscriber.update({
       where: { id: subscriber.id },

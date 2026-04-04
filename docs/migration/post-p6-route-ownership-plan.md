@@ -3,7 +3,7 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-03-28
+- Last updated: 2026-04-05
 - Canonical route/runtime ownership authority: this file
 
 ## Purpose
@@ -17,6 +17,118 @@ This document defines:
 - `/contact` and `/guestbook` product ownership
 
 All route/runtime changes must conform to this file.
+
+## 2026-04 hardening route addendum (H1-H7)
+
+This addendum records the first load-bearing route changes after the accepted `R1-R9` baseline.
+
+### Public ownership addendum
+
+- the public/admin brand mark is a route action and resolves to `/`
+- `/contact` remains self-canonical and no longer exposes Instagram
+- `/guestbook` remains self-canonical and owns the full guestbook archive
+- Home now owns recent notes, recent projects, and recent visitor logs in one public surface
+
+### Query-state ownership addendum
+
+`/notes` and `/projects` now own query-driven public list state:
+
+- `q`
+- `tag`
+- `page`
+
+Rules:
+
+- base route remains the canonical owner
+- filtered/paginated query states are functional route states, not new route families
+- filtered/paginated query states must be `noindex`
+
+### Feed ownership addendum
+
+RSS is a native publishing feature and lives on:
+
+- `/notes/rss.xml`
+- `/projects/rss.xml`
+
+Rules:
+
+- feed discovery belongs to the Notes and Projects route metadata owners
+- RSS does not create a second home/blog surface
+- RSS affordances stay inline and terminal-native on the Notes and Projects screens
+
+### Community ownership addendum
+
+- note/project detail routes own the first page of comments and pass pagination state into the client log
+- `/api/posts/[postId]/comments` owns paginated comment reads and comment writes
+- `/api/guestbook` owns paginated guestbook reads and guestbook writes
+- `/admin/community` owns two independent moderation page states:
+  - `commentPage`
+  - `guestbookPage`
+
+### Admin content ownership addendum
+
+- `/admin/posts/[postId]` keeps save, publish, archive, delete, upload, insert, and cover-selection behavior inside the same editor shell
+- permanent delete is an editor-owned destructive action and does not move to a separate moderation route
+- uploaded assets remain owned by the editor support block; no second asset-manager surface is introduced
+
+### Published detail ownership addendum
+
+- note/project detail routes own the final rendered code/math output for published content
+- reader copy affordances stay inline and terminal-native:
+  - `[yank]`
+  - `[yanked]`
+
+### Profile / resume ownership addendum
+
+- `/admin/settings` owns direct resume upload/remove management inside the existing settings shell
+- `/api/admin/profile/resume` owns admin-only resume override writes and removals
+- `/resume.pdf` remains the single canonical public resume route
+- `/resume.pdf` resolves to:
+  - uploaded private resume override first
+  - generated profile resume fallback second
+- no second public resume route or alternate canonical is introduced
+
+Read-path rule:
+
+- public/read-only resume override lookup must fail open to the generated resume fallback when storage is unavailable or unreadable
+- admin resume upload/remove writes remain fail-closed so storage defects still surface as operational errors
+
+### Newsletter ownership addendum
+
+- public subscribe request surfaces keep the existing route family and now own explicit stateful result language:
+  - `/subscribe/confirm`
+  - `/unsubscribe`
+- `/admin/newsletter` remains the single admin newsletter surface and now owns:
+  - draft campaign composition
+  - queue ordering
+  - selected-recipient targeting
+  - send-unsent-only reruns
+  - subscriber unsubscribe/delete
+  - campaign preview inside the same v0 shell
+- `/api/admin/newsletter/uploads` owns newsletter asset writes
+- `/api/worker/newsletter` owns attachment-aware campaign dispatch
+
+Ownership rules:
+
+- newsletter compose/preview does not move into a second mail-builder route
+- topic selection and selected-recipient targeting stay inside `/admin/newsletter`
+- asset upload remains inline to the newsletter route rather than becoming a separate asset-manager surface
+- public subscribe affordances stay embedded in Notes/Projects/public terminal strips instead of moving into a separate marketing route family
+
+### Analytics / admin scroll ownership addendum
+
+- `/admin/analytics` now owns:
+  - readiness diagnostics
+  - performance diagnostics
+  - lightweight service-log projection
+- the service log is read-only and derived from existing operational tables; it does not create a second ops surface
+- `/admin/posts`, `/admin/posts/[postId]`, `/admin/settings`, `/admin/newsletter`, and `/admin/community` now keep the shell primary pane as the vertical scroll owner through explicit `min-h-0` wrapper containment
+
+Ownership rules:
+
+- service diagnostics remain inside `/admin/analytics` and do not move into a separate monitoring route
+- admin shell fixes remain containment/scroll-owner corrections only
+- no modal/drawer/card workaround is introduced for long admin surfaces
 
 ## Current repository truth
 
@@ -155,11 +267,13 @@ The shell body must own the geometry so the Jitter slot fills the full intended 
 - public shell + shared runtime
 - route owns dense list content
 - route provides notes descriptors
+- route also owns Notes list query state (`q`, `tag`, `page`) and Notes RSS discovery
 
 `/projects`
 - public shell + shared runtime
 - route owns dense list content
 - route provides projects descriptors
+- route also owns Projects list query state (`q`, `tag`, `page`) and Projects RSS discovery
 
 `/contact`
 - public shell + shared runtime
@@ -173,11 +287,13 @@ The shell body must own the geometry so the Jitter slot fills the full intended 
 - same design world as contact
 - no public admin controls
 - full guestbook log ownership lives here
+- paginated latest-first archive ownership lives here
 
 `/notes/[slug]` and `/projects/[slug]`
 - public shell + shared runtime
 - route owns detail data and reading surface
 - route provides detail-mode descriptors
+- detail routes own the first page of comments while `/api/posts/[postId]/comments` owns older-page retrieval
 
 ### Admin routes
 
@@ -211,6 +327,7 @@ The shell body must own the geometry so the Jitter slot fills the full intended 
 `/admin/community`
 - admin shell + shared runtime
 - route owns moderation content
+- route owns independent `commentPage` / `guestbookPage` query state for scalable moderation
 
 ## Ownership change sequence
 

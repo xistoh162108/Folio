@@ -1,11 +1,11 @@
 "use client"
 
-import { useMemo, useRef, useState, useTransition } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { V0MarkdownEditor, type V0MarkdownEditorHandle } from "@/components/admin/v0-markdown-editor"
 import type { PostEditorInput } from "@/lib/contracts/posts"
-import { archivePost, savePost } from "@/lib/actions/post.actions"
+import { archivePost, deletePostPermanently, savePost } from "@/lib/actions/post.actions"
 import { buildMarkdownWriterPayload, deriveMarkdownSource } from "@/lib/content/markdown-blocks"
 import { TiptapEditor } from "@/components/admin/tiptap-editor"
 
@@ -66,8 +66,8 @@ export function PostEditor({
       }),
     [initialPost],
   )
-  const [isPending, startTransition] = useTransition()
   const [isUploading, setIsUploading] = useState(false)
+  const [pendingAction, setPendingAction] = useState<"draft" | "publish" | "archive" | "delete" | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [tagsText, setTagsText] = useState(initialPost.tags.join(", "))
   const [form, setForm] = useState<PostEditorInput>(() => {
@@ -95,6 +95,7 @@ export function PostEditor({
         .filter(Boolean),
     [tagsText],
   )
+  const isBusy = pendingAction !== null || isUploading
 
   const onSave = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -106,8 +107,11 @@ export function PostEditor({
         : submitter?.value === "draft"
           ? "DRAFT"
           : form.status
+    const action = submitter?.value === "publish" ? "publish" : "draft"
 
-    startTransition(async () => {
+    setPendingAction(action)
+    void (async () => {
+      try {
       const result = await savePost({
         ...form,
         status: nextStatus,
@@ -119,16 +123,22 @@ export function PostEditor({
         return
       }
 
-      setMessage("Saved.")
+      setMessage(action === "publish" ? "Published." : "Draft saved.")
       router.replace(`/admin/posts/${result.id}`)
       router.refresh()
-    })
+      } finally {
+        setPendingAction(null)
+      }
+    })()
   }
 
   const onArchive = () => {
     if (!form.id) return
 
-    startTransition(async () => {
+    setMessage(null)
+    setPendingAction("archive")
+    void (async () => {
+      try {
       const result = await archivePost(form.id!)
 
       if (!result.success) {
@@ -138,7 +148,34 @@ export function PostEditor({
 
       setMessage("Archived.")
       router.refresh()
-    })
+      } finally {
+        setPendingAction(null)
+      }
+    })()
+  }
+
+  const onDelete = () => {
+    if (!form.id) return
+    const shouldDelete = window.confirm("Delete this post permanently? This cannot be undone.")
+    if (!shouldDelete) return
+
+    setMessage(null)
+    setPendingAction("delete")
+    void (async () => {
+      try {
+      const result = await deletePostPermanently(form.id!)
+
+      if (!result.success) {
+        setMessage(result.error)
+        return
+      }
+
+      router.push("/admin/posts")
+      router.refresh()
+      } finally {
+        setPendingAction(null)
+      }
+    })()
   }
 
   const uploadAsset = async (kind: "image" | "file", file: File) => {
@@ -204,7 +241,7 @@ export function PostEditor({
       requestAnimationFrame(() => {
         insertMarkdownSnippet(snippet)
       })
-      setMessage(kind === "image" ? "Image uploaded and inserted into the body." : "File uploaded.")
+      setMessage(kind === "image" ? "Image uploaded and inserted into the body." : "File uploaded and inserted into the body.")
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed.")
     } finally {
@@ -224,6 +261,14 @@ export function PostEditor({
 
   const imageAssets = form.assets.filter((asset) => asset.kind === "IMAGE")
   const fileAssets = form.assets.filter((asset) => asset.kind === "FILE")
+  const coverImageAsset = imageAssets.find((asset) => asset.url === form.coverImageUrl) ?? null
+
+  const setCoverImageUrl = (nextCoverImageUrl: string | null) => {
+    setForm((current) => ({
+      ...current,
+      coverImageUrl: nextCoverImageUrl ?? "",
+    }))
+  }
 
   const removeAsset = (assetId: string) => {
     setForm((current) => {
@@ -383,31 +428,15 @@ export function PostEditor({
                 [+] Add another URL
               </button>
             </div>
-
-            <div className="space-y-2">
-              <label className={`text-xs ${mutedText}`}>Preview Card</label>
-              <div className={`border-2 border-dashed ${borderColor} p-6 text-center space-y-2`}>
-                {form.coverImageUrl ? (
-                  <div className="space-y-3">
-                    <img src={form.coverImageUrl} alt={form.title || "Cover image"} className={`h-40 w-full border ${borderColor} object-cover`} />
-                    <p className={`text-xs ${mutedText} break-all`}>{form.coverImageUrl}</p>
-                  </div>
-                ) : (
-                  <>
-                    <p className={`text-sm ${mutedText}`}>Drop preview image here</p>
-                    <p className={`text-xs ${mutedText} mt-1`}>or click to upload</p>
-                  </>
-                )}
-              </div>
-            </div>
+            <p className={`text-xs ${mutedText}`}>cover image is selected from the uploaded image list in [assets]</p>
           </div>
         ) : null}
 
         <div className={`border-2 border-dashed ${borderColor} p-6 text-center space-y-3`}>
           <div className="space-y-1">
-            <p className={`text-sm ${mutedText}`}>{isUploading ? "[ uploading_ ]" : "Drag & Drop Image Upload"}</p>
+            <p className={`text-sm ${mutedText}`}>{isUploading ? "[ uploading_ ]" : "Upload images or files"}</p>
             <p className={`text-xs ${mutedText}`}>or click to browse files</p>
-            <p className={`text-xs ${mutedText}`}>uploaded assets insert `asset://` tokens at the cursor</p>
+            <p className={`text-xs ${mutedText}`}>uploaded assets become insertable below and images can be marked as the cover</p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
             <label className={`${buttonClass} cursor-pointer`}>
@@ -468,21 +497,31 @@ export function PostEditor({
 
         <div className="flex flex-wrap items-center gap-3">
           {form.id ? (
-            <button type="button" onClick={onArchive} disabled={isPending} className={`${buttonClass} disabled:opacity-50`}>
-              Archive
+            <button type="button" onClick={onArchive} disabled={isBusy} className={`${buttonClass} disabled:opacity-50`}>
+              {pendingAction === "archive" ? "Archiving..." : "Archive"}
             </button>
-          ) : null}
-          <button type="submit" value="draft" disabled={isPending || isUploading} className={`${buttonClass} disabled:opacity-50`}>
-            {isPending ? "Saving..." : "Save Draft"}
-          </button>
+        ) : null}
+        <button type="submit" value="draft" disabled={isBusy} className={`${buttonClass} disabled:opacity-50`}>
+          {pendingAction === "draft" ? "Saving..." : "Save Draft"}
+        </button>
           <button
             type="submit"
             value="publish"
-            disabled={isPending || isUploading}
+            disabled={isBusy}
             className="v0-control-button bg-white px-4 text-black disabled:opacity-50"
           >
-            {isPending ? "Publishing..." : "Publish"}
+            {pendingAction === "publish" ? "Publishing..." : "Publish"}
           </button>
+          {form.id ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isBusy}
+              className={`${buttonClass} ${isDarkMode ? "text-red-300 border-red-500/30" : "text-red-700 border-red-700/30"} disabled:opacity-50`}
+            >
+              {pendingAction === "delete" ? "Deleting..." : "Delete Permanently"}
+            </button>
+          ) : null}
           <span className={`text-xs ${mutedText}`}>[{form.type.toLowerCase()} :: {form.status.toLowerCase()}]</span>
         </div>
 
@@ -537,23 +576,47 @@ export function PostEditor({
         ) : null}
 
         <details className={supportBlockClass}>
-          <summary className={`cursor-pointer text-xs ${mutedText}`}>[attachments]</summary>
+          <summary className={`cursor-pointer text-xs ${mutedText}`}>[assets]</summary>
           <div className="space-y-4 pt-4">
-            {form.coverImageUrl ? (
-              <div className="space-y-3">
-                <img src={form.coverImageUrl} alt={form.title || "Cover image"} className={`h-48 w-full border ${borderColor} object-cover`} />
-                <p className={`text-xs ${mutedText} break-all`}>{form.coverImageUrl}</p>
-              </div>
-            ) : null}
+            <div className={`border ${borderColor} px-3 py-3`}>
+              <p className={`text-xs ${mutedText}`}>// cover image</p>
+              {form.coverImageUrl ? (
+                <div className="mt-3 space-y-3">
+                  <img
+                    src={form.coverImageUrl}
+                    alt={form.title || "Cover image"}
+                    className={`h-40 w-full border ${borderColor} object-cover`}
+                  />
+                  <div className="flex flex-wrap items-center gap-3 text-xs">
+                    <span className={mutedText}>
+                      {coverImageAsset ? `${coverImageAsset.originalName} :: selected cover` : "external/manual cover selected"}
+                    </span>
+                    <button type="button" onClick={() => setCoverImageUrl(null)} className={compactButtonClass}>
+                      [clear cover]
+                    </button>
+                  </div>
+                  <p className={`text-xs ${mutedText} break-all`}>{form.coverImageUrl}</p>
+                  <p className={`text-xs ${mutedText}`}>recommended ratio :: 16:9 or 3:2</p>
+                </div>
+              ) : (
+                <p className={`mt-3 text-sm ${mutedText}`}>No cover selected. Choose one from an uploaded image below.</p>
+              )}
+            </div>
+            {imageAssets.length === 0 && fileAssets.length === 0 ? <p className={`text-sm ${mutedText}`}>No uploaded assets yet.</p> : null}
             {imageAssets.length > 0 ? (
               <ul className="space-y-2 text-sm">
                 {imageAssets.map((asset) => (
-                  <li key={asset.id} className={`flex items-center justify-between gap-3 border ${borderColor} px-3 py-2`}>
-                    <div className="space-y-1">
-                      <p>{asset.originalName}</p>
+                  <li key={asset.id} className={`flex flex-wrap items-start justify-between gap-3 border ${borderColor} px-3 py-3`}>
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <img src={asset.url} alt={asset.originalName} className={`h-16 w-24 shrink-0 border ${borderColor} object-cover`} />
+                      <div className="min-w-0 space-y-1">
+                        <p className="break-words">{asset.originalName}</p>
+                        <p className={`text-xs ${mutedText} break-all`}>{asset.url}</p>
+                        {form.coverImageUrl === asset.url ? <p className={`text-xs ${mutedText}`}>[cover image]</p> : null}
                       {asset.pendingDeleteAt ? <p className="text-xs text-amber-300">Queued for deletion</p> : null}
                     </div>
-                    <div className="flex items-center gap-2">
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
                       <button
                         type="button"
                         onClick={() => insertMarkdownSnippet(buildAssetSnippet({ assetId: asset.id, kind: "image", originalName: asset.originalName }))}
@@ -561,6 +624,18 @@ export function PostEditor({
                       >
                         [insert]
                       </button>
+                      {form.coverImageUrl === asset.url ? (
+                        <button type="button" onClick={() => setCoverImageUrl(null)} className={compactButtonClass}>
+                          [clear cover]
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => setCoverImageUrl(asset.url)} className={compactButtonClass}>
+                          [set cover]
+                        </button>
+                      )}
+                      <a href={asset.url} target="_blank" rel="noreferrer" className={compactButtonClass}>
+                        [open]
+                      </a>
                       <button type="button" onClick={() => removeAsset(asset.id)} className={compactButtonClass}>
                         [remove]
                       </button>
@@ -572,9 +647,10 @@ export function PostEditor({
             {fileAssets.length > 0 ? (
               <ul className="space-y-2 text-sm">
                 {fileAssets.map((asset) => (
-                  <li key={asset.id} className={`flex items-center justify-between gap-3 border ${borderColor} px-3 py-2`}>
-                    <div className="space-y-1">
-                      <p>{asset.originalName}</p>
+                  <li key={asset.id} className={`flex flex-wrap items-start justify-between gap-3 border ${borderColor} px-3 py-3`}>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="break-words">{asset.originalName}</p>
+                      <p className={`text-xs ${mutedText} break-all`}>{asset.url}</p>
                       {asset.pendingDeleteAt ? <p className="text-xs text-amber-300">Queued for deletion</p> : null}
                     </div>
                     <div className="flex items-center gap-3 text-xs">
@@ -629,25 +705,35 @@ export function PostEditor({
           </div>
           <div className="flex gap-3">
             {form.id ? (
-              <button type="button" onClick={onArchive} disabled={isPending} className={secondaryButtonClass}>
-                Archive
+              <button type="button" onClick={onArchive} disabled={isBusy} className={secondaryButtonClass}>
+                {pendingAction === "archive" ? "Archiving..." : "Archive"}
               </button>
             ) : null}
-            <button type="submit" disabled={isPending || isUploading} className={buttonClass}>
-              {isPending ? "Saving..." : isV0 ? "Save Draft" : "Save"}
+            <button type="submit" disabled={isBusy} className={buttonClass}>
+              {pendingAction === "draft" ? "Saving..." : isV0 ? "Save Draft" : "Save"}
             </button>
+            {form.id ? (
+              <button type="button" onClick={onDelete} disabled={isBusy} className={secondaryButtonClass}>
+                {pendingAction === "delete" ? "Deleting..." : "Delete Permanently"}
+              </button>
+            ) : null}
           </div>
         </div>
       ) : (
         <div className="flex flex-wrap gap-3">
           {form.id ? (
-            <button type="button" onClick={onArchive} disabled={isPending} className={secondaryButtonClass}>
-              Archive
+            <button type="button" onClick={onArchive} disabled={isBusy} className={secondaryButtonClass}>
+              {pendingAction === "archive" ? "Archiving..." : "Archive"}
             </button>
           ) : null}
-          <button type="submit" disabled={isPending || isUploading} className={buttonClass}>
-            {isPending ? "Saving..." : isV0 ? "Save Draft" : "Save"}
+          <button type="submit" disabled={isBusy} className={buttonClass}>
+            {pendingAction === "draft" ? "Saving..." : isV0 ? "Save Draft" : "Save"}
           </button>
+          {form.id ? (
+            <button type="button" onClick={onDelete} disabled={isBusy} className={secondaryButtonClass}>
+              {pendingAction === "delete" ? "Deleting..." : "Delete Permanently"}
+            </button>
+          ) : null}
         </div>
       )}
 

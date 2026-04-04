@@ -3,7 +3,7 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-03-29
+- Last updated: 2026-04-05
 - Canonical schema and compatibility authority: this file
 
 ## Purpose
@@ -16,6 +16,253 @@ This document governs:
 - fallback removal sequencing
 
 All schema-affecting implementation must conform to this file.
+
+## 2026-04 compatibility addendum (H0-H8)
+
+This addendum records the load-bearing compatibility and route-contract changes introduced during the first hardening pass.
+
+### No Prisma schema change in H0-H5
+
+The following hardening work shipped without a Prisma migration:
+
+- Light default theme
+- brand-link route ownership
+- Home-only Instagram exposure
+- Home composition expansion
+- Notes/Projects search/tag/pagination
+- Notes/Projects RSS
+- guestbook/comments/community pagination
+- permanent post delete workflow
+- action-state isolation in the editor shell
+- math and code renderer alignment
+- unified `[assets]` and cover-selection workflow in the v0 editor
+- profile Experience editor/runtime alignment
+- resume upload override and `/resume.pdf` fallback switching
+
+### H6 newsletter schema and contract change
+
+H6 is the first hardening phase that introduces a Prisma migration.
+
+Added schema elements:
+
+- `NewsletterRecipientMode`
+  - `TOPICS`
+  - `SELECTED_SUBSCRIBERS`
+- `NewsletterAssetKind`
+  - `IMAGE`
+  - `FILE`
+- `NewsletterCampaign.markdown`
+- `NewsletterCampaign.recipientMode`
+- `NewsletterCampaign.targetSubscriberIds`
+- `NewsletterCampaign.skipPreviouslySent`
+- `NewsletterCampaign.queueOrder`
+- `NewsletterAsset`
+
+Compatibility rules:
+
+- old campaigns remain readable because:
+  - `markdown` is nullable
+  - new targeting fields have defaults
+  - `queueOrder` is backfilled in migration order
+- the newsletter runtime now treats the new canonical audience taxonomy as:
+  - `all`
+  - `project-info`
+  - `log`
+- older stored topic names remain readable through alias normalization:
+  - `all-seeds -> all`
+  - `ai-infosec -> project-info`
+  - `projects-logs -> project-info`
+- no subscriber-table fork or second campaign model is introduced
+- newsletter attachments remain derived from existing Supabase bucket ownership rather than a new storage subsystem
+
+### Contract changes introduced in H2-H3
+
+New load-bearing contracts:
+
+- `PaginatedCollectionStateDTO`
+- `PaginatedPostCommentsDTO`
+- `PaginatedGuestbookEntriesDTO`
+- `PostDetailDTO.commentsPagination`
+
+These are compatibility-safe because:
+
+- no persisted column changed
+- server routes/data loaders now expose pagination state explicitly
+- old rows remain readable without backfill
+
+### Public list query compatibility
+
+Notes and Projects now accept query input shaped as:
+
+- `q`
+- `tag`
+- `page`
+
+Rules:
+
+- this is a route/query contract change, not a schema change
+- `Post.excerpt` remains the single project short-description source
+- empty `excerpt` means no public short-description line; fake prose is forbidden
+
+### Feed compatibility
+
+RSS adds:
+
+- `/notes/rss.xml`
+- `/projects/rss.xml`
+
+This is a route/output contract only.
+No content-schema fork is introduced.
+Feeds are derived from the existing published `Post` shape:
+
+- title
+- canonical URL
+- excerpt when present
+- published/updated timestamp
+- tags as categories
+
+### Community pagination compatibility
+
+Public/community pagination now uses explicit read contracts:
+
+- `/api/posts/[postId]/comments?page=&pageSize=`
+- `/api/guestbook?page=&pageSize=`
+
+Compatibility rules:
+
+- write endpoints remain on the same routes
+- first-page detail reads still come from the server detail loader
+- older pages are additive and do not change comment/guestbook row structure
+
+### Editor / renderer compatibility introduced in H4
+
+H4 keeps the existing persisted models and changes compatibility behavior instead:
+
+- `PostAsset` remains the single uploaded-asset source
+- `coverImageUrl` remains the single persisted cover-image pointer
+- permanent delete uses the existing `Post` graph plus storage cleanup; no delete-shadow model is introduced
+- canonical derived HTML now emits code blocks with both:
+  - `class="language-*"`
+  - `data-language="*"`
+- inline and block math now derive through KaTeX-backed HTML helpers instead of escaped plain-text placeholders
+
+Compatibility rules:
+
+- reader selection remains `markdownSource || canonical block shape`
+- old rows remain readable
+- newly saved Markdown-first content now yields aligned editor/published render output without requiring a schema backfill
+
+### Profile / resume compatibility introduced in H5
+
+H5 keeps the existing Prisma profile schema and narrows the active runtime/editor contract instead:
+
+- `ProfileExperience.title`
+- `ProfileExperience.detail`
+- `ProfileExperience.year`
+
+remain persisted for compatibility, but the active runtime/editor model now uses:
+
+- `label`
+- `period`
+
+Rules:
+
+- public profile rendering uses `label` and `period`
+- admin settings edits only `label` and `period`
+- saves still backfill existing required DB columns by mirroring `label` into `title`, clearing `detail`, and storing `year` as `null`
+- this preserves schema compatibility while making the editor match the actual public rendering
+
+Resume rules:
+
+- public route remains `/resume.pdf`
+- uploaded override is stored in private file storage at a deterministic profile-owned path
+- when no uploaded override exists, the generated PDF fallback remains active
+- no second public resume route or new DB field is introduced
+
+### Resume fallback hardening after H5 audit
+
+The generated `/resume.pdf` fallback now uses a Unicode-safe PDF text path and the uploaded override replacement path now overwrites deterministically instead of delete-then-upload replacement.
+
+Compatibility rules:
+
+- non-ASCII profile data remains readable in generated fallback output
+- replacing an uploaded resume override does not create a temporary “no file” gap
+- public route ownership remains unchanged at `/resume.pdf`
+
+### Newsletter lifecycle compatibility introduced in H6
+
+H6 keeps the existing subscriber/campaign/delivery models and extends them rather than replacing them.
+
+Load-bearing H6 behavior:
+
+- subscription request input now serializes public checkbox state into canonical topic names
+- already-confirmed subscription requests return a subscribed success state instead of an error state
+- confirmation now triggers a welcome email after the subscriber state is finalized
+- unsubscribe confirmation remains on the existing route and now shares the common exact-v0 email frame
+- `/admin/newsletter` remains the only admin newsletter surface and now owns:
+  - queue editing
+  - recipient-mode selection
+  - selected-recipient targeting
+  - send-unsent-only reruns
+  - image/file asset upload
+  - file attachments
+  - paginated deliveries/campaigns/subscribers
+
+Compatibility rules:
+
+- worker processing still operates on `NewsletterDelivery`
+- attachment sends are additive and campaign-safe; they do not fork delivery records into a second send model
+- newsletter body remains Markdown-first and derives:
+  - `markdown`
+  - `html`
+  - `text`
+  from one compose pipeline
+- existing public subscribe routes remain:
+  - `/subscribe/confirm`
+  - `/unsubscribe`
+
+### Analytics / admin diagnostics compatibility introduced in H7
+
+H7 ships without a Prisma migration.
+
+Load-bearing H7 behavior:
+
+- admin analytics now projects a service log from existing persisted records:
+  - `AuditLog`
+  - `WebhookDelivery`
+  - `NewsletterCampaign`
+  - `NewsletterDelivery`
+- admin performance diagnostics now expose per-surface measurements for:
+  - session lookup
+  - posts index
+  - post editor state
+  - settings editor state
+  - newsletter dashboard state
+  - community moderation state
+
+Compatibility rules:
+
+- H7 does not create a new operations table
+- service-log rows are a read-model projection only
+- existing admin routes keep their current route ownership and simply expose more diagnostics
+- scroll containment changes are structural wrapper changes only and do not fork route contracts
+
+### Final QA hardening closure introduced in H8
+
+H8 ships without a Prisma migration.
+
+Load-bearing H8 behavior:
+
+- resume override reads now fail open:
+  - storage read failure while resolving `/resume.pdf` yields generated fallback output
+  - storage read failure while resolving resume editor state yields `generated` resume state
+- resume override writes remain unchanged and fail closed through the existing admin route/action path
+
+Compatibility rules:
+
+- H8 does not add a new resume table, field, or route
+- public contract for `/resume.pdf` remains stable while becoming more resilient to storage-read defects
+- storage readiness remains observable through analytics/admin operations rather than leaking as a public resume-route failure
 
 ## Current repository truth
 

@@ -20,6 +20,13 @@ function inferProfileLinkKind(url: string): ProfileLinkKind {
 }
 
 export function buildStaticProfileBootstrap(): ProfileBootstrapInput {
+  const experience = profile.experience as ReadonlyArray<{
+    title: string
+    label: string
+    detail: string
+    period: string
+    year?: string | null
+  }>
   const links = [
     profile.githubHref ? { label: "GitHub", url: profile.githubHref, isVerified: true } : null,
     profile.linkedinHref ? { label: "LinkedIn", url: profile.linkedinHref, isVerified: true } : null,
@@ -44,11 +51,11 @@ export function buildStaticProfileBootstrap(): ProfileBootstrapInput {
         sortOrder: 0,
       },
     ],
-    experience: profile.experience.map((item, index) => ({
+    experience: experience.map((item, index) => ({
       title: item.title,
-      label: item.label,
+      label: item.label || item.title,
       detail: item.detail,
-      period: item.period,
+      period: item.period || item.year || "",
       year: item.year ?? null,
       sortOrder: index,
     })),
@@ -85,11 +92,8 @@ export function buildStaticProfileSnapshot(): ProfileSnapshotDTO {
     })),
     experience: bootstrap.experience.map((entry, index) => ({
       id: `static-experience-${index}`,
-      title: entry.title,
       label: entry.label,
-      detail: entry.detail,
       period: entry.period,
-      year: entry.year,
       sortOrder: entry.sortOrder,
     })),
     awards: [],

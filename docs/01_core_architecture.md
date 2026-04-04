@@ -1,21 +1,21 @@
 # 01. Core Architecture
 
-This repository is a Next.js 15 App Router application with two live surfaces:
+This repository is a Next.js 15 App Router application with one shared exact-v0 world split into:
 
 - public product surface
-- protected admin dashboard surface
+- protected admin surface
 
-The codebase keeps most business logic in `lib/` and uses Prisma as the single database client. Transactions are used where multi-table consistency matters, while read-side queries stay in `lib/data`.
+The app keeps write paths in `lib/actions`, read paths in `lib/data`, Prisma as the single ORM boundary, and route-owned exact-v0 rendering in `components/v0/*`.
 
-## Runtime route tree
+## Route tree
 
 ```text
 app/
   (dashboard)/admin/
     analytics/page.tsx
     community/page.tsx
-    content/page.tsx               -> redirect alias
-    content/[postId]/page.tsx      -> redirect alias
+    content/page.tsx
+    content/[postId]/page.tsx
     newsletter/page.tsx
     page.tsx
     posts/page.tsx
@@ -24,10 +24,22 @@ app/
     layout.tsx
   admin/login/page.tsx
   contact/page.tsx
+  guestbook/page.tsx
+  notes/page.tsx
+  notes/[slug]/page.tsx
+  notes/rss.xml/route.ts
+  projects/page.tsx
+  projects/[slug]/page.tsx
+  projects/rss.xml/route.ts
+  resume.pdf/route.ts
+  subscribe/confirm/page.tsx
+  unsubscribe/page.tsx
   api/
     admin/
       comments/[commentId]/route.ts
       guestbook/[entryId]/route.ts
+      newsletter/uploads/route.ts
+      profile/resume/route.ts
       uploads/route.ts
     analytics/route.ts
     auth/[...nextauth]/route.ts
@@ -42,14 +54,6 @@ app/
       asset-cleanup/route.ts
       newsletter/route.ts
       webhook/route.ts
-  guestbook/page.tsx
-  notes/page.tsx
-  notes/[slug]/page.tsx
-  projects/page.tsx
-  projects/[slug]/page.tsx
-  resume.pdf/route.ts
-  subscribe/confirm/page.tsx
-  unsubscribe/page.tsx
   layout.tsx
   page.tsx
 ```
@@ -57,84 +61,139 @@ app/
 ## Primary code zones
 
 ```text
+components/
+  admin/           editor adapters and authoring helpers
+  v0/admin/        exact-v0 admin shells and screens
+  v0/public/       exact-v0 public shells and screens
+  v0/runtime/      shared Jitter/runtime continuity
+
 lib/
-  actions/        Server Actions for posts, subscribers, contact, newsletter, moderation
-  analytics/      Derived analytics metrics
-  auth.ts         NextAuth credentials config and requireUser()
-  content/        Link preview fetch, draft state, preview metadata
-  contracts/      Shared DTO and payload contracts
-  data/           Read-side queries for posts, analytics, community, newsletter
-  db/             Prisma client and DB error helpers
-  email/          EmailProvider abstraction, Resend adapter, test driver, templates
-  newsletter/     Subscriber selection and campaign aggregate services
-  ops/            Readiness dashboard source of truth
-  runtime/        Canonical app origin resolution
-  security/       Route-scoped rate limiting
-  storage/        Supabase Storage helpers and upload policies
-  workers/        In-app worker dispatch helpers
+  actions/         server mutations
+  content/         markdown/code/math shaping
+  contracts/       DTO, query, input, and result types
+  data/            read-side queries
+  db/              Prisma client
+  email/           email provider abstraction and templates
+  feeds/           RSS serialization
+  newsletter/      topic normalization, audience selection, compose helpers
+  ops/             readiness and performance dashboards
+  profile/         profile bootstrap and resume override helpers
+  seo/             metadata and structured data
+  site/            theme, palette, static profile constants
+  storage/         Supabase storage boundary
+  workers/         worker dispatch helpers
 ```
+
+## Runtime ownership model
+
+### Public shell ownership
+
+- `components/v0/public/public-shell.tsx` is the canonical public shell.
+- `components/v0/runtime/v0-experience-runtime.tsx` owns Jitter continuity and route-owned runtime descriptors.
+- Mobile public routes use document scroll, not fixed-banner internal scroll.
+- `md+` public routes keep the split-shell model.
+
+### Admin shell ownership
+
+- `components/v0/admin/admin-shell.tsx` is the canonical admin shell.
+- `/admin` access is:
+  - unauthenticated -> `/admin/login`
+  - authenticated -> admin runtime
+- admin lower sections are reached through structural scroll ownership, not overlays or drawers.
 
 ## Security boundaries
 
-- Admin pages are protected by the dashboard layout and `requireUser()`.
-- `POST /api/admin/uploads` requires an authenticated admin session.
-- Community moderation routes under `/api/admin/*` require admin access.
-- Worker routes require `Authorization: Bearer ${CRON_SECRET}`.
-- File downloads always go through `GET /api/files/[assetId]`.
-- Public file access is limited to assets attached to `PUBLISHED` posts.
-- Analytics writes use a single write path, `POST /api/analytics`.
-- Honeypot fields exist on subscription, contact, guestbook, and comment submission surfaces.
-- Rate limiting is scoped by route namespace instead of a single global POST limiter.
-- Production is fail-closed for email, storage, webhook, and canonical URL requirements.
+- all admin pages require an authenticated admin session
+- upload routes require admin auth
+- admin moderation routes require admin auth
+- worker routes require `Authorization: Bearer ${CRON_SECRET}`
+- public file access goes only through `GET /api/files/[assetId]`
+- public file access is restricted to file assets on `PUBLISHED` posts
+- route-scoped rate limiting protects:
+  - subscription
+  - contact
+  - guestbook
+  - comments
+  - admin resume upload
+  - admin newsletter operations
+- analytics writes intentionally skip `/admin` pageview ingestion
 
-## Runtime flow summary
+## Data flow summary
 
-### Content
+### Content publishing
 
-1. Public list/detail pages fetch published post DTOs from `lib/data/posts.ts`.
-2. Admin content operations go through `lib/actions/post.actions.ts`.
-3. `createDraftPost()` creates a real `Post` row in `DRAFT` state before uploads.
-4. TipTap JSON is the canonical content source; `htmlContent` is stored alongside it for rendering compatibility.
-5. Link previews are normalized, fetched once, cached in `LinkPreviewCache`, and attached through `PostLink`.
-6. Uploaded assets are indexed in `PostAsset`; file access is mediated through signed downloads.
+1. public list/detail routes fetch DTOs from `lib/data/posts.ts`
+2. editor mutations run through `lib/actions/post.actions.ts`
+3. `createDraftPost()` creates a real `DRAFT` row before uploads
+4. `savePost()` persists:
+   - markdown source
+   - block/content JSON
+   - rendered HTML
+   - tags
+   - links
+   - retained assets
+   - revision/audit state
+5. `archivePost()` keeps the row and changes status
+6. `deletePostPermanently()` is the destructive path and refuses DB delete if storage cleanup fails
+
+### Rendering pipeline
+
+1. authoring remains Markdown-first inside the v0 editor shell
+2. reader rendering uses the same canonical markdown/block path
+3. code blocks render through the sanitized canonical renderer
+4. math renders through KaTeX-backed helpers instead of escaped placeholders
+5. copy feedback is terminal-native: `yank` / `yanked`
 
 ### Community
 
-1. Public comments and guestbook entries hit dedicated route handlers.
-2. Honeypot and route-scoped rate limits run before DB writes.
-3. Comment deletion uses a 4-digit PIN flow.
-4. Admin moderation uses dedicated server actions and admin-only routes.
+1. guestbook and comments are written through public route handlers
+2. moderation is admin-only
+3. public comments and guestbook now page incrementally
+4. guestbook remains latest-first and linear
 
-### Engagement
+### Profile / resume
 
-1. Subscription requests upsert `Subscriber` and newsletter-topic relations.
-2. Confirmation and unsubscribe are token-based flows.
-3. Contact submissions store `ContactMessage`, enqueue `WebhookDelivery`, and trigger the webhook worker.
-4. Transactional email is sent through the `EmailProvider` abstraction.
-
-### Analytics
-
-1. Client tracking uses `sendBeacon` first and `fetch(... keepalive)` fallback.
-2. `/api/analytics` is the only write path for raw events.
-3. The admin dashboard aggregates directly from the raw analytics table.
+1. Home, Contact, Guestbook, Settings, and `/resume.pdf` share one DB-backed profile runtime source
+2. profile bootstrap exists as a static fallback
+3. `/resume.pdf` serves:
+   - uploaded Supabase override first
+   - generated PDF fallback second
+4. read-only resume lookup fails open to the generated fallback
 
 ### Newsletter
 
-1. `createCampaign()` creates the campaign envelope and delivery fan-out only.
-2. `startCampaign()` moves the campaign into `SENDING` and dispatches the worker.
-3. The newsletter worker claims pending deliveries in `createdAt ASC, id ASC` order and sends up to 20 rows per run.
-4. Retry reuses the same delivery row and returns it to `PENDING`.
+1. visible topic model is normalized to:
+   - `all`
+   - `project-info`
+   - `log`
+2. subscriber lifecycle is explicit:
+   - pending confirm
+   - confirmed
+   - unsubscribed
+3. campaign lifecycle is draft-first with queue ordering
+4. recipient modes:
+   - `TOPICS`
+   - `SELECTED_SUBSCRIBERS`
+5. newsletter assets can be inline images or file attachments
+6. worker delivery operates off `NewsletterDelivery` rows
 
-## Active runtime conventions
+### Analytics / operations
 
-- Brand label in the UI: `xistoh.log`
-- Canonical public origin: `https://xistoh.com`
-- Admin canonical IA:
-  - list: `/admin/posts`
-  - editor: `/admin/posts/[postId]`
-- Legacy aliases:
-  - `/admin/content`
-    - creates a draft and redirects into the canonical editor route
-  - `/admin/content/[postId]`
+1. raw analytics writes flow through `/api/analytics`
+2. admin analytics reads aggregated metrics from raw events
+3. readiness dashboard reads environment and service state
+4. service log is projected from persisted operational records
+5. admin performance dashboard combines server timings and client-side navigation timings
 
-Previously suffixed duplicate files were removed from the repo during cleanup. The active runtime source of truth is the App Router tree plus the `components/v0/*` layer.
+## Current exact-v0-preserving non-literal extensions
+
+These are not literal `v0app` features, but they are now part of the accepted product:
+
+- query-driven search and pagination
+- RSS feeds and autodiscovery
+- service log in admin analytics
+- direct resume-file management
+- newsletter targeting and asset management
+- real math rendering
+
+They remain accepted because they preserve the same exact-v0 world rather than introducing a second product language.

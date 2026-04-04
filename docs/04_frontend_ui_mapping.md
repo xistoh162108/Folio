@@ -1,139 +1,199 @@
-# 04. Frontend Mapping
+# 04. Frontend UI Mapping
 
-The frontend is split between a public reading/product surface and a protected admin dashboard. The brand label shown in the UI is `xistoh.log`, while the canonical runtime URL is `https://xistoh.com`.
+This document maps the current user-visible runtime to the active component owners.
 
 ## Public routes
 
-- `/`
-  - v0 split-panel identity home
-  - compact recent notes list
-  - inline compact subscription module
-- `/contact`
-  - split-panel terminal contact route
-  - integrated contact + guestbook composition
-- `/notes`
-  - notes-only v0 row list
-- `/notes/[slug]`
-  - v0 note detail
-- `/projects`
-  - projects-only v0 list
-- `/projects/[slug]`
-  - v0 project detail
-- `/guestbook`
-  - anchored guestbook view reusing the `/contact` composition
-- `/subscribe/confirm`
-  - token result page
-- `/unsubscribe`
-  - token result page
-- `/resume.pdf`
-  - generated PDF route
+### `/`
+
+- owner:
+  - `app/page.tsx`
+  - `components/v0/public/home-screen-bound.tsx`
+  - `components/v0/public/home-screen.tsx`
+- behavior:
+  - exact-v0 split home
+  - recent notes, projects, visitor logs
+  - Home-only Instagram when verified
+  - inline subscription module
+
+### `/contact`
+
+- owner:
+  - `app/contact/page.tsx`
+  - `components/v0/public/contact-screen.tsx`
+  - `components/v0/public/contact-terminal-form.tsx`
+  - `components/v0/public/guestbook-terminal-panel.tsx`
+- behavior:
+  - contact is canonical contact route
+  - guestbook appears only as a lightweight preview/jump
+  - Instagram is intentionally absent here
+
+### `/guestbook`
+
+- owner:
+  - `app/guestbook/page.tsx`
+  - `components/v0/public/guestbook-screen-bound.tsx`
+  - `components/v0/public/guestbook-screen.tsx`
+  - `components/v0/public/guestbook-screen-client.tsx`
+- behavior:
+  - standalone canonical guestbook archive
+  - latest-first linear rows
+  - pagination
+  - no public moderation controls
+
+### `/notes`
+
+- owner:
+  - `app/notes/page.tsx`
+  - `components/v0/public/notes-screen-bound.tsx`
+  - `components/v0/public/notes-screen.tsx`
+  - `components/v0/public/notes-subscribe-footer.tsx`
+- behavior:
+  - search + tag + page query state
+  - status legend
+  - inline RSS affordance
+  - terminal-native subscribe footer
+
+### `/notes/[slug]`
+
+- owner:
+  - `components/v0/public/detail-note-screen-bound.tsx`
+  - `components/v0/public/detail-note-screen.tsx`
+  - `components/v0/public/detail-content.tsx`
+  - `components/v0/public/comments-log.tsx`
+- behavior:
+  - markdown/code/math detail rendering
+  - likes
+  - paginated comments
+  - terminal-native code yank feedback
+
+### `/projects`
+
+- owner:
+  - `app/projects/page.tsx`
+  - `components/v0/public/projects-screen-bound.tsx`
+  - `components/v0/public/projects-screen.tsx`
+- behavior:
+  - search + tag + page query state
+  - project views
+  - short description from `excerpt`
+  - inline RSS affordance
+
+### `/projects/[slug]`
+
+- owner:
+  - `components/v0/public/detail-project-screen-bound.tsx`
+  - `components/v0/public/detail-note-screen.tsx`
+  - `components/v0/public/detail-content.tsx`
+- behavior:
+  - same reader shell language as notes
+  - code/math/assets/links
+
+### `/subscribe/confirm` and `/unsubscribe`
+
+- owner:
+  - `components/v0/public/confirm-subscription-screen-bound.tsx`
+  - `components/v0/public/unsubscribe-screen-bound.tsx`
+  - `components/v0/public/subscription-result-screen.tsx`
+- behavior:
+  - explicit lifecycle state machine
+  - pending / expired / confirmed / already-subscribed / unsubscribed states
+
+### `/resume.pdf`
+
+- owner:
+  - `app/resume.pdf/route.ts`
+- behavior:
+  - uploaded override first
+  - generated fallback second
 
 ## Admin routes
 
-- `/admin/login`
-  - credentials login
-- `/admin`
-  - admin landing page
-- `/admin/posts`
-  - canonical post list
-  - draft creation
-  - search, type filter, status filter, pagination
-- `/admin/posts/[postId]`
-  - canonical editor route
-- `/admin/community`
-  - moderation for comments and guestbook
-- `/admin/analytics`
-  - dashboard for pageviews, dwell, latency, realtime, referrers, top content
-  - readiness / diagnostics terminal surface
-- `/admin/newsletter`
-  - campaign creation, test send, start, retry, delivery status
-- `/admin/settings`
-  - Profile / CV editor
-- `/admin/content`
-  - draft-creation entrypoint that redirects into `/admin/posts/[postId]`
-- `/admin/content/[postId]`
-  - redirect alias to `/admin/posts/[postId]`
+### Shared admin shell
 
-## Main public component bindings
+- owner:
+  - `components/v0/admin/admin-shell.tsx`
+- behavior:
+  - brand links to `/`
+  - switch UI remains removed
 
-- `components/v0/runtime/v0-experience-runtime.tsx`
-  - shared app-shell runtime owning right-panel continuity and theme integrity
-- `components/v0/public/public-shell.tsx`
-  - canonical public shell for migrated public routes
-- `components/v0/public/home-screen.tsx`
-  - v0 home layout
-- `components/v0/public/home-screen-bound.tsx`
-  - binds homepage live data into the v0 home shell
-- `components/v0/public/contact-screen.tsx`
-  - v0 contact shell and live terminal form with integrated guestbook terminal block
-- `components/v0/public/notes-screen.tsx`
-  - v0 notes list with literal sticky subscribe footer
-- `components/v0/public/notes-screen-bound.tsx`
-  - binds published notes into the v0 notes list
-- `components/v0/public/projects-screen.tsx`
-  - v0 projects list
-- `components/v0/public/projects-screen-bound.tsx`
-  - binds published projects into the v0 projects list
-- `components/v0/public/detail-note-screen.tsx`
-  - v0 note detail shell
-- `components/v0/public/detail-content.tsx`
-  - v0-style live note content renderer
-- `components/v0/public/detail-note-screen-bound.tsx`
-  - binds real note detail data, likes, comments, links, and assets
-- `components/v0/public/detail-project-screen.tsx`
-  - v0 project detail shell
-- `components/v0/public/detail-project-screen-bound.tsx`
-  - binds real project detail data, likes, comments, and assets
-- `components/v0/public/guestbook-screen.tsx`
-  - v0-language guestbook surface
-- `components/v0/public/guestbook-screen-bound.tsx`
-  - binds guestbook write and moderation flows inside the anchored contact composition
-- `components/v0/public/confirm-subscription-screen-bound.tsx`
-  - binds token confirmation flow into the v0 result shell
-- `components/v0/public/unsubscribe-screen-bound.tsx`
-  - binds unsubscribe flow into the v0 result shell
-- `components/v0/public/post-like-button.tsx`
-  - binds to like API
-- `components/v0/public/comments-log.tsx`
-  - binds to comment create + PIN delete
-- `components/analytics-tracker.tsx`
-  - pageview, pageload, heartbeat sender; skipped on admin routes
+### `/admin/posts` and `/admin/posts/[postId]`
 
-## Main admin component bindings
+- owner:
+  - `components/v0/admin/manage-posts-screen.tsx`
+  - `components/v0/admin/editor-screen.tsx`
+  - `components/admin/post-editor.tsx`
+- behavior:
+  - paginated content list
+  - Markdown-first editor
+  - save/publish/archive/permanent delete
+  - unified assets / cover workflow
 
-- `components/v0/admin/admin-shell.tsx`
-  - canonical admin shell and navigation
-- `components/v0/admin/manage-posts-screen.tsx`
-  - canonical admin post list shell
-- `components/v0/admin/editor-screen.tsx`
-  - canonical admin editor shell
-- `components/admin/post-editor.tsx`
-  - runtime adapter for draft/save/archive and upload/link flows inside the v0 editor shell
-- `components/admin/tiptap-editor.tsx`
-  - TipTap editing surface inside the v0 editor shell
-- `components/v0/admin/newsletter-manager.tsx`
-  - newsletter manager UI
-- `components/v0/admin/settings-screen.tsx`
-  - real Profile / CV editor shell
-- `components/v0/admin/profile-settings-editor.tsx`
-  - DB-backed structured profile CRUD + reorder UI inside the v0 settings shell
+### `/admin/community`
 
-## Current UX rules
+- owner:
+  - `components/v0/admin/community-screen-bound.tsx`
+  - `components/v0/admin/community-screen.tsx`
+- behavior:
+  - comments + guestbook moderation
+  - independent pagination
+  - normalized delete button sizing
 
-- Admin mutations require authentication before execution.
-- Subscription confirm and unsubscribe do not mutate on GET.
-- Public analytics uses `sendBeacon` first and `fetch(... keepalive)` fallback.
-- Public file downloads always go through the signed download route.
-- Comments and guestbook use honeypot protection.
-- Community moderation is admin-only.
-- Home, contact, guestbook, admin settings, and `resume.pdf` share one DB-backed profile runtime source.
-- Public routes emit route-level metadata; note/project detail routes also emit article metadata and JSON-LD.
-- Admin routes emit noindex metadata.
+### `/admin/newsletter`
 
-## Runtime notes
+- owner:
+  - `components/v0/admin/newsletter-screen-bound.tsx`
+  - `components/v0/admin/newsletter-screen.tsx`
+  - `components/v0/admin/newsletter-manager.tsx`
+- behavior:
+  - compose / subscriber / preview views
+  - draft queue ordering
+  - topics or selected-subscriber targeting
+  - send-unsent-only option
+  - inline images + file attachments
+  - subscriber unsubscribe/delete
 
-- `/notes` and `/projects` are the only public knowledge surfaces.
-- `/contact` is the canonical public contact route.
-- `/knowledge` is removed from product IA and permanently redirected to `/notes`.
-- `app/sitemap.ts` and `app/robots.ts` reflect the shipped IA and canonical host.
-- previously excluded suffixed duplicate files were removed during cleanup and are not part of the current runtime.
+### `/admin/settings`
+
+- owner:
+  - `components/v0/admin/settings-screen-bound.tsx`
+  - `components/v0/admin/settings-screen.tsx`
+  - `components/v0/admin/profile-settings-editor.tsx`
+- behavior:
+  - DB-backed profile editor
+  - experience active model is `Short Label + Period`
+  - resume upload/remove management
+
+### `/admin/analytics`
+
+- owner:
+  - `components/v0/admin/analytics-screen.tsx`
+- behavior:
+  - key metrics
+  - top content
+  - readiness diagnostics
+  - service log
+  - performance diagnostics
+
+## Shared runtime rules
+
+- Light is the default first-load theme.
+- `xistoh.log` brand text resolves to `/`.
+- Jitter palette is route-owned through runtime descriptors and palette resolver.
+- Public mobile uses document scroll; desktop keeps the split-shell model.
+- Contact and Guestbook use widened but still exact-v0 column constraints.
+- Notes footer, newsletter controls, and terminal controls share control tokens rather than per-screen padding hacks.
+- Notes date/meta wrapping is delayed until truly narrow widths.
+
+## Non-literal but accepted UI extensions
+
+These exist because literal `v0app` was insufficient for production behavior:
+
+- search and pagination controls on notes/projects
+- RSS affordances on notes/projects
+- subscription lifecycle result states
+- service log in analytics
+- resume upload controls in settings
+- unified assets panel in the editor
+
+All of them are intentionally kept inside the same exact-v0 shell grammar and terminal tone.

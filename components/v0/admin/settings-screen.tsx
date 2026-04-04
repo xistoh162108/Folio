@@ -26,7 +26,7 @@ export function SettingsScreen({
 
   return (
     <AdminShell currentSection="settings" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <main data-v0-settings-scroll className="min-h-full p-4 sm:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
+      <main data-v0-settings-scroll className="min-h-full p-4 pb-10 sm:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
         <ProfileSettingsEditor
           initialProfile={profile}
           profileSource={profileSource}

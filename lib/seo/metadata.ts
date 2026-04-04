@@ -37,22 +37,38 @@ export function buildPublicMetadata({
   path,
   noIndex = false,
   images,
+  feed,
 }: {
   title?: string | null
   description: string
   path: string
   noIndex?: boolean
   images?: Array<string | null | undefined>
+  feed?: {
+    path: string
+    title: string
+  } | null
 }): Metadata {
   const fullTitle = buildMetadataTitle(title)
   const canonical = buildAbsoluteUrl(path)
   const resolvedImages = buildMetadataImages(images)
+  const feedUrl = feed ? buildAbsoluteUrl(feed.path) : null
 
   return {
     title: fullTitle,
     description,
     alternates: {
       canonical,
+      types: feedUrl
+        ? {
+            "application/rss+xml": [
+              {
+                url: feedUrl,
+                title: feed?.title,
+              },
+            ],
+          }
+        : undefined,
     },
     openGraph: {
       type: "website",

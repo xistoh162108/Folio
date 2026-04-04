@@ -2,8 +2,10 @@ import "server-only"
 
 import type { AdminPerformanceDashboard, AdminPerformanceMetric } from "@/lib/contracts/admin-performance"
 import { getSession } from "@/lib/auth"
+import { getCommunityModerationSnapshot } from "@/lib/data/community"
+import { getNewsletterDashboardData } from "@/lib/data/newsletter"
 import { getAdminPosts, getAdminPostEditorState } from "@/lib/data/posts"
-import { getPrimaryProfileRuntimeSnapshot } from "@/lib/data/profile"
+import { getPrimaryProfileSettingsEditorState } from "@/lib/data/profile"
 
 function getNow() {
   return typeof performance !== "undefined" ? performance.now() : Date.now()
@@ -66,14 +68,32 @@ async function measureMetricSafely<T>(
 }
 
 export async function getAdminPerformanceDashboard(): Promise<AdminPerformanceDashboard> {
-  const [sessionMeasurement, postsMeasurement, profileMeasurement] = await Promise.all([
+  const [
+    sessionMeasurement,
+    postsMeasurement,
+    settingsMeasurement,
+    newsletterMeasurement,
+    communityMeasurement,
+  ] = await Promise.all([
     measureMetricSafely("session", "SESSION_LOOKUP", "NextAuth server session lookup time.", () => getSession()),
     measureMetricSafely("posts", "POST_INDEX_QUERY", "Manage Posts query with the default admin filter path.", () => getAdminPosts()),
     measureMetricSafely(
-      "profile",
-      "PROFILE_RUNTIME",
-      "DB-backed runtime profile snapshot used by public/admin consumers.",
-      () => getPrimaryProfileRuntimeSnapshot(),
+      "settings",
+      "SETTINGS_EDITOR_LOAD",
+      "Profile/CV settings editor state with resume metadata.",
+      () => getPrimaryProfileSettingsEditorState(),
+    ),
+    measureMetricSafely(
+      "newsletter",
+      "NEWSLETTER_DASHBOARD",
+      "Newsletter queue/subscriber/delivery snapshot for the admin dashboard.",
+      () => getNewsletterDashboardData({ pageSize: 5 }),
+    ),
+    measureMetricSafely(
+      "community",
+      "COMMUNITY_QUEUE",
+      "Comment and guestbook moderation snapshot with pagination state.",
+      () => getCommunityModerationSnapshot({ pageSize: 5 }),
     ),
   ])
 
@@ -99,12 +119,15 @@ export async function getAdminPerformanceDashboard(): Promise<AdminPerformanceDa
       sessionMeasurement.metric,
       postsMeasurement.metric,
       editorMeasurement.metric,
-      profileMeasurement.metric,
+      settingsMeasurement.metric,
+      newsletterMeasurement.metric,
+      communityMeasurement.metric,
     ],
     navPrefetchStrategy: "idle-neighbors + hover/focus",
     notes: [
       "Admin navigation timing is captured client-side from nav click to route-ready shell mount.",
       "Runtime handoff timing is captured client-side from admin route registration to visible Jitter slot reuse.",
+      "Server diagnostics now measure content, settings, newsletter, and community admin reads separately for route attribution.",
     ],
   }
 }

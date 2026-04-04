@@ -5,9 +5,9 @@ import { buildStaticProfileBootstrap, PRIMARY_PROFILE_SLUG } from "@/lib/profile
 import { slugify } from "@/lib/utils/normalizers"
 
 const DEFAULT_TOPICS = [
-  "All Seeds",
-  "AI & InfoSec",
-  "Projects & Logs",
+  "All",
+  "Project & Info",
+  "Log",
 ]
 
 async function main() {

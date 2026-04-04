@@ -1,4 +1,4 @@
-import type { PostCommentDTO } from "@/lib/contracts/community"
+import type { PaginatedCollectionStateDTO, PostCommentDTO } from "@/lib/contracts/community"
 import type { BlockDocument, PostContentMode } from "@/lib/contracts/content-blocks"
 
 export type PostKind = "NOTE" | "PROJECT"
@@ -109,6 +109,7 @@ export interface PostDetailDTO extends PostCardDTO {
   assets: PostAssetDTO[]
   likeCount: number
   comments: PostCommentDTO[]
+  commentsPagination: PaginatedCollectionStateDTO
 }
 
 export interface PostEditorInput {

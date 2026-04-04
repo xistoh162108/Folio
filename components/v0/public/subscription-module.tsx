@@ -14,8 +14,8 @@ export function V0SubscriptionModule({ isDarkMode, compact = false }: Subscripti
   const [honey, setHoney] = useState("")
   const [topics, setTopics] = useState({
     all: true,
-    aiInfosec: false,
-    projectsLogs: false,
+    projectInfo: false,
+    log: false,
   })
   const [isSubscribed, setIsSubscribed] = useState(false)
 
@@ -33,7 +33,7 @@ export function V0SubscriptionModule({ isDarkMode, compact = false }: Subscripti
 
   const handleTopicChange = (topic: keyof typeof topics) => {
     if (topic === "all") {
-      setTopics({ all: true, aiInfosec: false, projectsLogs: false })
+      setTopics({ all: true, projectInfo: false, log: false })
       return
     }
 
@@ -64,7 +64,7 @@ export function V0SubscriptionModule({ isDarkMode, compact = false }: Subscripti
       <div className="font-mono">
         {isSubscribed ? (
           <p className={`text-xs ${isDarkMode ? "text-green-400" : "text-green-600"}`}>
-            [*] {state?.message ?? "Verification email sent. Check your inbox."}
+            [*] {state?.message ?? "Verification email sent. One step left."}
           </p>
         ) : (
           <form onSubmit={handleSubscribe} className="space-y-2">
@@ -114,7 +114,7 @@ export function V0SubscriptionModule({ isDarkMode, compact = false }: Subscripti
       </div>
 
       {isSubscribed ? (
-        <p className={`text-sm ${isDarkMode ? "text-green-400" : "text-green-600"}`}>[*] Subscribed successfully.</p>
+          <p className={`text-sm ${isDarkMode ? "text-green-400" : "text-green-600"}`}>[*] {state?.message ?? "Subscribed."}</p>
       ) : (
         <form onSubmit={handleSubscribe} className="space-y-4">
           <div className="flex gap-2">
@@ -161,29 +161,29 @@ export function V0SubscriptionModule({ isDarkMode, compact = false }: Subscripti
               >
                 {topics.all ? <span>*</span> : null}
               </span>
-              <span>All Seeds (Default)</span>
+              <span>All</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <span
-                onClick={() => handleTopicChange("aiInfosec")}
+                onClick={() => handleTopicChange("projectInfo")}
                 className={`w-4 h-4 border flex items-center justify-center cursor-pointer ${borderColor} ${
-                  topics.aiInfosec ? (isDarkMode ? "bg-white/20" : "bg-black/20") : ""
+                  topics.projectInfo ? (isDarkMode ? "bg-white/20" : "bg-black/20") : ""
                 }`}
               >
-                {topics.aiInfosec ? <span>*</span> : null}
+                {topics.projectInfo ? <span>*</span> : null}
               </span>
-              <span>AI &amp; InfoSec</span>
+              <span>Project &amp; Info</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <span
-                onClick={() => handleTopicChange("projectsLogs")}
+                onClick={() => handleTopicChange("log")}
                 className={`w-4 h-4 border flex items-center justify-center cursor-pointer ${borderColor} ${
-                  topics.projectsLogs ? (isDarkMode ? "bg-white/20" : "bg-black/20") : ""
+                  topics.log ? (isDarkMode ? "bg-white/20" : "bg-black/20") : ""
                 }`}
               >
-                {topics.projectsLogs ? <span>*</span> : null}
+                {topics.log ? <span>*</span> : null}
               </span>
-              <span>Projects &amp; Logs</span>
+              <span>Log</span>
             </label>
           </div>
         </form>

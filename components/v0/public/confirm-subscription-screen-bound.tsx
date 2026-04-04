@@ -11,25 +11,29 @@ function getConfirmCopy(code: string | undefined, fallback: string | undefined) 
       return {
         eyebrow: "Subscription",
         title: "Subscription confirmed",
-        description: fallback ?? "Your subscription is now active.",
+        description: fallback ?? "The signal is live. Future sends will route to this inbox.",
+        overlayValue: "[CONFIRMED]",
       }
-    case "already_confirmed":
+    case "subscribed":
       return {
         eyebrow: "Subscription",
-        title: "Already confirmed",
-        description: fallback ?? "This subscription has already been confirmed.",
+        title: "Subscribed",
+        description: fallback ?? "This inbox is already active.",
+        overlayValue: "[SUBSCRIBED]",
       }
     case "expired":
       return {
         eyebrow: "Subscription",
         title: "Confirmation link expired",
-        description: fallback ?? "Please request a fresh confirmation email from the homepage.",
+        description: fallback ?? "This signal window closed. Request a fresh confirmation link from home.",
+        overlayValue: "[EXPIRED]",
       }
     default:
       return {
         eyebrow: "Subscription",
         title: "Subscription link issue",
         description: fallback ?? "This confirmation link is invalid.",
+        overlayValue: "[INVALID]",
       }
   }
 }
@@ -66,12 +70,13 @@ export async function ConfirmSubscriptionScreenBound({
       brandLabel={brandLabel}
       isDarkMode={isDarkMode}
       eyebrow={copy.eyebrow}
+      overlayValue={result ? copy.overlayValue : token ? "[PENDING]" : "[INVALID]"}
       title={result ? copy.title : "Confirm your subscription"}
       body={
         result
           ? copy.description
           : token
-            ? "Confirm this subscription to start receiving newsletter updates."
+            ? "One step left. Confirm this address to start receiving xistoh.log dispatches."
             : "This confirmation link is invalid."
       }
       actions={
@@ -85,7 +90,7 @@ export async function ConfirmSubscriptionScreenBound({
           <Link href="/" className={`${hoverBg} px-2 py-1`}>
             [home]
           </Link>
-          {result && result !== "confirmed" ? (
+          {result && result !== "confirmed" && result !== "subscribed" ? (
             <Link href="/" className={`${hoverBg} px-2 py-1`}>
               [request new link]
             </Link>

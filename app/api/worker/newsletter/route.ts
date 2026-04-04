@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 
-import { isMissingRelationInRawQuery, isMissingTableError } from "@/lib/db/errors"
+import { isMissingColumnError, isMissingRelationInRawQuery, isMissingTableError } from "@/lib/db/errors"
 import { prisma } from "@/lib/db/prisma"
 import { getEmailBaseUrl, sendCampaignEmails } from "@/lib/email/provider"
 import { buildNewsletterEmail } from "@/lib/email/templates/newsletter"
 import { env } from "@/lib/env"
 import { refreshCampaignAggregates } from "@/lib/newsletter/service"
+import { downloadAssetFromSupabase } from "@/lib/storage/supabase"
 import { kickWorkerRoute } from "@/lib/workers/dispatch"
 
 const BATCH_SIZE = 20
@@ -69,6 +70,40 @@ async function handleNewsletterWorker(request: Request) {
     }
 
     const baseUrl = getEmailBaseUrl()
+    const attachmentRecords = await prisma.newsletterAsset.findMany({
+      where: {
+        campaignId: {
+          in: [...new Set(deliveries.map((delivery) => delivery.campaignId))],
+        },
+        sendAsAttachment: true,
+      },
+      select: {
+        campaignId: true,
+        bucket: true,
+        storagePath: true,
+        originalName: true,
+        mime: true,
+      },
+    })
+
+    const attachmentsByCampaign = new Map<string, Array<{ filename: string; content: Buffer; contentType?: string }>>()
+
+    for (const asset of attachmentRecords) {
+      const downloaded = await downloadAssetFromSupabase(asset.bucket, asset.storagePath)
+
+      if (!downloaded) {
+        continue
+      }
+
+      const next = attachmentsByCampaign.get(asset.campaignId) ?? []
+      next.push({
+        filename: asset.originalName,
+        content: downloaded.buffer,
+        contentType: downloaded.contentType ?? asset.mime,
+      })
+      attachmentsByCampaign.set(asset.campaignId, next)
+    }
+
     const results = await sendCampaignEmails({
       recipients: deliveries.map((delivery) => {
         const unsubscribeUrl = delivery.unsubscribeToken
@@ -77,6 +112,7 @@ async function handleNewsletterWorker(request: Request) {
 
         return {
           to: delivery.email,
+          attachments: attachmentsByCampaign.get(delivery.campaignId) ?? [],
           ...buildNewsletterEmail({
             subject: delivery.subject,
             html: delivery.html,
@@ -140,6 +176,9 @@ async function handleNewsletterWorker(request: Request) {
     if (
       isMissingTableError(error, "NewsletterCampaign") ||
       isMissingTableError(error, "NewsletterDelivery") ||
+      isMissingTableError(error, "NewsletterAsset") ||
+      isMissingColumnError(error, "NewsletterCampaign.markdown") ||
+      isMissingColumnError(error, "NewsletterAsset.sendAsAttachment") ||
       isMissingRelationInRawQuery(error, "NewsletterDelivery") ||
       isMissingRelationInRawQuery(error, "NewsletterCampaign")
     ) {

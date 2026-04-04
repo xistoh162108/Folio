@@ -3,7 +3,8 @@ import "server-only"
 import { prisma } from "@/lib/db/prisma"
 import { isMissingTableError, isUniqueConstraintError } from "@/lib/db/errors"
 import { buildStaticProfileBootstrap, buildStaticProfileSnapshot, PRIMARY_PROFILE_SLUG } from "@/lib/profile/bootstrap"
-import type { ProfileEditorInput, ProfileLinkDTO, ProfileLinkKind, ProfileSnapshotDTO } from "@/lib/contracts/profile"
+import { getProfileResumeEditorState } from "@/lib/profile/resume"
+import type { ProfileEditorInput, ProfileLinkDTO, ProfileLinkKind, ProfileResumeEditorState, ProfileSnapshotDTO } from "@/lib/contracts/profile"
 
 function mapProfileSnapshot(profile: {
   id: string
@@ -24,11 +25,8 @@ function mapProfileSnapshot(profile: {
   }>
   experience: Array<{
     id: string
-    title: string
     label: string
-    detail: string
     period: string
-    year: string | null
     sortOrder: number
   }>
   awards: Array<{
@@ -54,7 +52,10 @@ function mapProfileSnapshot(profile: {
   }
 }
 
-export function mapProfileEditorInput(snapshot: ProfileSnapshotDTO): ProfileEditorInput {
+export function mapProfileEditorInput(
+  snapshot: ProfileSnapshotDTO,
+  resumeState: ProfileResumeEditorState = { source: "generated", fileName: null },
+): ProfileEditorInput {
   return {
     slug: snapshot.slug,
     displayName: snapshot.displayName,
@@ -62,6 +63,7 @@ export function mapProfileEditorInput(snapshot: ProfileSnapshotDTO): ProfileEdit
     summary: snapshot.summary,
     emailAddress: snapshot.emailAddress,
     resumeHref: snapshot.resumeHref,
+    resumeState,
     education: snapshot.education.map((entry) => ({
       id: entry.id,
       institution: entry.institution,
@@ -71,11 +73,8 @@ export function mapProfileEditorInput(snapshot: ProfileSnapshotDTO): ProfileEdit
     })),
     experience: snapshot.experience.map((entry) => ({
       id: entry.id,
-      title: entry.title,
       label: entry.label,
-      detail: entry.detail,
       period: entry.period,
-      year: entry.year,
       sortOrder: entry.sortOrder,
     })),
     awards: snapshot.awards.map((entry) => ({
@@ -202,5 +201,17 @@ export async function ensurePrimaryProfileBootstrap(): Promise<ProfileSnapshotDT
 }
 
 export async function getPrimaryProfileEditorState(): Promise<ProfileEditorInput> {
-  return mapProfileEditorInput(await ensurePrimaryProfileBootstrap())
+  const snapshot = await ensurePrimaryProfileBootstrap()
+  const resumeState = await getProfileResumeEditorState(snapshot.slug)
+  return mapProfileEditorInput(snapshot, resumeState)
+}
+
+export async function getPrimaryProfileSettingsEditorState() {
+  const snapshot = await getPrimaryProfileSettingsSnapshot()
+  const resumeState = await getProfileResumeEditorState(snapshot.slug)
+
+  return {
+    source: snapshot.source,
+    profile: mapProfileEditorInput(snapshot, resumeState),
+  }
 }

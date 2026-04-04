@@ -24,13 +24,18 @@ const claimedDeliveries = [
 const queryRawMock = vi.fn()
 const newsletterDeliveryUpdateMock = vi.fn()
 const newsletterDeliveryCountMock = vi.fn()
+const newsletterAssetFindManyMock = vi.fn()
 const sendCampaignEmailsMock = vi.fn()
 const refreshCampaignAggregatesMock = vi.fn()
 const kickWorkerRouteMock = vi.fn()
+const downloadAssetFromSupabaseMock = vi.fn()
 
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     $queryRaw: queryRawMock,
+    newsletterAsset: {
+      findMany: newsletterAssetFindManyMock,
+    },
     newsletterDelivery: {
       update: newsletterDeliveryUpdateMock,
       count: newsletterDeliveryCountMock,
@@ -47,11 +52,16 @@ vi.mock("@/lib/newsletter/service", () => ({
   refreshCampaignAggregates: refreshCampaignAggregatesMock,
 }))
 
+vi.mock("@/lib/storage/supabase", () => ({
+  downloadAssetFromSupabase: downloadAssetFromSupabaseMock,
+}))
+
 vi.mock("@/lib/workers/dispatch", () => ({
   kickWorkerRoute: kickWorkerRouteMock,
 }))
 
 vi.mock("@/lib/db/errors", () => ({
+  isMissingColumnError: () => false,
   isMissingTableError: () => false,
   isMissingRelationInRawQuery: () => false,
 }))
@@ -64,8 +74,10 @@ beforeAll(async () => {
 
 beforeEach(() => {
   queryRawMock.mockReset().mockResolvedValue(claimedDeliveries)
+  newsletterAssetFindManyMock.mockReset().mockResolvedValue([])
   newsletterDeliveryUpdateMock.mockReset().mockResolvedValue(null)
   newsletterDeliveryCountMock.mockReset().mockResolvedValue(0)
+  downloadAssetFromSupabaseMock.mockReset().mockResolvedValue(null)
   sendCampaignEmailsMock.mockReset().mockResolvedValue(
     claimedDeliveries.map((delivery) => ({
       success: true,
@@ -120,6 +132,47 @@ describe("newsletter worker ordering", () => {
       expect.objectContaining({
         where: { id: "delivery-newer" },
         data: expect.objectContaining({ status: "SENT" }),
+      }),
+    )
+  })
+
+  it("attaches newsletter file assets to outgoing campaign emails", async () => {
+    newsletterAssetFindManyMock.mockResolvedValue([
+      {
+        campaignId: "campaign-1",
+        bucket: "post-files",
+        storagePath: "newsletters/files/campaign-1/brief.pdf",
+        originalName: "brief.pdf",
+        mime: "application/pdf",
+      },
+    ])
+    downloadAssetFromSupabaseMock.mockResolvedValue({
+      buffer: Buffer.from("pdf-binary"),
+      contentType: "application/pdf",
+    })
+
+    await POST(
+      new Request("http://127.0.0.1:3001/api/worker/newsletter", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${process.env.CRON_SECRET}`,
+        },
+      }),
+    )
+
+    expect(sendCampaignEmailsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipients: expect.arrayContaining([
+          expect.objectContaining({
+            to: "older@example.com",
+            attachments: [
+              expect.objectContaining({
+                filename: "brief.pdf",
+                contentType: "application/pdf",
+              }),
+            ],
+          }),
+        ]),
       }),
     )
   })

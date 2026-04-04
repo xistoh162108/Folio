@@ -2,32 +2,52 @@
 
 import { useState } from "react"
 
-import type { PostCommentDTO } from "@/lib/contracts/community"
+import type { PaginatedCollectionStateDTO, PostCommentDTO } from "@/lib/contracts/community"
 import { formatLogTimestamp } from "@/components/v0/public/mappers"
 
 export function V0CommentsLog({
   postId,
   initialComments,
+  initialCommentsPagination,
   canModerate,
   isDarkMode,
 }: {
   postId: string
   initialComments: PostCommentDTO[]
+  initialCommentsPagination: PaginatedCollectionStateDTO
   canModerate: boolean
   isDarkMode: boolean
 }) {
   const [comments, setComments] = useState(initialComments)
+  const [pagination, setPagination] = useState(initialCommentsPagination)
   const [message, setMessage] = useState("")
   const [pin, setPin] = useState("")
   const [honeypot, setHoneypot] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
   const [deletePinById, setDeletePinById] = useState<Record<string, string>>({})
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20"
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"
+  const commentText = isDarkMode ? "text-white/85" : "text-black/85"
+
+  function updatePaginationTotal(nextTotal: number) {
+    setPagination((current) => {
+      const total = Math.max(0, nextTotal)
+      const totalPages = Math.max(1, Math.ceil(total / current.pageSize))
+
+      return {
+        ...current,
+        total,
+        totalPages,
+        hasNext: current.page < totalPages,
+        hasPrevious: current.page > 1,
+      }
+    })
+  }
 
   async function createComment() {
     setPending(true)
@@ -50,6 +70,7 @@ export function V0CommentsLog({
       }
 
       setComments((current) => [data.comment as PostCommentDTO, ...current])
+      updatePaginationTotal(pagination.total + 1)
       setMessage("")
       setPin("")
       setHoneypot("")
@@ -57,6 +78,35 @@ export function V0CommentsLog({
       setError(submitError instanceof Error ? submitError.message : "Could not write comment.")
     } finally {
       setPending(false)
+    }
+  }
+
+  async function loadOlderComments() {
+    if (loadingOlder || !pagination.hasNext) {
+      return
+    }
+
+    setLoadingOlder(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/posts/${postId}/comments?page=${pagination.page + 1}&pageSize=${pagination.pageSize}`)
+      const data = (await response.json()) as {
+        comments?: PostCommentDTO[]
+        pagination?: PaginatedCollectionStateDTO
+        error?: string
+      }
+
+      if (!response.ok || !data.comments || !data.pagination) {
+        throw new Error(data.error ?? "Could not load older comments.")
+      }
+
+      setComments((current) => [...current, ...data.comments!])
+      setPagination(data.pagination)
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Could not load older comments.")
+    } finally {
+      setLoadingOlder(false)
     }
   }
 
@@ -79,6 +129,7 @@ export function V0CommentsLog({
       }
 
       setComments((current) => current.filter((comment) => comment.id !== commentId))
+      updatePaginationTotal(pagination.total - 1)
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Could not delete comment.")
     } finally {
@@ -101,6 +152,7 @@ export function V0CommentsLog({
       }
 
       setComments((current) => current.filter((comment) => comment.id !== commentId))
+      updatePaginationTotal(pagination.total - 1)
     } catch (deleteError) {
       setError(deleteError instanceof Error ? deleteError.message : "Could not moderate comment.")
     } finally {
@@ -177,7 +229,7 @@ export function V0CommentsLog({
               <p>{formatLogTimestamp(comment.createdAt)}</p>
             </div>
             <div className="space-y-2">
-              <p className="whitespace-pre-wrap">{comment.message}</p>
+              <p className={`whitespace-pre-wrap ${commentText}`}>{comment.message}</p>
               <div className="flex flex-wrap items-center gap-3 text-xs">
                 <input
                   value={deletePinById[comment.id] ?? ""}
@@ -218,6 +270,18 @@ export function V0CommentsLog({
             </div>
           </div>
         ))}
+        {pagination.hasNext ? (
+          <div className={`border-t px-3 py-3 text-xs ${borderColor}`}>
+            <button
+              type="button"
+              onClick={() => void loadOlderComments()}
+              disabled={loadingOlder}
+              className={`${hoverBg} px-2 py-1 ${loadingOlder ? "opacity-50" : ""}`}
+            >
+              {loadingOlder ? "[loading older logs...]" : "[older comments ->]"}
+            </button>
+          </div>
+        ) : null}
       </div>
     </section>
   )

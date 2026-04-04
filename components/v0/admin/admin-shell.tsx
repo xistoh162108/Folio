@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 
 import {
@@ -200,7 +201,9 @@ export function AdminShell({
       <header
         className={`relative z-20 flex items-center justify-between border-b px-4 py-4 font-mono sm:px-6 md:px-8 ${borderColor}`}
       >
-        <h1 className="text-sm">{brandLabel}</h1>
+        <Link href="/" className={`text-sm ${hoverBg} -mx-1 px-1 transition-colors`}>
+          {brandLabel}
+        </Link>
 
         <div className="flex items-center gap-3 sm:gap-6">
           <button

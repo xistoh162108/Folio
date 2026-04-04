@@ -73,6 +73,18 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  .v0-math-inline {
+    @apply inline-block align-middle;
+  }
+
+  .v0-math-block {
+    @apply overflow-x-auto py-2;
+  }
+
+  .v0-math-block .katex-display {
+    margin: 0;
+  }
 }
 
 @layer base {

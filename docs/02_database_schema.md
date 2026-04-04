@@ -1,113 +1,225 @@
 # 02. Database Schema
 
-The database runs on PostgreSQL through Prisma. Production schema changes are forward-only: apply migrations with `pnpm db:migrate:deploy`, then run seed and backfill steps when required.
+The app uses PostgreSQL through Prisma. Schema changes are forward-only.
 
-## Core content models
+Required validation commands:
+
+- `pnpm db:validate`
+- `pnpm db:generate`
+- `pnpm db:migrate:status`
+
+Production is only current when every migration in `prisma/migrations/` has been applied.
+
+## Enums
+
+- `PostType`
+  - `NOTE`
+  - `PROJECT`
+- `PostStatus`
+  - `DRAFT`
+  - `PUBLISHED`
+  - `ARCHIVED`
+- `PostAssetKind`
+  - `IMAGE`
+  - `FILE`
+- `PostLinkType`
+  - `GITHUB`
+  - `WEBSITE`
+  - `YOUTUBE`
+  - `DOCS`
+  - `OTHER`
+- `ProfileLinkKind`
+  - `GITHUB`
+  - `LINKEDIN`
+  - `EMAIL`
+  - `WEBSITE`
+  - `OTHER`
+- `PreviewFetchStatus`
+  - `PENDING`
+  - `READY`
+  - `FAILED`
+- `NewsletterCampaignStatus`
+  - `DRAFT`
+  - `SENDING`
+  - `COMPLETED`
+  - `FAILED`
+- `NewsletterDeliveryStatus`
+  - `PENDING`
+  - `SENT`
+  - `FAILED`
+- `NewsletterRecipientMode`
+  - `TOPICS`
+  - `SELECTED_SUBSCRIBERS`
+- `NewsletterAssetKind`
+  - `IMAGE`
+  - `FILE`
+- `SubscriberRole`
+  - `DEVELOPER`
+  - `STUDENT`
+  - `DESIGNER`
+  - `OTHER`
+- `ContactStatus`
+- `AnalyticsEventType`
+- `WebhookStatus`
+
+## Models by domain
+
+### Auth / operators
 
 - `User`
-  - admin credentials for NextAuth credentials login
+  - admin credential record
+  - email + bcrypt password
+- `AuditLog`
+  - persisted admin mutation history
+
+### Publishing
+
 - `Post`
-  - root record for notes and projects
-  - `status`: `DRAFT`, `PUBLISHED`, `ARCHIVED`
-  - `type`: `NOTE`, `PROJECT`
-  - `content` stores canonical TipTap-style JSON
-  - `htmlContent` stores rendered HTML alongside the JSON body
+  - root content model for notes and projects
+  - key fields:
+    - `type`
+    - `status`
+    - `title`
+    - `slug`
+    - `excerpt`
+    - `coverImageUrl`
+    - `content`
+    - `markdownSource`
+    - `htmlContent`
+    - `views`
+    - `publishedAt`
 - `PostRevision`
-  - snapshot of post state before update and archive operations
+  - historical snapshot before important mutations
 - `Tag`
-  - normalized tag catalog
+  - normalized free-form tag catalog
 - `PostAsset`
-  - uploaded image and file metadata for Supabase Storage objects
-  - includes cleanup fields such as `pendingDeleteAt`, `deleteAttempts`, and `lastDeleteError`
+  - uploaded images/files attached to a post
+  - cleanup tracking:
+    - `pendingDeleteAt`
+    - `deleteAttempts`
+    - `lastDeleteError`
 - `PostLink`
-  - normalized external link rows attached to a post
+  - normalized external links
 - `LinkPreviewCache`
-  - preview data keyed by `normalizedUrl`
-  - stores provider-specific metadata in `metadata`
-
-## Community models
-
+  - normalized preview metadata cache
 - `PostLike`
-  - session-based like row per post
+  - session-based engagement row
 - `PostComment`
-  - anonymous comment with PIN hash and soft-delete support
-- `GuestbookEntry`
-  - guestbook/system-log entry with soft-delete support
+  - anonymous comment row
+  - PIN hash + soft-delete support
 
-## Audience and messaging models
+### Guestbook / contact
+
+- `GuestbookEntry`
+  - public guestbook log row
+  - soft-delete capable
+- `ContactMessage`
+  - persisted contact submission
+- `WebhookDelivery`
+  - queued operational webhook dispatch row
+
+### Profile / resume
+
+- `Profile`
+  - primary profile root record
+- `ProfileEducation`
+- `ProfileExperience`
+- `ProfileAward`
+- `ProfileLink`
+
+Active runtime/editor contract notes:
+
+- public rendering uses `ProfileExperience.label` + `period`
+- `ProfileExperience.title`, `detail`, and `year` remain in schema only for compatibility
+- direct resume upload override is storage-backed and does not have a dedicated Prisma model
+
+### Newsletter
 
 - `Subscriber`
-  - newsletter recipient state
-  - stores confirm token hash, confirm expiry, unsubscribe token, and confirmation state
+  - confirmation and unsubscribe lifecycle state
 - `NewsletterTopic`
-  - normalized topic catalog
+  - normalized visible topic catalog
 - `NewsletterCampaign`
-  - campaign envelope and aggregate counters
+  - queue-backed campaign envelope
+  - H6 load-bearing fields:
+    - `recipientMode`
+    - `targetSubscriberIds`
+    - `skipPreviouslySent`
+    - `queueOrder`
 - `NewsletterDelivery`
-  - per-recipient delivery row
-  - states: `PENDING`, `SENT`, `FAILED`
-  - retry reuses the same row instead of creating a new one
-- `ContactMessage`
-  - inbound contact submission with moderation status and source metadata
-- `WebhookDelivery`
-  - queued webhook dispatch row with retry metadata and delivery state
+  - per-recipient delivery record
+- `NewsletterAsset`
+  - campaign-owned image/file asset
+  - `sendAsAttachment` controls attachment vs inline behavior
 
-## Audit and analytics models
+### Analytics
 
-- `AuditLog`
-  - admin mutation history
 - `Analytics`
-  - raw event stream
-  - `eventType`: `PAGEVIEW`, `HEARTBEAT`, `PAGELOAD`, `CONTACT_SUBMIT`, `SUBSCRIBE_REQUEST`
-  - stores optional dimensions such as `postId`, `referrerHost`, `countryCode`, `browser`, `deviceType`, `isBot`, and performance fields such as `duration` and `pageLoadMs`
+  - raw event stream for pageview/product signals
 
-The admin dashboard reads aggregate metrics directly from raw analytics rows instead of maintaining a second materialized summary table.
+## Current lifecycle notes
 
-## Lifecycle and consistency notes
+### Posts
 
-### Content lifecycle
+- drafts, published content, and archived content stay on the same `Post` row
+- permanent delete is explicit and separate from archive
+- cover image is a field on `Post`; uploaded media/files stay in `PostAsset`
+- `Post.excerpt` is the canonical short description for projects
 
-- new admin posts start as real `Post` rows in `DRAFT`
-- asset uploads are attached to the draft `postId`
-- publishing changes the same row to `PUBLISHED`
-- archiving changes the same row to `ARCHIVED`
+### Community
 
-### Community lifecycle
+- comments and guestbook entries remain immediately visible unless soft-deleted
+- guestbook remains latest-first in the public runtime
+- moderation stays soft-delete based
 
-- comments and guestbook entries are immediately visible unless soft-deleted
-- comment self-delete is PIN-based
-- admin moderation is soft-delete based
+### Newsletter
 
-### Newsletter lifecycle
+- the visible topic taxonomy is:
+  - `All`
+  - `Project & Info`
+  - `Log`
+- old aliases are normalized in code for compatibility
+- campaigns are draft-backed and can target:
+  - topic audiences
+  - selected subscribers
+- failed deliveries can be retried on the same row
 
-- campaign creation inserts `NewsletterCampaign` and `NewsletterDelivery` rows only
-- start moves the campaign to `SENDING`
-- worker processes deliveries in `createdAt ASC, id ASC`
-- retry sets the same delivery row back to `PENDING`
+### Resume override
 
-## Transaction usage
+- uploaded resume override is stored in Supabase under a fixed storage path
+- DB schema does not track the override path separately
+- public reads fail open to the generated PDF route when storage lookup fails
 
-Transactions are used where cross-table consistency matters:
+## Transaction boundaries
+
+Transactions are used where cross-table consistency is load-bearing:
 
 - `createDraftPost()`
-- post save plus revision plus audit plus tags/links/assets sync
-- post archive plus audit
-- subscriber upsert plus topic upsert/attach
-- contact message insert plus webhook queue insert
-- campaign create plus delivery fan-out
-- delivery retry reset plus campaign reopen
+- `savePost()`
+- `archivePost()`
+- `deletePostPermanently()`
+- `requestSubscription()`
+- `upsertCampaign()`
+- `startCampaign()` campaign reopening/count adjustments
+- `rerunCampaign()`
+- `retryDelivery()`
+- `savePrimaryProfile()`
+- `submitContactMessage()`
 
-Single-row writes such as confirmation, unsubscribe, analytics writes, likes, many worker status updates, and some moderation actions do not wrap the entire flow in one large transaction unless cross-table consistency is required.
+Read-only queries stay in `lib/data/*`.
 
-## Legacy compatibility notes
+## Compatibility and legacy rules
 
-Legacy project links still exist on:
-
-- `Post.githubUrl`
-- `Post.demoUrl`
-- `Post.docsUrl`
-
-New write paths use `PostLink`. Legacy fields remain only as fallback/read compatibility until all old data is backfilled and removed.
+- legacy project link fields still exist on `Post`:
+  - `githubUrl`
+  - `demoUrl`
+  - `docsUrl`
+- active write paths use `PostLink`
+- `ProfileExperience` legacy columns remain for compatibility, but the active editor/runtime contract ignores them
+- newsletter topic aliases remain accepted in code, but the canonical visible set is now only:
+  - `all`
+  - `project-info`
+  - `log`
 
 ## Current migration set
 
@@ -123,6 +235,9 @@ New write paths use `PostLink`. Legacy fields remain only as fallback/read compa
 20260327002500_add_comments_and_guestbook
 20260327010000_add_pageload_metrics
 20260327011500_add_pageload_analytics_event
+20260404190000_add_newsletter_h6_hardening
 ```
 
-Production is current only when all of the above migrations are applied.
+## Operational note
+
+The last external production-environment verification found that `20260404190000_add_newsletter_h6_hardening` was still pending on the provided live database. Treat that as an operational blocker until `pnpm db:migrate:deploy` is run successfully in the target environment.

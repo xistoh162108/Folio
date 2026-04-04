@@ -12,11 +12,11 @@ test("newsletter create, test send, start, fail injection, and retry work end-to
   await ensureAdminUser()
   const marker = `e2e-newsletter-${Date.now()}`
   const topic = await testPrisma.newsletterTopic.upsert({
-    where: { normalizedName: "all-seeds" },
-    update: { name: "All Seeds" },
+    where: { normalizedName: "all" },
+    update: { name: "All" },
     create: {
-      name: "All Seeds",
-      normalizedName: "all-seeds",
+      name: "All",
+      normalizedName: "all",
     },
   })
 

@@ -4,101 +4,138 @@ Use this checklist for every production rollout.
 
 ## Pre-deploy
 
-- Confirm the branch is the intended release SHA.
-- Confirm `pnpm lint`, `pnpm typecheck`, and `pnpm build` pass.
-- Confirm `pnpm db:migrate:status` does not show local drift.
-- Confirm production `.env` is present.
-- Confirm:
+- confirm the intended release SHA
+- confirm worktree is clean
+- confirm:
+  - `pnpm db:validate`
+  - `pnpm lint`
+  - `pnpm typecheck`
+  - `pnpm build`
+  - `pnpm test`
+  all pass on the release SHA
+- confirm `pnpm db:migrate:status` shows the release DB is ready to receive the current repo migration set
+- confirm production `.env` is present
+- confirm:
   - `APP_URL=https://xistoh.com`
   - `NEXTAUTH_URL=https://xistoh.com`
-- Confirm backup or snapshot exists for the current database state.
-- Confirm `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set if seed must create the admin.
-- Confirm `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set.
-- Confirm `EMAIL_FROM` and `RESEND_API_KEY` are set.
-- Confirm `OPS_WEBHOOK_URL` is set.
-- Confirm the Resend sending domain is verified with SPF and DKIM, with DMARC configured if available.
-- Confirm Cloudflare DNS points `xistoh.com` at the correct Reserved IP.
-- Confirm `www.xistoh.com` redirects to `xistoh.com` in the proxy config.
+- confirm `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set
+- confirm `EMAIL_DRIVER=resend`
+- confirm `EMAIL_FROM` and `RESEND_API_KEY` are set
+- confirm `OPS_WEBHOOK_URL` is real and not a placeholder host
+- confirm backup or snapshot exists
+- confirm current required migration `20260404190000_add_newsletter_h6_hardening` is part of the plan if still pending
 
 ## Deploy
 
-- `pnpm install --frozen-lockfile`
-- `pnpm db:generate`
-- `pnpm db:validate`
-- `pnpm build`
-- `pnpm db:migrate:deploy`
-- `pnpm db:seed`
-- `pnpm db:backfill:post-links`
-- restart the app service
+```bash
+pnpm install --frozen-lockfile
+pnpm db:generate
+pnpm db:validate
+pnpm db:migrate:deploy
+pnpm storage:bootstrap
+pnpm build
+pnpm db:seed               # only if bootstrap refresh is intended
+pnpm db:backfill:post-links # only if legacy post-link backfill is still needed
+```
 
-## Post-deploy smoke
+Then restart the app service.
 
-- Open `/`
-- Confirm `/knowledge` permanently redirects to `/notes`
-- Open `/robots.txt`
-- Open `/sitemap.xml`
-- Open `/contact`
-- Open `/notes`
-- Open `/projects`
-- Open `/guestbook`
-- Open `/admin/login`
-- Confirm `/admin/newsletter` redirects to login when unauthenticated
-- Confirm `http -> https` and `www -> non-www` redirect to the canonical host
-- Submit a pageview to `/api/analytics`
-- Run `POST /api/worker/webhook` with `CRON_SECRET`
-- Run `POST /api/worker/asset-cleanup` with `CRON_SECRET`
-- Run `POST /api/worker/newsletter` with `CRON_SECRET`
-- Or run `pnpm ops:smoke` against the production `.env`
-- Verify the admin draft and edit flow loads through `/admin/posts`
-- Verify one published post detail renders assets, links, likes, and comments
-- Verify assets marked for deletion are absent from public detail rendering
-- Verify public routes emit the expected canonical/title/OG/Twitter metadata
-- Verify note/project detail routes emit article metadata and JSON-LD
-- Treat both processed work and empty-queue no-op worker responses as success
+## Post-deploy route smoke
 
-## Manual product checks
+- open `/`
+- open `/contact`
+- open `/guestbook`
+- open `/notes`
+- open `/projects`
+- open `/notes/rss.xml`
+- open `/projects/rss.xml`
+- open `/resume.pdf`
+- open `/robots.txt`
+- open `/sitemap.xml`
+- open `/admin/login`
+- confirm unauthenticated `/admin` redirects to login
+- confirm authenticated `/admin/analytics` loads
+- confirm `/knowledge` redirects to `/notes`
 
-- subscription request renders the verification state correctly
-- `/subscribe/confirm` does not auto-confirm on GET
-- `/unsubscribe` does not auto-unsubscribe on GET
-- contact form queues successfully
-- guestbook entry creation works
-- comment create and PIN delete work
-- newsletter dashboard loads campaign and delivery tables
-- file downloads for published posts redirect to a signed URL
-- draft or archived files remain admin-only
-- files marked with `pendingDeleteAt` return 404
-- `/admin/settings` loads the Profile / CV editor and saves live profile changes
-- `/admin/analytics` renders readiness diagnostics with real status/detail values
-- Home, `/contact`, `/guestbook`, and `/resume.pdf` reflect the current profile runtime source
-- Gmail receives a `subscribe confirm` email successfully
-- Gmail receives a `newsletter test send` email successfully
-- Both Gmail messages use the canonical host in links and do not land with broken URLs
+## Post-deploy product smoke
 
-## Worker and scheduler checks
+- Home shows:
+  - recent notes
+  - recent projects
+  - recent visitor logs
+- Contact shows guestbook preview only, not full archive duplication
+- Guestbook is latest-first and paginates
+- Notes and Projects support `q`, `tag`, and `page` query state
+- Notes and Projects expose `[rss ->]`
+- published note/project detail renders:
+  - code
+  - math
+  - links
+  - assets
+  - likes
+  - comments
+- notes code copy feedback reads `yanked`
+- `/resume.pdf` works both with uploaded override and with generated fallback
 
-- `xistoh-log.service` is running
-- webhook worker timer is enabled
-- newsletter worker timer is enabled
-- asset cleanup worker timer is enabled
-- each worker can return either processed work or empty-queue success
-- overlapping worker runs are prevented by the chosen locking strategy
+## Admin smoke
+
+- `/admin/posts` loads list, filters, and pagination
+- `/admin/posts/[postId]` reaches lower sections without scroll breakage
+- save, publish, archive, and permanent delete show isolated pending state
+- editor assets panel supports upload/insert/remove/cover selection
+- `/admin/community` paginates comments and guestbook
+- `/admin/newsletter` shows:
+  - draft queue
+  - subscriber view
+  - preview view
+  - topic targeting
+  - selected-subscriber targeting
+  - asset upload
+  - attachment toggle
+- `/admin/settings` saves profile changes and resume upload/remove works
+- `/admin/analytics` shows:
+  - readiness diagnostics
+  - service log
+  - performance diagnostics
+
+## Email / worker smoke
+
+- subscription request sends confirmation email
+- successful confirmation sends welcome email
+- unsubscribe sends unsubscribe notice
+- newsletter test send works
+- worker endpoints return success or empty-queue success, not unexpected 500s:
+  - `/api/worker/webhook`
+  - `/api/worker/newsletter`
+  - `/api/worker/asset-cleanup`
+- `pnpm ops:smoke` passes against the deployed environment
+
+## SEO / canonical smoke
+
+- query states on `/notes` and `/projects` are `noindex`
+- `/notes` and `/projects` emit RSS autodiscovery
+- detail routes emit article metadata / structured data
+- admin routes stay `noindex`
 
 ## Rollback triggers
 
 Stop rollout and recover if any of these occur:
 
 - `pnpm db:migrate:deploy` fails
-- build succeeds but app boot fails on required env validation
-- worker endpoints return 500 instead of empty-queue or success responses
-- public published post pages error on load
-- admin login is inaccessible
-- canonical domain or HTTPS redirect rules are broken
+- required env validation fails at boot
+- `/admin/login` or `/api/auth/[...nextauth]` fail after build
+- worker routes return unexpected 500s
+- `/resume.pdf` returns 500 instead of uploaded or generated output
+- `/admin/analytics` loses service log or performance sections
+- public notes/projects feeds fail
 
-## Rollback path
+## Recovery notes
 
-1. restore the previous app release
-2. if needed, restore the database backup or prepare a forward-fix migration
-3. rerun `pnpm db:generate`
-4. restart services
-5. rerun the smoke checks
+If the app boots into missing-route 500s after a successful build, force a clean rebuild:
+
+```bash
+rm -rf .next
+pnpm build
+```
+
+Then restart and rerun smoke checks.

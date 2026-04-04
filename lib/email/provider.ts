@@ -11,6 +11,11 @@ export interface EmailMessageInput {
   subject: string
   html: string
   text?: string
+  attachments?: Array<{
+    filename: string
+    content: Buffer
+    contentType?: string
+  }>
 }
 
 export interface CampaignEmailInput {

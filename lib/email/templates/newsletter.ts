@@ -1,3 +1,5 @@
+import { buildV0EmailFrame } from "@/lib/email/templates/frame"
+
 export interface NewsletterTemplateInput {
   subject: string
   html: string
@@ -11,15 +13,22 @@ export function buildNewsletterEmail({
   text,
   unsubscribeUrl,
 }: NewsletterTemplateInput) {
-  const unsubscribeHtml = unsubscribeUrl
-    ? `<hr /><p style="font-size:12px;color:#666">Unsubscribe: <a href="${unsubscribeUrl}">${unsubscribeUrl}</a></p>`
-    : ""
-
-  const unsubscribeText = unsubscribeUrl ? `\n\nUnsubscribe: ${unsubscribeUrl}` : ""
+  const frame = buildV0EmailFrame({
+    eyebrow: "DISPATCH",
+    title: subject,
+    bodyHtml: html,
+    bodyText: [text?.trim() || ""].filter(Boolean),
+    unsubscribeAction: unsubscribeUrl
+      ? {
+          label: "Unsubscribe",
+          url: unsubscribeUrl,
+        }
+      : null,
+  })
 
   return {
     subject,
-    html: `${html}${unsubscribeHtml}`,
-    text: `${text?.trim() || ""}${unsubscribeText}`.trim() || undefined,
+    html: frame.html,
+    text: frame.text.trim() || undefined,
   }
 }

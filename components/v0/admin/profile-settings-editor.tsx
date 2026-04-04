@@ -57,6 +57,8 @@ export function ProfileSettingsEditor({
   const [draft, setDraft] = useState(initialProfile)
   const [status, setStatus] = useState<EditorStatus>({ kind: "idle", message: null })
   const [isPending, startTransition] = useTransition()
+  const [resumeStatus, setResumeStatus] = useState<EditorStatus>({ kind: "idle", message: null })
+  const [isResumePending, setIsResumePending] = useState(false)
 
   const saveLabel =
     status.kind === "success" ? "[saved]" : status.kind === "error" ? "[save failed]" : isPending ? "[saving]" : "[save profile]"
@@ -95,6 +97,73 @@ export function ProfileSettingsEditor({
       const result = await savePrimaryProfile(draft)
       setStatus(result.success ? { kind: "success", message: "Profile runtime updated." } : { kind: "error", message: result.error })
     })
+  }
+
+  const handleResumeUpload = async (files: FileList | null) => {
+    const file = files?.[0]
+    if (!file) {
+      return
+    }
+
+    setResumeStatus({ kind: "idle", message: null })
+    setIsResumePending(true)
+
+    try {
+      const payload = new FormData()
+      payload.set("file", file)
+
+      const response = await fetch("/api/admin/profile/resume", {
+        method: "POST",
+        body: payload,
+      })
+      const result = (await response.json()) as
+        | { error: string }
+        | { resumeState: ProfileEditorInput["resumeState"] }
+
+      if (!response.ok || "error" in result) {
+        setResumeStatus({ kind: "error", message: "error" in result ? result.error : "Resume upload failed." })
+        return
+      }
+
+      setDraft((current) => ({
+        ...current,
+        resumeState: result.resumeState,
+      }))
+      setResumeStatus({ kind: "success", message: "Resume override uploaded." })
+    } catch (error) {
+      setResumeStatus({ kind: "error", message: error instanceof Error ? error.message : "Resume upload failed." })
+    } finally {
+      setIsResumePending(false)
+    }
+  }
+
+  const handleResumeClear = async () => {
+    setResumeStatus({ kind: "idle", message: null })
+    setIsResumePending(true)
+
+    try {
+      const response = await fetch("/api/admin/profile/resume", {
+        method: "DELETE",
+      })
+      const result = (await response.json()) as
+        | { error: string }
+        | { resumeState: ProfileEditorInput["resumeState"] }
+
+      if (!response.ok || "error" in result) {
+        setResumeStatus({ kind: "error", message: "error" in result ? result.error : "Failed to remove uploaded resume." })
+        return
+      }
+
+      setDraft((current) => ({
+        ...current,
+        resumeState: result.resumeState,
+      }))
+      setResumeStatus({ kind: "success", message: "Uploaded resume removed. Generated fallback restored." })
+    } catch (error) {
+      setResumeStatus({ kind: "error", message: error instanceof Error ? error.message : "Failed to remove uploaded resume." })
+    } finally {
+      setIsResumePending(false)
+    }
   }
 
   return (
@@ -140,7 +209,7 @@ export function ProfileSettingsEditor({
             />
           </div>
           <div>
-            <label className={`mb-2 block text-xs ${mutedText}`}>Resume Path</label>
+            <label className={`mb-2 block text-xs ${mutedText}`}>Resume Route</label>
             <input
               type="text"
               value={draft.resumeHref ?? ""}
@@ -149,6 +218,44 @@ export function ProfileSettingsEditor({
               className={`v0-control-field ${borderColor}`}
             />
           </div>
+        </div>
+        <div className={`border p-3 ${borderColor} space-y-3`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <p className={`text-xs ${mutedText}`}>// resume override</p>
+              <p className="text-sm">
+                {draft.resumeState.source === "uploaded" ? "uploaded pdf override active" : "generated from current profile runtime"}
+              </p>
+              <p className={`text-xs ${mutedText}`}>
+                {draft.resumeState.source === "uploaded" ? draft.resumeState.fileName ?? "resume.pdf" : "route remains fixed at /resume.pdf"}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <label className={`${hoverBg} px-2 py-1 cursor-pointer ${isResumePending ? "opacity-50" : ""}`}>
+                {isResumePending ? "[uploading]" : "[upload pdf]"}
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  disabled={isResumePending}
+                  onChange={(event) => {
+                    void handleResumeUpload(event.target.files)
+                    event.currentTarget.value = ""
+                  }}
+                  className="sr-only"
+                />
+              </label>
+              {draft.resumeState.source === "uploaded" ? (
+                <button type="button" onClick={() => void handleResumeClear()} disabled={isResumePending} className={`${hoverBg} px-2 py-1 ${isDarkMode ? "text-red-400" : "text-red-600"}`}>
+                  [remove uploaded]
+                </button>
+              ) : null}
+              <a href="/resume.pdf" target="_blank" rel="noreferrer" className={`${hoverBg} px-2 py-1`}>
+                [open route]
+              </a>
+            </div>
+          </div>
+          <p className={`text-xs ${mutedText}`}>uploading a pdf overrides the generated resume without changing the public route.</p>
+          {resumeStatus.message ? <p className={`text-xs ${resumeStatus.kind === "error" ? (isDarkMode ? "text-red-400" : "text-red-600") : accentText}`}>{resumeStatus.message}</p> : null}
         </div>
         <div>
           <label className={`mb-2 block text-xs ${mutedText}`}>Bio</label>
@@ -242,7 +349,7 @@ export function ProfileSettingsEditor({
                 ...current,
                 experience: [
                   ...current.experience,
-                  { id: createId("exp"), title: "", label: "", detail: "", period: "", year: "", sortOrder: current.experience.length },
+                  { id: createId("exp"), label: "", period: "", sortOrder: current.experience.length },
                 ],
               }))
             }
@@ -256,13 +363,6 @@ export function ProfileSettingsEditor({
             <div key={entry.id ?? `experience-${index}`} className={`flex flex-col gap-3 border p-3 sm:flex-row sm:items-start ${borderColor}`}>
               <span className={mutedText}>=</span>
               <div className="min-w-0 flex-1 space-y-2">
-                <input
-                  type="text"
-                  value={entry.title}
-                  onChange={(event) => updateExperience(index, { title: event.target.value })}
-                  placeholder="Role / Position"
-                  className={`v0-control-field ${borderColor}`}
-                />
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     type="text"
@@ -278,20 +378,8 @@ export function ProfileSettingsEditor({
                     placeholder="Short label"
                     className={`v0-control-field-compact w-full sm:flex-1 ${borderColor}`}
                   />
-                  <input
-                    type="text"
-                    value={entry.year ?? ""}
-                    onChange={(event) => updateExperience(index, { year: event.target.value })}
-                    placeholder="Year"
-                    className={`v0-control-field-compact w-full sm:w-28 ${borderColor}`}
-                  />
                 </div>
-                <textarea
-                  value={entry.detail}
-                  onChange={(event) => updateExperience(index, { detail: event.target.value })}
-                  placeholder="Description"
-                  className={`v0-control-area h-20 ${borderColor}`}
-                />
+                <p className={`text-xs ${mutedText}`}>short label is the rendered experience line on Home and the generated resume.</p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs sm:justify-end">
                 <button type="button" onClick={() => setDraft((current) => ({ ...current, experience: moveItem(current.experience, index, -1) }))} className={`${hoverBg} px-2 py-1`}>

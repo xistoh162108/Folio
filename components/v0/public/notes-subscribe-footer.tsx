@@ -14,14 +14,14 @@ interface NotesSubscribeFooterProps {
 
 type TopicState = {
   all: boolean
-  aiInfosec: boolean
-  projectsLogs: boolean
+  projectInfo: boolean
+  log: boolean
 }
 
 const initialTopics: TopicState = {
   all: true,
-  aiInfosec: false,
-  projectsLogs: false,
+  projectInfo: false,
+  log: false,
 }
 
 export function V0NotesSubscribeFooter({
@@ -117,26 +117,26 @@ export function V0NotesSubscribeFooter({
             <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
               <button
                 type="button"
-                onClick={() => toggleTopic("aiInfosec")}
+                onClick={() => toggleTopic("projectInfo")}
                 className={`w-3 h-3 border ${borderColor} flex items-center justify-center text-[10px] ${
-                  topics.aiInfosec ? (isDarkMode ? "bg-white/20" : "bg-black/20") : ""
+                  topics.projectInfo ? (isDarkMode ? "bg-white/20" : "bg-black/20") : ""
                 }`}
               >
-                {topics.aiInfosec ? "*" : ""}
+                {topics.projectInfo ? "*" : ""}
               </button>
-              <span className={mutedText}>AI</span>
+              <span className={mutedText}>Project &amp; Info</span>
             </label>
             <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
               <button
                 type="button"
-                onClick={() => toggleTopic("projectsLogs")}
+                onClick={() => toggleTopic("log")}
                 className={`w-3 h-3 border ${borderColor} flex items-center justify-center text-[10px] ${
-                  topics.projectsLogs ? (isDarkMode ? "bg-white/20" : "bg-black/20") : ""
+                  topics.log ? (isDarkMode ? "bg-white/20" : "bg-black/20") : ""
                 }`}
               >
-                {topics.projectsLogs ? "*" : ""}
+                {topics.log ? "*" : ""}
               </button>
-              <span className={mutedText}>Projects</span>
+              <span className={mutedText}>Log</span>
             </label>
           </div>
         </div>

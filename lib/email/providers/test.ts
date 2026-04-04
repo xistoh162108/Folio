@@ -48,6 +48,12 @@ async function sendSingle(input: EmailMessageInput): Promise<EmailSendResult> {
     createdAt: new Date().toISOString(),
     messageId: null,
     ...input,
+    attachments:
+      input.attachments?.map((attachment) => ({
+        filename: attachment.filename,
+        contentType: attachment.contentType ?? null,
+        size: attachment.content.byteLength,
+      })) ?? [],
   })
 
   return {

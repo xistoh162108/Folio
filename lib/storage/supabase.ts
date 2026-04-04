@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto"
+import { promises as fs } from "fs"
 import path from "path"
 
 import { createClient } from "@supabase/supabase-js"
@@ -151,6 +152,16 @@ function normalizeStorageErrorMessage(error: unknown) {
 function isMissingBucketMessage(message: string) {
   const normalized = message.toLowerCase()
   return normalized.includes("bucket") && normalized.includes("not found")
+}
+
+function isMissingObjectMessage(message: string) {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes("not found") ||
+    normalized.includes("no such file") ||
+    normalized.includes("does not exist") ||
+    normalized.includes("object not found")
+  )
 }
 
 function createBucketSnapshot(input: {
@@ -363,11 +374,15 @@ export function sanitizeOriginalName(originalName: string) {
   }
 }
 
-export function buildStoragePath(kind: "image" | "file", postId: string, originalName: string) {
+export function buildScopedStoragePath(scope: string, kind: "image" | "file", entityId: string, originalName: string) {
   const { safeBase, extension } = sanitizeOriginalName(originalName)
   const suffix = randomUUID()
   const filename = extension ? `${suffix}-${safeBase}.${extension}` : `${suffix}-${safeBase}`
-  return `posts/${postId}/${kind === "image" ? "images" : "files"}/${filename}`
+  return `${scope}/${entityId}/${kind === "image" ? "images" : "files"}/${filename}`
+}
+
+export function buildStoragePath(kind: "image" | "file", postId: string, originalName: string) {
+  return buildScopedStoragePath("posts", kind, postId, originalName)
 }
 
 export async function uploadAssetToSupabase(input: {
@@ -375,6 +390,7 @@ export async function uploadAssetToSupabase(input: {
   storagePath: string
   file: File
   contentType: string
+  upsert?: boolean
 }) {
   if (usingTestStorageDriver()) {
     const buffer = Buffer.from(await input.file.arrayBuffer())
@@ -387,7 +403,7 @@ export async function uploadAssetToSupabase(input: {
 
   const { error } = await client.storage.from(input.bucket).upload(input.storagePath, buffer, {
     contentType: input.contentType,
-    upsert: false,
+    upsert: input.upsert ?? false,
   })
 
   if (error) {
@@ -412,6 +428,72 @@ export async function deleteAssetFromSupabase(bucket: string, storagePath: strin
     }
 
     throw new Error(mapStorageServiceError(error, bucket))
+  }
+}
+
+export async function storageObjectExists(bucket: string, storagePath: string) {
+  if (usingTestStorageDriver()) {
+    try {
+      await fs.access(resolveTestStoragePath(bucket, storagePath))
+      return true
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return false
+      }
+
+      throw error
+    }
+  }
+
+  const client = requireSupabaseAdminClient()
+  const directory = path.posix.dirname(storagePath)
+  const fileName = path.posix.basename(storagePath)
+  const { data, error } = await client.storage.from(bucket).list(directory === "." ? undefined : directory, {
+    search: fileName,
+  })
+
+  if (error) {
+    throw new Error(mapStorageServiceError(error, bucket))
+  }
+
+  return (Array.isArray(data) ? data : []).some((entry) => entry.name === fileName)
+}
+
+export async function downloadAssetFromSupabase(bucket: string, storagePath: string) {
+  if (usingTestStorageDriver()) {
+    try {
+      const buffer = await readTestStorageObject(bucket, storagePath)
+      return {
+        buffer,
+        contentType: null,
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return null
+      }
+
+      throw error
+    }
+  }
+
+  const client = requireSupabaseAdminClient()
+  const { data, error } = await client.storage.from(bucket).download(storagePath)
+
+  if (error) {
+    if (isMissingObjectMessage(error.message ?? "")) {
+      return null
+    }
+
+    throw new Error(mapStorageServiceError(error, bucket))
+  }
+
+  if (!data) {
+    return null
+  }
+
+  return {
+    buffer: Buffer.from(await data.arrayBuffer()),
+    contentType: data.type || null,
   }
 }
 

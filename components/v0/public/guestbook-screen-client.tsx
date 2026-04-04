@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 
-import type { GuestbookEntryDTO } from "@/lib/contracts/community";
+import type { GuestbookEntryDTO, PaginatedCollectionStateDTO } from "@/lib/contracts/community";
 
 import { V0GuestbookTerminalPanel } from "@/components/v0/public/guestbook-terminal-panel";
 import { PublicShell } from "@/components/v0/public/public-shell";
@@ -14,20 +14,20 @@ interface GuestbookScreenClientProps {
   isDarkMode?: boolean;
   brandLabel?: string;
   initialEntries?: GuestbookEntryDTO[];
+  initialPagination?: PaginatedCollectionStateDTO;
   emailAddress?: string;
   githubHref?: string | null;
   linkedinHref?: string | null;
-  instagramHref?: string | null;
 }
 
 export function GuestbookScreenClient({
   isDarkMode: initialIsDarkMode = true,
   brandLabel = "xistoh.log",
   initialEntries,
+  initialPagination,
   emailAddress = "xistoh162108@kaist.ac.kr",
   githubHref = null,
   linkedinHref = null,
-  instagramHref = null,
 }: GuestbookScreenClientProps) {
   const { isDarkMode, toggleTheme } = useV0ThemeController(initialIsDarkMode);
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50";
@@ -53,7 +53,7 @@ export function GuestbookScreenClient({
     >
       <div className="min-h-full md:h-full">
         <main className="max-w-3xl px-4 py-6 sm:px-6 md:px-8">
-          <div className="max-w-lg space-y-8">
+          <div className="max-w-xl space-y-8">
             <section className="space-y-3">
               <Link
                 href="/contact"
@@ -104,21 +104,6 @@ export function GuestbookScreenClient({
                     <span>unlisted</span>
                   )}
                 </p>
-                <p>
-                  <span className={mutedText}>instagram:</span>{" "}
-                  {instagramHref ? (
-                    <a
-                      href={instagramHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={hoverBg}
-                    >
-                      {instagramHref.replace(/^https?:\/\//, "")} -&gt;
-                    </a>
-                  ) : (
-                    <span>unlisted</span>
-                  )}
-                </p>
               </div>
             </section>
 
@@ -128,6 +113,7 @@ export function GuestbookScreenClient({
               hoverBg={hoverBg}
               mutedText={mutedText}
               initialEntries={initialEntries}
+              initialPagination={initialPagination}
               mode="full"
             />
           </div>

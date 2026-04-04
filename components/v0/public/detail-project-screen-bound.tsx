@@ -59,6 +59,7 @@ export async function DetailProjectScreenBound({
           <V0CommentsLog
             postId={resolvedPost.id}
             initialComments={resolvedPost.comments}
+            initialCommentsPagination={resolvedPost.commentsPagination}
             canModerate={Boolean(session?.user?.id)}
             isDarkMode={isDarkMode}
           />

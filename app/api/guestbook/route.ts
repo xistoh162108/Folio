@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
+import { getGuestbookEntriesPage } from "@/lib/data/guestbook"
 import { isMissingTableError } from "@/lib/db/errors"
 import { prisma } from "@/lib/db/prisma"
 import { assertRateLimit, getClientIp, RateLimitExceededError } from "@/lib/security/rate-limit"
@@ -11,6 +12,18 @@ const GuestbookSchema = z.object({
   message: z.string().trim().min(1).max(280),
   _honey: z.string().optional().default(""),
 })
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const page = searchParams.get("page")
+  const pageSize = searchParams.get("pageSize")
+  const result = await getGuestbookEntriesPage({
+    page,
+    pageSize: pageSize ? Number.parseInt(pageSize, 10) : undefined,
+  })
+
+  return NextResponse.json(result)
+}
 
 export async function POST(request: Request) {
   try {

@@ -31,11 +31,8 @@ const ProfileEditorSchema = z.object({
   experience: z
     .array(
       z.object({
-        title: z.string().trim().default(""),
         label: z.string().trim().default(""),
-        detail: z.string().trim().default(""),
         period: z.string().trim().default(""),
-        year: z.string().trim().optional().nullable(),
         sortOrder: z.number().int().default(0),
       }),
     )
@@ -86,13 +83,13 @@ function normalizeEducationRows(rows: ProfileEditorInput["education"]) {
 
 function normalizeExperienceRows(rows: ProfileEditorInput["experience"]) {
   return rows
-    .filter((row) => [row.title, row.label, row.detail, row.period, row.year ?? ""].some((value) => value.trim().length > 0))
+    .filter((row) => [row.label, row.period].some((value) => value.trim().length > 0))
     .map((row, index) => ({
-      title: row.title.trim(),
-      label: row.label.trim() || row.title.trim(),
-      detail: row.detail.trim(),
+      title: row.label.trim(),
+      label: row.label.trim(),
+      detail: "",
       period: row.period.trim(),
-      year: normalizeNullableText(row.year),
+      year: null,
       sortOrder: index,
     }))
 }

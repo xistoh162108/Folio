@@ -1,291 +1,236 @@
 # 05. Operations Runbook
 
-This document is the production runbook for the current target deployment:
+This is the current production runbook for `xistoh.log`.
+
+Target deployment assumptions:
 
 - single DigitalOcean VM
 - Nginx reverse proxy
 - HTTPS terminated at Nginx
-- Cloudflare DNS and proxying
+- Cloudflare in front
 - Tailscale for private SSH access
 - Supabase Postgres + Supabase Storage
-- Resend for outbound email
-
-Brand/UI label is `xistoh.log`. The canonical public URL is `https://xistoh.com`.
+- Resend for outbound mail
 
 ## 1. Required environment variables
 
-### Required for boot
+### Required to boot correctly
 
 - `DATABASE_URL`
 - `DIRECT_URL`
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL`
+- `APP_URL`
 - `CRON_SECRET`
-
-The app fails fast if any of these are missing or invalid.
 
 ### Required for production operations
 
-- `APP_URL`
-  - required in production
-  - used for internal worker dispatch, email links, and canonical smoke URLs
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
-  - used by `pnpm db:seed` to upsert the initial admin user
+- `EMAIL_DRIVER`
 - `EMAIL_FROM`
 - `RESEND_API_KEY`
-  - required for live transactional and campaign delivery
 - `OPS_WEBHOOK_URL`
-  - required for live contact webhook delivery
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-  - required for upload, public asset URL generation, signed file downloads, and cleanup
 
 ### Canonical production values
 
 - `APP_URL=https://xistoh.com`
 - `NEXTAUTH_URL=https://xistoh.com`
-- `EMAIL_FROM=hello@xistoh.com` or `no-reply@xistoh.com`
+- canonical host is `xistoh.com`, not the UI brand label `xistoh.log`
 
-Do not point `APP_URL` or `NEXTAUTH_URL` at the brand label `xistoh.log`. The brand label is UI text only.
+### Operational validation rules
 
-## 2. DigitalOcean directory layout
+- `OPS_WEBHOOK_URL` must point to a real reachable endpoint
+  - placeholder hosts such as `your-ops-endpoint.example` are not production-ready
+- `EMAIL_DRIVER=test` is never valid in production
+- `STORAGE_DRIVER=supabase` is required in production
+
+## 2. Deployment directory layout
 
 Recommended layout:
 
 ```text
 /srv/xistoh-log/
-  current/   git checkout and built app
-  shared/    .env and shared operational files
+  current/
+  shared/
 ```
 
-Suggested workflow:
+- git checkout in `/srv/xistoh-log/current`
+- production `.env` in `/srv/xistoh-log/shared/.env`
 
-- git repo lives in `/srv/xistoh-log/current`
-- production `.env` lives in `/srv/xistoh-log/shared/.env`
+## 3. Service naming and legacy file-name caveat
 
-## 3. Canonical URL and reverse proxy rules
+Live service naming should be treated as:
 
-- canonical host: `xistoh.com`
-- redirect `www.xistoh.com -> xistoh.com`
-- redirect `http -> https`
-- terminate TLS at Nginx, not inside Next.js
-- preserve:
-  - `Host`
-  - `X-Forwarded-For`
-  - `X-Forwarded-Proto`
-  - `X-Forwarded-Host`
-  - `X-Forwarded-Port`
-  - upgrade headers
-- do not expose the Next.js process directly to the internet
+- app service: `xistoh-log.service`
 
-If `APP_URL` or `NEXTAUTH_URL` does not match the public canonical origin, auth callbacks, unsubscribe links, and worker self-dispatch can fail.
+Repo ops template filenames still use the older `jimin-garden*` naming under `ops/`. Treat them as templates, not as the final live service name authority.
 
-Sample Nginx config is provided at `ops/nginx/jimin-garden.conf`. Treat it as the template for the live `xistoh.com` host config.
+## 4. Reverse proxy and canonical host rules
 
-## 4. Cloudflare DNS and HTTPS rollout
+- redirect `www.xistoh.com` -> `xistoh.com`
+- redirect `http` -> `https`
+- preserve forwarded headers
+- do not expose the Next.js process directly
 
-### DNS
+If `APP_URL` or `NEXTAUTH_URL` drifts from the real canonical origin:
 
-Recommended DNS records:
+- auth callbacks break
+- unsubscribe links break
+- worker self-dispatch breaks
+- email links become wrong
 
-- `A @ -> Reserved IP`
-- `CNAME www -> xistoh.com`
+## 5. Cloudflare / TLS
 
-During initial certificate issuance:
-
-- set both records to `DNS only`
-- issue the certificate
-- switch back to `Proxied` after HTTPS is working
-
-### SSL/TLS
-
-Cloudflare settings:
+Recommended Cloudflare settings:
 
 - SSL mode: `Full (strict)`
-- `Always Use HTTPS`: on
-- `Automatic HTTPS Rewrites`: optional but recommended
+- `Always Use HTTPS`: enabled
 
-### DNS troubleshooting
+Initial certificate issuance is easiest when records are temporarily `DNS only`.
 
-If external DNS works but the VM cannot resolve the domain, configure `systemd-resolved` explicitly, for example:
+## 6. Tailscale / SSH policy
 
-```ini
-[Resolve]
-DNS=1.1.1.1 1.0.0.1
-FallbackDNS=8.8.8.8 8.8.4.4
-Domains=~.
-```
+- keep public traffic on `80` and `443`
+- keep SSH private through Tailscale
+- do not use Tailscale IPs in `APP_URL` or `NEXTAUTH_URL`
 
-Then restart:
+## 7. Deployment order
 
-```bash
-sudo systemctl restart systemd-resolved
-```
+Use this order for every release:
 
-## 5. Tailscale and SSH policy
-
-Recommended SSH policy:
-
-- web traffic stays public on `80` and `443`
-- SSH is allowed only through Tailscale
-
-Suggested steps:
-
-1. Install Tailscale on the VM
-2. Confirm Tailscale SSH or normal SSH over the Tailscale IP works
-3. Keep `80` and `443` open publicly
-4. Restrict `22` to `tailscale0` through UFW
-5. Optionally remove public `22` in the DigitalOcean firewall
-
-Do not use the Tailscale IP for `APP_URL` or `NEXTAUTH_URL`.
-
-## 6. Deployment order
-
-Use this order for every production release:
-
-1. Back up the database
-2. Pull the new release
+1. back up the database
+2. pull the release
 3. `pnpm install --frozen-lockfile`
 4. `pnpm db:generate`
 5. `pnpm db:validate`
-6. `pnpm build`
-7. `pnpm db:migrate:deploy`
-8. `pnpm db:seed`
-9. `pnpm db:backfill:post-links`
-10. restart the app service
-11. run the smoke checks from `docs/06_release_checklist.md`
+6. `pnpm db:migrate:deploy`
+7. `pnpm storage:bootstrap`
+8. `pnpm build`
+9. `pnpm db:seed`
+   - safe when you intentionally want admin/topic/profile bootstrap refreshed
+10. `pnpm db:backfill:post-links`
+    - only if legacy post link fields still need backfill
+11. restart the app service
+12. run the release checklist in `docs/06_release_checklist.md`
 
-## 7. Migration and rollback policy
+## 8. Migration policy
 
-Migrations are forward-only. There is no automated down migration in this repo.
+Migrations are forward-only.
 
 Before `pnpm db:migrate:deploy`:
 
-- take a Supabase backup or snapshot
-- record the currently deployed git SHA
-- ensure the app build already passed locally or in CI
+- capture the current git SHA
+- ensure build already passed
+- take a DB backup or snapshot
 
-If a release fails after migrations are applied:
+Current required migration set includes:
 
-1. roll the app code back to the last known good release if the schema remains compatible
-2. if the schema change itself is the problem, restore from backup or perform a forward fix with a new migration
-3. re-run `pnpm db:generate`
-4. restart the service after recovery
+- `20260404190000_add_newsletter_h6_hardening`
 
-Do not perform manual table surgery on production unless restore or a forward-fix path is already chosen.
+If that migration is still pending on the target DB, the deployment is not current.
 
-## 8. Seed and backfill
+## 9. Seed behavior
 
-### Seed
+`pnpm db:seed` currently upserts:
 
-```bash
-pnpm db:seed
-```
+- newsletter topics
+- admin user if `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set
+- the primary profile bootstrap record
 
-Effects:
+That means seed is not a no-op content script. On an existing production profile, running seed will refresh the primary profile bootstrap content from repo defaults. Use it intentionally.
 
-- upserts default newsletter topics
-- upserts the admin user when `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set
+## 10. Workers and schedules
 
-It is safe to re-run.
-
-### Post link backfill
-
-```bash
-pnpm db:backfill:post-links
-```
-
-Effects:
-
-- reads legacy `githubUrl`, `demoUrl`, and `docsUrl`
-- creates missing `PostLink` rows
-- populates `LinkPreviewCache`
-
-## 9. Workers and timers
-
-Three worker routes must be schedulable with `Authorization: Bearer ${CRON_SECRET}`:
+Worker routes:
 
 - `POST /api/worker/webhook`
-- `POST /api/worker/asset-cleanup`
 - `POST /api/worker/newsletter`
+- `POST /api/worker/asset-cleanup`
 
-Recommended schedule:
+Recommended intervals:
 
-- webhook worker: every 2 minutes
-- asset cleanup worker: every 30 minutes
-- newsletter worker: every 1 minute
+- webhook: every 2 minutes
+- newsletter: every 1 minute
+- asset cleanup: every 30 minutes
 
 Operational rules:
 
-- configure an explicit timeout per worker trigger
-- make the schedule interval longer than the maximum expected runtime
-- prevent overlap with systemd + `flock` or another lock-based strategy
-- treat both `processed work` and `empty queue no-op success` as healthy outcomes
+- use `Authorization: Bearer ${CRON_SECRET}`
+- use a lock strategy to avoid overlap
+- treat both `processed work` and `empty queue no-op success` as healthy
 
-Systemd examples are provided in `ops/systemd/`.
+## 11. Storage policy
 
-## 10. Storage and file access policy
+Expected buckets:
 
-- images are stored in `post-media` and served as public URLs
-- files are stored in `post-files` and are never exposed directly
-- downloads go through `GET /api/files/[assetId]`
-- the route issues a 10-minute signed URL
-- public users may access only files attached to `PUBLISHED` posts
-- `DRAFT` and `ARCHIVED` file assets are admin-only
-- assets marked with `pendingDeleteAt` are hidden from public rendering and download
+- `post-media`
+  - public
+- `post-files`
+  - private
 
-## 11. Cleanup and retention rules
+Rules:
 
-- empty unpublished drafts may be removed manually from the admin list
-- drafts older than 30 days with no meaningful content have their assets marked for cleanup
-- archived posts older than 90 days have their assets marked for cleanup
-- asset cleanup is `mark -> worker delete`, not immediate hard delete during editing
-- failed newsletter deliveries remain manual-retry items; there is no automatic resend loop in v1
+- images may be public URLs
+- file downloads must pass through `/api/files/[assetId]`
+- draft/archived files remain admin-only
+- `pendingDeleteAt` assets are hidden from public rendering/download
+- resume override uses the same Supabase storage boundary and should not 500 public `/resume.pdf` if storage lookup fails
 
-## 12. Resend production checks
+## 12. Email policy
 
-Before sign-off:
+Production email depends on:
 
-- verify the sending domain in Resend
-- confirm SPF
-- confirm DKIM
-- configure DMARC when available
-- send at least:
-  - one transactional email: `subscribe confirm`
-  - one campaign-like email: `newsletter test send`
+- verified Resend domain
+- SPF
+- DKIM
+- `EMAIL_FROM`
+- valid `APP_URL`
 
-Confirm both against Gmail:
+Current email lifecycle surfaces:
 
-- message arrives
-- message is not obviously malformed
-- links point at `https://xistoh.com/...`
-- links are not broken
+- subscribe confirm
+- welcome
+- unsubscribe
+- newsletter campaign
+- admin unsubscribe notice
 
-## 13. Recommended smoke checks after deploy
+## 13. Troubleshooting
 
-Preferred scripted smoke:
+### Build succeeds but `next start` serves 500s for routes that should exist
 
-```bash
-pnpm ops:smoke
-```
+Observed failure mode:
 
-Equivalent manual commands:
+- stale `.next` artifact set can leave server manifests pointing at route modules that are missing on disk
+
+Recovery:
 
 ```bash
-curl -i https://xistoh.com/admin/login
-curl -i -X POST https://xistoh.com/api/analytics -H 'Content-Type: application/json' --data '{"eventType":"PAGEVIEW","sessionId":"smoke","path":"/"}'
-curl -i -X POST https://xistoh.com/api/worker/webhook -H "Authorization: Bearer $CRON_SECRET"
-curl -i -X POST https://xistoh.com/api/worker/asset-cleanup -H "Authorization: Bearer $CRON_SECRET"
-curl -i -X POST https://xistoh.com/api/worker/newsletter -H "Authorization: Bearer $CRON_SECRET"
+rm -rf .next
+pnpm build
 ```
 
-Then verify:
+Then retry the service start.
 
-- public home renders
-- admin redirects to login when unauthenticated
-- analytics returns success
-- all workers return 200 with either processed rows or empty-queue success
-- `APP_URL` links in transactional emails point at the canonical HTTPS host
-- Resend domain verification is complete
-- Gmail receives one transactional email and one newsletter/test email without broken links
+### `/resume.pdf` should not 500 when storage is unavailable
+
+- the route now fails open to the generated PDF
+- if it still errors, treat it as a regression
+
+### `/admin/analytics` should show both
+
+- `--- SERVICE LOG ---`
+- `--- PERFORMANCE DIAGNOSTICS ---`
+
+If one is missing, treat analytics build/runtime state as degraded.
+
+## 14. Current external readiness note
+
+The last external verification against the provided target environment found two operational blockers:
+
+- pending migration `20260404190000_add_newsletter_h6_hardening`
+- `OPS_WEBHOOK_URL` still looked like a placeholder endpoint
+
+Until both are resolved, the codebase may be production-ready while the deployment environment is not fully production-ready.

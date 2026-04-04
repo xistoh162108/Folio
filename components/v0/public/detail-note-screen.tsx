@@ -13,6 +13,15 @@ import { PublicShell } from "@/components/v0/public/public-shell";
 import type { V0RuntimeDescriptor } from "@/components/v0/runtime/v0-experience-runtime";
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller";
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
 interface DetailNoteScreenProps {
   isDarkMode?: boolean;
   brandLabel?: string;
@@ -179,7 +188,7 @@ export function DetailNoteScreen({
                         const commentClass = isDarkMode
                           ? "text-white/35"
                           : "text-black/40";
-                        const highlightedCode = code
+                        const highlightedCode = escapeHtml(code)
                           .replace(
                             /\b(import|from|def|return|class|if|else|for|while|try|except|with|as|in|and|or|not|True|False|None)\b/g,
                             `<span class="${accentClass}">$1</span>`,
@@ -225,7 +234,7 @@ export function DetailNoteScreen({
                                     : mutedText
                                 }`}
                               >
-                                {copiedCode === index ? "[copied]" : "[y]"}
+                                {copiedCode === index ? "[yanked]" : "[yank]"}
                               </button>
                             </div>
                             <pre

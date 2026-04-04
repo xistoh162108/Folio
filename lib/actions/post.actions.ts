@@ -14,6 +14,7 @@ import { requireUser } from "@/lib/auth"
 import { POST_BLOCK_CONTENT_VERSION } from "@/lib/contracts/content-blocks"
 import type { PostEditorInput, PostLinkDTO, PostLinkType, PreviewMetadata } from "@/lib/contracts/posts"
 import { isMissingTableError } from "@/lib/db/errors"
+import { deleteAssetFromSupabase } from "@/lib/storage/supabase"
 import { slugify } from "@/lib/utils/normalizers"
 import { kickWorkerRoute } from "@/lib/workers/dispatch"
 
@@ -572,6 +573,65 @@ export async function archivePost(postId: string): Promise<PostActionResult> {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to archive post.",
+    }
+  }
+}
+
+export async function deletePostPermanently(postId: string): Promise<PostActionResult> {
+  const user = await requireUser()
+
+  try {
+    const current = await prisma.post.findUnique({
+      where: { id: postId },
+      include: {
+        assets: {
+          select: {
+            bucket: true,
+            storagePath: true,
+          },
+        },
+      },
+    })
+
+    if (!current) {
+      throw new Error("Target post not found.")
+    }
+
+    for (const asset of current.assets) {
+      await deleteAssetFromSupabase(asset.bucket, asset.storagePath)
+    }
+
+    const deleted = await prisma.$transaction(async (tx) => {
+      await tx.auditLog.create({
+        data: {
+          actorUserId: user.id,
+          actionType: "DELETE_POST",
+          targetType: "POST",
+          targetId: current.id,
+          before: JSON.parse(JSON.stringify(current)),
+        },
+      })
+
+      await tx.post.delete({
+        where: { id: postId },
+      })
+
+      return {
+        id: current.id,
+        slug: current.slug,
+      }
+    })
+
+    revalidatePath("/admin/posts")
+    revalidatePath(`/admin/posts/${deleted.id}`)
+    revalidatePublicPaths([deleted.slug])
+
+    return { success: true, id: deleted.id }
+  } catch (error) {
+    console.error("[deletePostPermanently]", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete post.",
     }
   }
 }

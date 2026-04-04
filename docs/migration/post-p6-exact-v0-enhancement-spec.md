@@ -3,7 +3,7 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-03-29
+- Last updated: 2026-04-05
 - Canonical enhancement authority: this file
 
 ## Authority and execution rule
@@ -22,6 +22,109 @@ No phase is complete unless:
 - any minimal extension beyond literal `/v0app` is explicitly justified in the audit log
 
 Silent divergence is forbidden.
+
+## 2026-04 Hardening addendum (H0-H8)
+
+This addendum governs the first hardening pass after the previously accepted `R1-R9` line.
+
+Load-bearing product/runtime changes accepted in `H0-H8`:
+
+- default theme is now Light on first load
+- public/admin brand mark resolves to `/`
+- Instagram is a Home-only public link when verified/configured
+- Home composition is locked to:
+  - recent notes: max 5
+  - recent projects: 2
+  - recent visitor logs: 2
+- Notes and Projects now support:
+  - simple search
+  - free-form tag filtering
+  - server-backed pagination
+  - separate RSS feeds
+- Projects use `Post.excerpt` as the only public short description
+- fake fallback description prose is forbidden
+- detail comments, guestbook archive, and admin/community moderation are now paginated
+- the v0 content editor now owns an explicit permanent delete workflow in the same shell
+- only the editor action actually in progress changes button state
+- code-copy feedback in published readers now uses `yanked`
+- code and math rendering now share one Markdown-first reader/writer path
+- uploaded editor assets now live inside one exact-v0 `[assets]` workflow that also owns cover-image selection
+- profile Experience editing now uses the same `Short Label` + `Period` shape that the public runtime renders
+- `/resume.pdf` remains the single public endpoint and now resolves to an uploaded PDF override before falling back to generated profile output
+- admin settings now exposes direct upload/remove management for the resume override inside the existing v0 shell
+- newsletter taxonomy is now locked to:
+  - `All`
+  - `Project & Info`
+  - `Log`
+- public subscribe flows now expose explicit status states:
+  - pending verification
+  - confirmed
+  - already subscribed
+  - invalid
+  - expired
+  - unsubscribed
+- transactional and newsletter emails now share one exact-v0 frame with:
+  - static Jitter-derived banner
+  - official signature
+  - natural unsubscribe phrasing
+- successful confirmation now sends a welcome email
+- `/admin/newsletter` now owns:
+  - draft-backed queue management
+  - topic or selected-recipient targeting
+  - send-unsent-only reruns
+  - image/file upload
+  - attachment toggling
+  - subscriber unsubscribe/delete
+  - paginated campaigns, deliveries, and subscribers
+- newsletter compose/preview stays Markdown-first inside the existing v0 admin shell
+- `/admin/analytics` now exposes a lightweight service log in addition to readiness/performance diagnostics
+- admin diagnostics now attribute server-side read cost across:
+  - posts
+  - editor
+  - settings
+  - newsletter
+  - community
+- admin content/settings/newsletter/community surfaces now share stricter single-scroll-owner containment through `min-h-0` shell wrappers and terminal-safe bottom breathing room
+- read-only resume override lookups now fail open to generated fallback output when storage is unreadable or unconfigured:
+  - `/resume.pdf` falls back to generated profile output
+  - settings resume-state reads fall back to `generated`
+  - admin upload/delete writes remain fail-closed
+
+### Exact-v0 preservation rule for H0-H8
+
+These changes are non-literal extensions because literal `/v0app` does not define search, scalable pagination, RSS, production delete semantics, rendered math/code fidelity, direct resume-file management, a production-ready newsletter lifecycle, or an operational service log.
+
+They are accepted because:
+
+- production publishing surfaces require them
+- each extension stays inside the same terminal-cinematic world
+- no new pattern family was introduced
+- controls remain inline, monochrome, and terminal-native
+- newsletter/editor/email surfaces remain Markdown-first, terminal-dense, and inline rather than becoming SaaS card/dashboard UI
+- analytics/service diagnostics remain terminal rows and terse measurements rather than monitoring widgets
+
+### User-visible behavior locked by H0-H8
+
+- `xistoh.log` returns home
+- first load is Light
+- Home now shows recent notes, projects, and visitor logs together
+- Notes/Projects expose query state through `q`, `tag`, and `page`
+- Notes/Projects expose terminal-native `[rss ->]` affordances
+- Guestbook and comments now scale through older-log pagination rather than hard truncation
+- content authors can permanently delete posts without leaving archive/delete ambiguity
+- editor uploads, insertion, and cover selection are now one workflow
+- rendered math displays as math rather than escaped source
+- code blocks preserve language metadata and use `[yank]` / `[yanked]` feedback
+- profile Experience rows are edited in the same simplified shape that Home actually renders
+- admins can upload or remove a real resume PDF while the public route stays fixed at `/resume.pdf`
+- public subscribe surfaces now use the locked `All / Project & Info / Log` groups
+- repeat subscription no longer resolves as a raw error; it resolves as an already-active subscribed state
+- successful confirmation now sends a follow-up welcome email inside the same xistoh.log mail frame
+- newsletter emails now carry the same static Jitter banner, signature, and natural unsubscribe phrasing
+- admin newsletter management now works as a real queue and recipient workflow without leaving the exact-v0 shell grammar
+- admin analytics now shows recent operational rows from webhook/newsletter/audit activity in the same terminal language
+- admin performance diagnostics now expose the slower read paths by surface instead of collapsing them into one opaque metric
+- `/resume.pdf` now remains available even when resume-override storage cannot be read, by falling back to generated profile output instead of surfacing a public 500
 
 ## Non-negotiable rule
 
@@ -222,6 +325,7 @@ Current implementation note:
 - Public guestbook rows should feel like linear system logs, not cards or feeds.
 - Public admin moderation controls are forbidden.
 - Admin moderation remains under admin surfaces only.
+- guestbook archive pagination must remain latest-first and terminal-native
 
 Canonical rule:
 - `/contact` self-canonical
@@ -311,6 +415,9 @@ Current implementation note:
 - `app/sitemap.ts` and `app/robots.ts` remain part of the shipped SEO system.
 - Fallback OG strategy must use stable production-safe assets only.
 - Guessed OG assets and guessed external URLs are forbidden.
+- Notes and Projects now also require:
+  - `<link rel="alternate" type="application/rss+xml" ...>`
+  - query-state `noindex` for filtered/paginated list variants so search and RSS do not introduce duplicate-canonical drift
 
 ### Typography and baseline system
 

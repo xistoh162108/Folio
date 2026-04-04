@@ -31,9 +31,12 @@ test("admin analytics reports performance diagnostics inside the existing termin
   await page.waitForURL(/\/admin\/analytics/)
 
   await expect(page.locator("[data-v0-admin-performance]")).toBeVisible()
+  await expect(page.locator("[data-v0-service-log]")).toBeVisible()
   await expect(page.getByText("SESSION_LOOKUP")).toBeVisible()
   await expect(page.getByText("POST_INDEX_QUERY")).toBeVisible()
-  await expect(page.getByText("PROFILE_RUNTIME")).toBeVisible()
+  await expect(page.getByText("SETTINGS_EDITOR_LOAD")).toBeVisible()
+  await expect(page.getByText("NEWSLETTER_DASHBOARD")).toBeVisible()
+  await expect(page.getByText("COMMUNITY_QUEUE")).toBeVisible()
   await expect(page.getByText("RECENT_NAV")).toBeVisible()
   await expect(page.getByText("PANEL_HANDOFF")).toBeVisible()
   await expect(page.getByText("idle-neighbors + hover/focus")).toBeVisible()

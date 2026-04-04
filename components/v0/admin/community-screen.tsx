@@ -17,6 +17,18 @@ function formatTimestamp(value: string) {
   return new Date(value).toISOString().replace("T", " ").slice(0, 16)
 }
 
+function buildCommunityHref(commentPage: number, guestbookPage: number) {
+  const params = new URLSearchParams()
+  if (commentPage > 1) {
+    params.set("commentPage", String(commentPage))
+  }
+  if (guestbookPage > 1) {
+    params.set("guestbookPage", String(guestbookPage))
+  }
+
+  return params.size ? `/admin/community?${params.toString()}` : "/admin/community"
+}
+
 export function CommunityScreen({
   snapshot,
   isDarkMode: initialIsDarkMode = true,
@@ -26,11 +38,12 @@ export function CommunityScreen({
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20"
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"
+  const deleteButtonClass = `px-2 py-1 border ${borderColor} ${hoverBg}`
 
   return (
     <AdminShell currentSection="community" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
-      <main className="flex-1 min-h-full p-4 sm:p-6 md:h-full md:overflow-y-auto">
-        <div className="space-y-8 max-w-4xl">
+      <main className="flex-1 min-h-full p-4 sm:p-6 md:h-full md:min-h-0 md:overflow-y-auto">
+        <div className="max-w-4xl space-y-8 pb-10">
           <div>
             <p className={`text-xs ${mutedText}`}>// community</p>
             <h2 className="text-lg mt-1">Moderation Queue</h2>
@@ -39,7 +52,28 @@ export function CommunityScreen({
           <section className="space-y-3">
             <div className={`flex items-center justify-between text-xs ${mutedText}`}>
               <p>--- COMMENTS ---</p>
-              <p>[{snapshot.comments.length}] active</p>
+              <p>
+                [{snapshot.commentsPagination.total}] active / [page {snapshot.commentsPagination.page} of{" "}
+                {snapshot.commentsPagination.totalPages}]
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              {snapshot.commentsPagination.hasPrevious ? (
+                <Link
+                  href={buildCommunityHref(snapshot.commentsPagination.page - 1, snapshot.guestbookPagination.page)}
+                  className={`${hoverBg} px-2 py-1`}
+                >
+                  [newer comments]
+                </Link>
+              ) : null}
+              {snapshot.commentsPagination.hasNext ? (
+                <Link
+                  href={buildCommunityHref(snapshot.commentsPagination.page + 1, snapshot.guestbookPagination.page)}
+                  className={`${hoverBg} px-2 py-1`}
+                >
+                  [older comments]
+                </Link>
+              ) : null}
             </div>
             <div className="space-y-1">
               {snapshot.comments.length === 0 ? (
@@ -62,7 +96,7 @@ export function CommunityScreen({
                       </Link>
                       <form action={deleteCommentAsAdmin}>
                         <input type="hidden" name="commentId" value={comment.id} />
-                        <button type="submit" className={`px-2 py-1 border ${borderColor} ${hoverBg}`}>
+                        <button type="submit" className={deleteButtonClass}>
                           [delete]
                         </button>
                       </form>
@@ -76,7 +110,28 @@ export function CommunityScreen({
           <section className="space-y-3">
             <div className={`flex items-center justify-between text-xs ${mutedText}`}>
               <p>--- GUESTBOOK ---</p>
-              <p>[{snapshot.guestbookEntries.length}] active</p>
+              <p>
+                [{snapshot.guestbookPagination.total}] active / [page {snapshot.guestbookPagination.page} of{" "}
+                {snapshot.guestbookPagination.totalPages}]
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              {snapshot.guestbookPagination.hasPrevious ? (
+                <Link
+                  href={buildCommunityHref(snapshot.commentsPagination.page, snapshot.guestbookPagination.page - 1)}
+                  className={`${hoverBg} px-2 py-1`}
+                >
+                  [newer guestbook]
+                </Link>
+              ) : null}
+              {snapshot.guestbookPagination.hasNext ? (
+                <Link
+                  href={buildCommunityHref(snapshot.commentsPagination.page, snapshot.guestbookPagination.page + 1)}
+                  className={`${hoverBg} px-2 py-1`}
+                >
+                  [older guestbook]
+                </Link>
+              ) : null}
             </div>
             <div className="space-y-1">
               {snapshot.guestbookEntries.length === 0 ? (
@@ -93,7 +148,7 @@ export function CommunityScreen({
                   <div className="flex justify-end">
                     <form action={deleteGuestbookEntryAsAdmin}>
                       <input type="hidden" name="entryId" value={entry.id} />
-                      <button type="submit" className={`px-2 py-1 border ${borderColor} ${hoverBg}`}>
+                      <button type="submit" className={deleteButtonClass}>
                         [delete]
                       </button>
                     </form>

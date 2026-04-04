@@ -1,5 +1,11 @@
 export type ProfileLinkKind = "GITHUB" | "LINKEDIN" | "EMAIL" | "WEBSITE" | "OTHER"
 export type ProfileSource = "database" | "static-fallback"
+export type ProfileResumeSource = "generated" | "uploaded"
+
+export interface ProfileResumeEditorState {
+  source: ProfileResumeSource
+  fileName: string | null
+}
 
 export interface ProfileEducationDTO {
   id: string
@@ -11,11 +17,8 @@ export interface ProfileEducationDTO {
 
 export interface ProfileExperienceDTO {
   id: string
-  title: string
   label: string
-  detail: string
   period: string
-  year: string | null
   sortOrder: number
 }
 
@@ -64,11 +67,8 @@ export interface ProfileEducationInput {
 
 export interface ProfileExperienceInput {
   id?: string
-  title: string
   label: string
-  detail: string
   period: string
-  year?: string | null
   sortOrder: number
 }
 
@@ -97,6 +97,7 @@ export interface ProfileEditorInput {
   summary: string
   emailAddress: string
   resumeHref?: string | null
+  resumeState: ProfileResumeEditorState
   education: ProfileEducationInput[]
   experience: ProfileExperienceInput[]
   awards: ProfileAwardInput[]

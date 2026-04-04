@@ -3,7 +3,7 @@ export const V0_THEME_COOKIE = "xistoh-v0-theme"
 export type V0ThemeMode = "dark" | "light"
 
 export function normalizeV0ThemeMode(value?: string | null): V0ThemeMode {
-  return value === "light" ? "light" : "dark"
+  return value === "dark" ? "dark" : "light"
 }
 
 export function isV0DarkMode(value?: string | null): boolean {

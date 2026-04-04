@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { AnalyticsTracker } from '../components/analytics-tracker'
 import { V0ExperienceProvider } from '@/components/v0/runtime/v0-experience-runtime'
 import { getV0ThemeMode } from '@/lib/site/v0-theme.server'
+import "katex/dist/katex.min.css"
 import './globals.css'
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });

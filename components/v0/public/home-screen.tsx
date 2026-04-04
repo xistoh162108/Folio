@@ -2,12 +2,14 @@
 
 import Link from "next/link"
 
+import type { GuestbookEntryDTO } from "@/lib/contracts/community"
 import type { PostCardDTO } from "@/lib/contracts/posts"
 
 import {
   digitalGardenNotes,
   educationData,
   experienceData,
+  projectsData,
 } from "@/components/v0/fixtures"
 import { formatPostDate } from "@/components/v0/public/mappers"
 import { PublicShell } from "@/components/v0/public/public-shell"
@@ -33,6 +35,8 @@ interface HomeScreenProps {
   experience?: HomeLineItem[]
   awards?: HomeLineItem[]
   recentNotes?: PostCardDTO[]
+  recentProjects?: PostCardDTO[]
+  recentLogs?: GuestbookEntryDTO[]
   resumeHref?: string
 }
 
@@ -57,24 +61,49 @@ export function HomeScreen({
   })),
   awards = [],
   recentNotes,
+  recentProjects,
+  recentLogs = [],
   resumeHref = "/resume.pdf",
 }: HomeScreenProps) {
   const { isDarkMode, toggleTheme } = useV0ThemeController(initialIsDarkMode)
   const mutedText = isDarkMode ? "text-white/50" : "text-black/50"
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5"
   const renderedRecentNotes =
-    recentNotes?.slice(0, 3).map((note) => ({
+    recentNotes?.slice(0, 5).map((note) => ({
       id: note.id,
       title: note.title,
       href: `/notes/${note.slug}`,
       date: formatPostDate(note.publishedAt, note.updatedAt),
     })) ??
-    digitalGardenNotes.slice(0, 3).map((note) => ({
+    digitalGardenNotes.slice(0, 5).map((note) => ({
       id: note.id,
       title: note.title,
       href: "#",
       date: note.date,
     }))
+  const renderedRecentProjects =
+    recentProjects?.slice(0, 2).map((project) => ({
+      id: project.id,
+      title: project.title,
+      href: `/projects/${project.slug}`,
+      date: formatPostDate(project.publishedAt, project.updatedAt),
+    })) ??
+    projectsData.slice(0, 2).map((project) => ({
+      id: project.id,
+      title: project.title,
+      href: "#",
+      date: "active",
+    }))
+  const renderedRecentLogs =
+    recentLogs.length > 0
+      ? recentLogs.map((entry) => ({
+          id: entry.id,
+          label: `${entry.sourceLabel} - ${entry.message}`,
+        }))
+      : [
+          { id: "log-1", label: "local - visitor log stream open" },
+          { id: "log-2", label: "signal - guestbook trace pending" },
+        ]
 
   return (
     <PublicShell currentPage="home" isDarkMode={isDarkMode} brandLabel={brandLabel} onToggleTheme={toggleTheme}>
@@ -155,7 +184,7 @@ export function HomeScreen({
             ) : null}
 
             <section className="space-y-2">
-              <p className={`text-xs ${mutedText}`}>// recent</p>
+              <p className={`text-xs ${mutedText}`}>// recent notes</p>
               <div className="space-y-0.5">
                 {renderedRecentNotes.map((note) => (
                   <Link
@@ -172,6 +201,46 @@ export function HomeScreen({
               </div>
               <Link href="/notes" className={`inline-block text-xs ${mutedText} ${hoverBg} px-1`}>
                 [+] all notes
+              </Link>
+            </section>
+
+            <section className="space-y-2">
+              <p className={`text-xs ${mutedText}`}>// recent projects</p>
+              <div className="space-y-0.5">
+                {renderedRecentProjects.map((project) => (
+                  <Link
+                    key={project.id}
+                    href={project.href}
+                    className={`block text-xs ${hoverBg} py-0.5 px-1 -mx-1 transition-colors`}
+                  >
+                    <span className={mutedText}>{project.date}</span>
+                    <span className="mx-1">-</span>
+                    <span>{project.title}</span>
+                    <span className="mx-1">-&gt;</span>
+                  </Link>
+                ))}
+              </div>
+              <Link href="/projects" className={`inline-block text-xs ${mutedText} ${hoverBg} px-1`}>
+                [+] all projects
+              </Link>
+            </section>
+
+            <section className="space-y-2">
+              <p className={`text-xs ${mutedText}`}>// visitor logs</p>
+              <div className="space-y-0.5">
+                {renderedRecentLogs.map((entry) => (
+                  <Link
+                    key={entry.id}
+                    href="/guestbook"
+                    className={`block text-xs ${hoverBg} py-0.5 px-1 -mx-1 transition-colors`}
+                  >
+                    {entry.label}
+                    <span className="mx-1">-&gt;</span>
+                  </Link>
+                ))}
+              </div>
+              <Link href="/guestbook" className={`inline-block text-xs ${mutedText} ${hoverBg} px-1`}>
+                [+] guestbook archive
               </Link>
             </section>
 

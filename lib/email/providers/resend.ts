@@ -29,6 +29,11 @@ async function sendSingle(client: Resend, input: EmailMessageInput): Promise<Ema
       subject: input.subject,
       html: input.html,
       text: input.text,
+      attachments: input.attachments?.map((attachment) => ({
+        filename: attachment.filename,
+        content: attachment.content,
+        contentType: attachment.contentType,
+      })),
     })
 
     if (error) {

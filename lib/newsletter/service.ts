@@ -1,43 +1,97 @@
 import "server-only"
 
 import { prisma } from "@/lib/db/prisma"
-import { slugify } from "@/lib/utils/normalizers"
+import { getNewsletterTopicDefinitions, normalizeNewsletterTopics, type NewsletterVisibleTopic } from "@/lib/newsletter/topics"
 
-export function normalizeTopicFilters(topics: string[]) {
-  const normalized = [...new Set(topics.map((topic) => slugify(topic)).filter(Boolean))]
-  return normalized.length > 0 ? normalized : ["all-seeds"]
+type PrismaLike = typeof prisma
+
+export async function ensureNewsletterTopics(client: PrismaLike = prisma) {
+  const definitions = getNewsletterTopicDefinitions()
+
+  return Promise.all(
+    definitions.map((topic) =>
+      client.newsletterTopic.upsert({
+        where: { normalizedName: topic.normalizedName },
+        update: { name: topic.name },
+        create: {
+          name: topic.name,
+          normalizedName: topic.normalizedName,
+        },
+      }),
+    ),
+  )
 }
 
-export async function getEligibleSubscribers(topics: string[]) {
-  const normalizedTopics = normalizeTopicFilters(topics)
-  const sendToAll = normalizedTopics.includes("all-seeds")
+export function normalizeTopicFilters(topics: string[]): NewsletterVisibleTopic[] {
+  return normalizeNewsletterTopics(topics)
+}
+
+function buildTopicRecipientWhere(normalizedTopics: NewsletterVisibleTopic[]) {
+  const sendToAll = normalizedTopics.includes("all")
+
+  if (sendToAll) {
+    return {}
+  }
+
+  return {
+    OR: [
+      {
+        topics: {
+          some: {
+            normalizedName: {
+              in: normalizedTopics,
+            },
+          },
+        },
+      },
+      {
+        topics: {
+          some: {
+            normalizedName: "all",
+          },
+        },
+      },
+    ],
+  }
+}
+
+export async function getEligibleSubscribers(input: {
+  topics?: string[]
+  recipientMode?: "TOPICS" | "SELECTED_SUBSCRIBERS"
+  targetSubscriberIds?: string[]
+}) {
+  const recipientMode = input.recipientMode ?? "TOPICS"
+
+  if (recipientMode === "SELECTED_SUBSCRIBERS") {
+    const targetSubscriberIds = [...new Set((input.targetSubscriberIds ?? []).filter(Boolean))]
+
+    if (targetSubscriberIds.length === 0) {
+      return []
+    }
+
+    return prisma.subscriber.findMany({
+      where: {
+        id: {
+          in: targetSubscriberIds,
+        },
+        isConfirmed: true,
+        unsubscribedAt: null,
+      },
+      select: {
+        id: true,
+        email: true,
+      },
+      orderBy: { createdAt: "asc" },
+    })
+  }
+
+  const normalizedTopics = normalizeTopicFilters(input.topics ?? [])
 
   return prisma.subscriber.findMany({
     where: {
       isConfirmed: true,
       unsubscribedAt: null,
-      ...(sendToAll
-        ? {}
-        : {
-            OR: [
-              {
-                topics: {
-                  some: {
-                    normalizedName: {
-                      in: normalizedTopics,
-                    },
-                  },
-                },
-              },
-              {
-                topics: {
-                  some: {
-                    normalizedName: "all-seeds",
-                  },
-                },
-              },
-            ],
-          }),
+      ...buildTopicRecipientWhere(normalizedTopics),
     },
     select: {
       id: true,

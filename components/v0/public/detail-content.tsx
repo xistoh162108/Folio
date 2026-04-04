@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 
 import { renderInlineMarkdownHtml } from "@/lib/content/markdown-blocks"
+import { renderBlockMathHtml, renderInlineMathHtml } from "@/lib/content/math-render"
 import { isBlockDocument } from "@/lib/content/post-content"
 import type { ContentBlock, EmbedBlock, ImageBlock } from "@/lib/contracts/content-blocks"
 import type { PostAssetDTO, PostLinkDTO } from "@/lib/contracts/posts"
@@ -145,12 +146,15 @@ function extractFallbackBlocks(html: string) {
     | { type: "code"; language: string; code: string }
   > = []
 
-  const codeRegex = /<pre[^>]*>\s*<code(?: class="language-([^"]+)")?[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/gi
+  const codeRegex = /<pre[^>]*>\s*<code([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/gi
   let lastIndex = 0
 
   for (const match of html.matchAll(codeRegex)) {
-    const [fullMatch, language = "", rawCode = ""] = match
+    const [fullMatch, attributes = "", rawCode = ""] = match
     const matchIndex = match.index ?? 0
+    const languageMatch =
+      attributes.match(/class="[^"]*language-([^"\s]+)[^"]*"/i) ?? attributes.match(/data-language="([^"]+)"/i)
+    const language = languageMatch?.[1] ?? ""
     const before = html.slice(lastIndex, matchIndex)
     blocks.push(...extractTextBlocks(before))
     blocks.push({
@@ -340,7 +344,7 @@ function DetailCodeBlock({
             copiedCode === index ? (isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]") : mutedText
           }`}
         >
-          {copiedCode === index ? "[copied]" : "[y]"}
+          {copiedCode === index ? "[yanked]" : "[yank]"}
         </button>
       </div>
       <pre className={`overflow-x-auto border p-4 text-xs ${borderColor} ${isDarkMode ? "bg-[#1a1a1a]" : "bg-gray-50"}`}>
@@ -576,9 +580,10 @@ function renderBlock(
         <div
           key={block.id}
           className={`border px-4 py-3 text-sm ${borderColor} ${isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"}`}
-        >
-          <code>{block.variant === "block" ? `$$ ${block.expression} $$` : `$${block.expression}$`}</code>
-        </div>
+          dangerouslySetInnerHTML={{
+            __html: block.variant === "block" ? renderBlockMathHtml(block.expression) : renderInlineMathHtml(block.expression),
+          }}
+        />
       )
     case "image": {
       const asset = resolveImageAsset(block, assets)

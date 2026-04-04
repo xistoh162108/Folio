@@ -11,19 +11,22 @@ function getUnsubscribeCopy(code: string | undefined, fallback: string | undefin
       return {
         eyebrow: "Unsubscribe",
         title: "Subscription cancelled",
-        description: fallback ?? "You have been removed from future sends.",
+        description: fallback ?? "This inbox has been removed from future sends.",
+        overlayValue: "[UNSUBSCRIBED]",
       }
     case "already_unsubscribed":
       return {
         eyebrow: "Unsubscribe",
         title: "Already unsubscribed",
-        description: fallback ?? "This address had already been removed from future sends.",
+        description: fallback ?? "This address was already removed from future sends.",
+        overlayValue: "[ALREADY_OFFLINE]",
       }
     default:
       return {
         eyebrow: "Unsubscribe",
         title: "Unsubscribe link issue",
         description: fallback ?? "This unsubscribe link is invalid.",
+        overlayValue: "[INVALID]",
       }
   }
 }
@@ -60,6 +63,7 @@ export async function UnsubscribeScreenBound({
       brandLabel={brandLabel}
       isDarkMode={isDarkMode}
       eyebrow={copy.eyebrow}
+      overlayValue={result ? copy.overlayValue : token ? "[CONFIRM]" : "[INVALID]"}
       title={result ? copy.title : "Confirm unsubscribe"}
       body={
         result

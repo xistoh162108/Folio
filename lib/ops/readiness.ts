@@ -20,9 +20,21 @@ export interface WorkerActivity {
   occurredAt: string
 }
 
+export type ServiceLogStatus = "info" | "success" | "error"
+
+export interface ServiceLogEntry {
+  id: string
+  label: string
+  source: string
+  status: ServiceLogStatus
+  detail: string
+  occurredAt: string
+}
+
 export interface ReadinessDashboard {
   cards: ReadinessCard[]
   lastWorkerActivity: WorkerActivity | null
+  serviceLog: ServiceLogEntry[]
 }
 
 function readinessCard(
@@ -240,11 +252,132 @@ async function findLastWorkerActivity(): Promise<WorkerActivity | null> {
   return candidates.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0] ?? null
 }
 
+async function buildServiceLog(): Promise<ServiceLogEntry[]> {
+  const [auditLogs, webhookDeliveries, newsletterCampaigns, newsletterDeliveries] = await Promise.allSettled([
+    prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        actionType: true,
+        targetType: true,
+        targetId: true,
+        actorUserId: true,
+        createdAt: true,
+      },
+    }),
+    prisma.webhookDelivery.findMany({
+      orderBy: [{ deliveredAt: "desc" }, { createdAt: "desc" }],
+      take: 5,
+      select: {
+        id: true,
+        eventType: true,
+        destination: true,
+        status: true,
+        lastError: true,
+        deliveredAt: true,
+        createdAt: true,
+      },
+    }),
+    prisma.newsletterCampaign.findMany({
+      orderBy: [{ completedAt: "desc" }, { startedAt: "desc" }, { updatedAt: "desc" }],
+      take: 5,
+      select: {
+        id: true,
+        subject: true,
+        status: true,
+        totalRecipients: true,
+        sentCount: true,
+        failedCount: true,
+        lastError: true,
+        startedAt: true,
+        completedAt: true,
+        updatedAt: true,
+      },
+    }),
+    prisma.newsletterDelivery.findMany({
+      orderBy: [{ sentAt: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
+      take: 5,
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        errorMessage: true,
+        sentAt: true,
+        updatedAt: true,
+        createdAt: true,
+      },
+    }),
+  ])
+
+  const entries: ServiceLogEntry[] = []
+
+  if (auditLogs.status === "fulfilled") {
+    entries.push(
+      ...auditLogs.value.map((entry) => ({
+        id: `audit:${entry.id}`,
+        label: `audit ${entry.actionType.toLowerCase()}`,
+        source: `${entry.targetType}:${entry.targetId}`,
+        status: "info" as const,
+        detail: `actor :: ${entry.actorUserId}`,
+        occurredAt: entry.createdAt.toISOString(),
+      })),
+    )
+  }
+
+  if (webhookDeliveries.status === "fulfilled") {
+    entries.push(
+      ...webhookDeliveries.value.map((entry) => ({
+        id: `webhook:${entry.id}`,
+        label: `webhook ${entry.status.toLowerCase()}`,
+        source: entry.eventType,
+        status: entry.status === "SUCCESS" ? ("success" as const) : ("error" as const),
+        detail: entry.lastError ? entry.lastError : `destination :: ${entry.destination}`,
+        occurredAt: (entry.deliveredAt ?? entry.createdAt).toISOString(),
+      })),
+    )
+  }
+
+  if (newsletterCampaigns.status === "fulfilled") {
+    entries.push(
+      ...newsletterCampaigns.value.map((entry) => ({
+        id: `campaign:${entry.id}`,
+        label: `campaign ${entry.status.toLowerCase()}`,
+        source: entry.subject,
+        status:
+          entry.status === "COMPLETED"
+            ? ("success" as const)
+            : entry.status === "FAILED"
+              ? ("error" as const)
+              : ("info" as const),
+        detail: `recipients ${entry.totalRecipients} :: sent ${entry.sentCount} :: failed ${entry.failedCount}${entry.lastError ? ` :: ${entry.lastError}` : ""}`,
+        occurredAt: (entry.completedAt ?? entry.startedAt ?? entry.updatedAt).toISOString(),
+      })),
+    )
+  }
+
+  if (newsletterDeliveries.status === "fulfilled") {
+    entries.push(
+      ...newsletterDeliveries.value.map((entry) => ({
+        id: `delivery:${entry.id}`,
+        label: `delivery ${entry.status.toLowerCase()}`,
+        source: entry.email,
+        status: entry.status === "SENT" ? ("success" as const) : entry.status === "FAILED" ? ("error" as const) : ("info" as const),
+        detail: entry.errorMessage ?? "newsletter delivery record updated",
+        occurredAt: (entry.sentAt ?? entry.updatedAt ?? entry.createdAt).toISOString(),
+      })),
+    )
+  }
+
+  return entries.sort((left, right) => right.occurredAt.localeCompare(left.occurredAt)).slice(0, 10)
+}
+
 export async function getAdminReadinessDashboard(): Promise<ReadinessDashboard> {
-  const [database, storageCards, lastWorkerActivity] = await Promise.all([
+  const [database, storageCards, lastWorkerActivity, serviceLog] = await Promise.all([
     checkDatabaseReachable(),
     getStorageReadinessCards(),
     findLastWorkerActivity(),
+    buildServiceLog(),
   ])
 
   return {
@@ -266,5 +399,6 @@ export async function getAdminReadinessDashboard(): Promise<ReadinessDashboard> 
       ),
     ],
     lastWorkerActivity,
+    serviceLog,
   }
 }

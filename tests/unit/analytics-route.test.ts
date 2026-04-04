@@ -117,4 +117,90 @@ describe("POST /api/analytics", () => {
       error: "Analytics write failed.",
     })
   })
+
+  it("increments views for a published detail page when no recent pageview exists", async () => {
+    const findFirstPostMock = vi.fn().mockResolvedValue({ id: "post-1", status: "PUBLISHED" })
+    const findFirstAnalyticsMock = vi.fn().mockResolvedValue(null)
+    const updatePostMock = vi.fn().mockResolvedValue(null)
+    const createAnalyticsMock = vi.fn().mockResolvedValue(null)
+
+    transactionMock.mockImplementation(async (callback) =>
+      callback({
+        post: {
+          findFirst: findFirstPostMock,
+          update: updatePostMock,
+        },
+        analytics: {
+          findFirst: findFirstAnalyticsMock,
+          create: createAnalyticsMock,
+        },
+      }),
+    )
+
+    const response = await POST(
+      new Request("http://127.0.0.1:3001/api/analytics", {
+        method: "POST",
+        body: JSON.stringify({
+          eventType: "PAGEVIEW",
+          sessionId: "sess-5",
+          path: "/notes/terminal-proof",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(findFirstPostMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          slug: "terminal-proof",
+          type: "NOTE",
+        },
+      }),
+    )
+    expect(findFirstAnalyticsMock).toHaveBeenCalled()
+    expect(updatePostMock).toHaveBeenCalledWith({
+      where: { id: "post-1" },
+      data: {
+        views: {
+          increment: 1,
+        },
+      },
+    })
+    expect(createAnalyticsMock).toHaveBeenCalled()
+  })
+
+  it("does not increment views when a recent pageview already exists", async () => {
+    const findFirstPostMock = vi.fn().mockResolvedValue({ id: "post-2", status: "PUBLISHED" })
+    const findFirstAnalyticsMock = vi.fn().mockResolvedValue({ id: "analytics-1" })
+    const updatePostMock = vi.fn().mockResolvedValue(null)
+    const createAnalyticsMock = vi.fn().mockResolvedValue(null)
+
+    transactionMock.mockImplementation(async (callback) =>
+      callback({
+        post: {
+          findFirst: findFirstPostMock,
+          update: updatePostMock,
+        },
+        analytics: {
+          findFirst: findFirstAnalyticsMock,
+          create: createAnalyticsMock,
+        },
+      }),
+    )
+
+    const response = await POST(
+      new Request("http://127.0.0.1:3001/api/analytics", {
+        method: "POST",
+        body: JSON.stringify({
+          eventType: "PAGEVIEW",
+          sessionId: "sess-6",
+          path: "/projects/exact-v0",
+        }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    expect(updatePostMock).not.toHaveBeenCalled()
+    expect(createAnalyticsMock).toHaveBeenCalled()
+  })
 })

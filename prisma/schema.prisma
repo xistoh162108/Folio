@@ -67,6 +67,16 @@ enum NewsletterDeliveryStatus {
   FAILED
 }
 
+enum NewsletterRecipientMode {
+  TOPICS
+  SELECTED_SUBSCRIBERS
+}
+
+enum NewsletterAssetKind {
+  IMAGE
+  FILE
+}
+
 model Post {
   id             String         @id @default(cuid())
   slug           String         @unique
@@ -338,9 +348,14 @@ model NewsletterTopic {
 model NewsletterCampaign {
   id              String                   @id @default(cuid())
   subject         String
+  markdown        String?
   html            String
   text            String?
   targetTopics    String[]                 @default([])
+  recipientMode   NewsletterRecipientMode  @default(TOPICS)
+  targetSubscriberIds String[]             @default([])
+  skipPreviouslySent Boolean               @default(false)
+  queueOrder      Int                      @default(0)
   status          NewsletterCampaignStatus @default(DRAFT)
   totalRecipients Int                      @default(0)
   sentCount       Int                      @default(0)
@@ -352,8 +367,10 @@ model NewsletterCampaign {
   updatedAt       DateTime                 @updatedAt
 
   deliveries      NewsletterDelivery[]
+  assets          NewsletterAsset[]
 
   @@index([status, createdAt])
+  @@index([queueOrder, createdAt])
 }
 
 model NewsletterDelivery {
@@ -373,6 +390,25 @@ model NewsletterDelivery {
 
   @@index([campaignId, status, createdAt, id])
   @@unique([campaignId, email])
+}
+
+model NewsletterAsset {
+  id               String              @id @default(cuid())
+  campaignId       String
+  kind             NewsletterAssetKind
+  bucket           String
+  storagePath      String
+  originalName     String
+  mime             String
+  size             Int
+  publicUrl        String?
+  sendAsAttachment Boolean             @default(false)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  campaign         NewsletterCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, kind, createdAt])
 }
 
 enum ContactStatus {

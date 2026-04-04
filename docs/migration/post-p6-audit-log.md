@@ -2,9 +2,9 @@
 
 ## Status
 
-- Last updated: 2026-03-29
-- Current implementation state: R1-R9 accepted
-- Cross-phase follow-up remains open for R2 continuity exactness and R5 production-equivalent storage proof.
+- Last updated: 2026-04-05
+- Current implementation state: R1-R9 accepted baseline; H0-H8 accepted
+- Cross-phase follow-up remains open for R2 continuity exactness and database-backed Playwright proof in this local environment.
 
 ## Purpose
 
@@ -37,6 +37,597 @@ Canonical references:
 - every accept/reject/hold decision must be recorded
 - every minimal extension beyond literal `/v0app` must include a justification entry
 - silent divergence is forbidden
+
+---
+
+## H0 Audit Record — Governance reset and exact-v0 hardening issue matrix
+
+### Status
+
+- accepted
+
+### What changed
+
+- reopened the previously closed `R1-R9` line with a new hardening lineage `H0-H8`
+- recorded the production hardening issue matrix and explicit documentation gate for load-bearing changes only
+- aligned current implementation with the owner-approved rules for Light default theme, home brand-link ownership, Home-only Instagram, Home composition, and RSS
+
+### Why it changed
+
+- the old post-P6 package was treated as closed, but the repo still diverged from the owner-approved production rule set
+- documentation had to become a release gate so load-bearing behavior would not drift silently
+
+### Exact-v0 preservation
+
+- this change is governance-only and does not introduce a second UI language
+- the rule explicitly forbids documenting trivial refactors and focuses only on product/runtime/schema/feed/query behavior
+
+### User-visible behavior difference
+
+- none directly; this phase makes later behavior changes auditable and canonical
+
+### Proof / evidence
+
+- canonical doc set updated:
+  - `docs/migration/post-p6-exact-v0-enhancement-spec.md`
+  - `docs/migration/post-p6-schema-compatibility-plan.md`
+  - `docs/migration/post-p6-route-ownership-plan.md`
+  - `docs/migration/post-p6-phase-tracker.md`
+  - `docs/migration/post-p6-audit-log.md`
+
+---
+
+## H1 Audit Record — Theme, brand navigation, public-link exposure, wrap fixes
+
+### Status
+
+- accepted
+
+### What changed
+
+- `lib/site/v0-theme.ts` now normalizes unspecified theme state to Light
+- public/admin brand marks now resolve to `/`
+- Instagram exposure was narrowed to Home-only by removing it from Contact and Guestbook
+- Contact and Guestbook columns were widened one token step inside the existing shell grammar
+- shared wrap/baseline behavior for notes/public shell-adjacent controls was kept on the same exact-v0 control system
+
+### Why it changed
+
+- current repo truth still defaulted to Dark
+- brand was not a real home action
+- Instagram leaked into auxiliary public surfaces against the owner rule
+- Contact/Guestbook and notes-related control strips were wasting horizontal space or colliding too early
+
+### Why literal v0 was insufficient
+
+- literal v0 does not define the production theme default, home-link behavior, or the exact responsive thresholds needed for modern viewport classes
+
+### Why the change is minimal
+
+- only theme normalization, link ownership, and width/wrap contracts changed
+- no new shell, no new social-link language, and no cardification were introduced
+
+### Exact-v0 preservation
+
+- terminal density, severe monochrome language, shell framing, and Jitter identity remain unchanged
+
+### User-visible behavior difference
+
+- first load is Light
+- clicking `xistoh.log` returns home
+- Instagram appears on Home only
+- Contact/Guestbook use horizontal space more effectively without leaving the v0 shell grammar
+
+### Proof / evidence
+
+- `pnpm build`
+- `pnpm typecheck`
+- `pnpm test tests/unit/profile-public-links.test.ts tests/unit/v0-route-palette.test.ts`
+
+---
+
+## H2 Audit Record — Home composition, search/tags/pagination, RSS
+
+### Status
+
+- accepted
+
+### What changed
+
+- Home now exposes:
+  - up to 5 recent notes
+  - 2 recent projects
+  - 2 recent visitor logs
+- Notes and Projects now use server-backed `q`, `tag`, and `page` query state
+- Projects now use `excerpt` as the only short description and no longer inject fake fallback prose
+- Projects expose tags and views in the list
+- Notes and Projects now expose separate RSS feeds:
+  - `/notes/rss.xml`
+  - `/projects/rss.xml`
+- Notes and Projects now emit RSS autodiscovery metadata and terminal-native `[rss ->]` affordances
+
+### Why it changed
+
+- Home composition did not match the owner-approved publishing surface
+- Notes and Projects could not scale or be discovered well
+- fake project description prose violated the no-placeholder rule
+- RSS was a locked product decision and was absent
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` does not define search, scalable pagination, or RSS feeds
+
+### Why the change is minimal
+
+- new behavior is absorbed into the existing dense list grammar and terminal action language
+- RSS is exposed as inline terminal-native text, not as social widgets or orange badges
+- query-driven list state stays on the same routes instead of creating duplicate surfaces
+
+### Exact-v0 preservation
+
+- Notes and Projects remain linear, dense, and monochrome
+- no dashboard/search-app shell or generic blog UI was introduced
+
+### User-visible behavior difference
+
+- Home now shows recent notes, projects, and visitor logs together
+- Notes and Projects support simple search, tag filtering, pagination, and feed subscription
+- filtered/paginated states avoid canonical duplication by marking query states `noindex`
+
+### Proof / evidence
+
+- `pnpm build`
+- `pnpm typecheck`
+- `pnpm test tests/unit/rss-feed.test.ts tests/unit/profile-public-links.test.ts tests/unit/v0-route-palette.test.ts`
+
+### Minimal extension justification
+
+- RSS, search, and pagination do not exist literally in `/v0app`
+- production publishing surfaces require them
+- the implementation keeps them inside the same terminal list grammar and restrained inline action language
+
+---
+
+## H3 Audit Record — Comments, guestbook, moderation pagination, and view audit
+
+### Status
+
+- accepted with environment caveat
+
+### What changed
+
+- added paginated GET reads for post comments at `/api/posts/[postId]/comments`
+- added paginated GET reads for guestbook at `/api/guestbook`
+- post detail contracts now carry `commentsPagination`
+- guestbook full route now loads older logs incrementally while staying latest-first
+- admin/community now paginates comments and guestbook independently with query-owned page state
+- admin delete buttons were normalized to the same sizing token
+- public comment message foreground is now explicit to prevent low-contrast theme states
+- analytics route tests now prove first-view increment and duplicate suppression for notes/projects
+
+### Why it changed
+
+- comments, guestbook, and moderation all hard-stopped at fixed snapshots
+- comment color could become effectively invisible in some theme states
+- view-count behavior needed explicit proof because it was called out as unreliable
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` does not define scalable archive pagination or moderated queue pagination
+
+### Why the change is minimal
+
+- public guestbook and comments stay as linear terminal rows
+- pagination uses inline terminal-native controls and incremental older-log loading
+- admin moderation remains a simple log queue, not a dashboard table or feed UI
+
+### Exact-v0 preservation
+
+- no cards, drawers, or SaaS moderation widgets were introduced
+- latest-first log grammar remains intact
+
+### User-visible behavior difference
+
+- detail comments can load older logs
+- guestbook archive can load older logs
+- admin/community no longer truncates at a single fixed snapshot
+- comment text remains readable across theme states
+
+### Proof / evidence
+
+- `pnpm build`
+- `pnpm typecheck`
+- `pnpm test tests/unit/analytics-route.test.ts tests/unit/rss-feed.test.ts tests/unit/profile-public-links.test.ts tests/unit/v0-route-palette.test.ts`
+
+### Environment caveat
+
+- `pnpm test:e2e e2e/contact-guestbook.spec.ts e2e/admin-community.spec.ts e2e/seo.spec.ts --reporter=line` could not complete in this local environment because the e2e build path prerendered `/sitemap.xml` against a database endpoint that was not reachable (`127.0.0.1:54329`)
+- this is recorded as a local environment proof gap, not as accepted functional failure of the H3 code path
+
+---
+
+## H4 Audit Record — Editor/delete/renderer integrity
+
+### Status
+
+- accepted
+
+### What changed
+
+- `components/admin/post-editor.tsx` now exposes an explicit permanent delete action inside the same editor shell and isolates pending state per action (`draft`, `publish`, `archive`, `delete`)
+- the active v0 editor path now keeps uploaded files/images, insertion, removal, and cover-image selection inside one `[assets]` support block
+- the dead project-only preview-card implication was removed in favor of the single assets workflow
+- `lib/actions/post.actions.ts` now provides `deletePostPermanently()` and blocks DB deletion until storage cleanup succeeds, preventing a success-state that leaves orphaned assets behind
+- `lib/content/markdown-blocks.ts` now emits code blocks with both `class="language-*"` and `data-language="*"` and derives math HTML through KaTeX helpers
+- `components/v0/public/detail-content.tsx` now reads the unified code-language markers, renders math through the same KaTeX path, and uses `[yank]` / `[yanked]` for code-copy feedback
+- `components/v0/public/detail-note-screen.tsx` was updated to keep sample code-copy wording aligned with the same terminal-native language
+
+### Why it changed
+
+- archive existed but true delete remained ambiguous
+- one shared pending flag caused unrelated editor buttons to change state together
+- code and math output diverged between writer and published reader
+- uploaded assets existed but the active v0 editor still implied dead or split support UI
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` does not define permanent delete safety, production-ready uploaded-asset management, or real math rendering
+
+### Why the change is minimal
+
+- all new behavior stays inside the existing editor shell and support-block grammar
+- no modal asset manager, WYSIWYG rewrite, dashboard chrome, or second publishing surface was introduced
+- existing `PostAsset`, `coverImageUrl`, and Markdown-first content contracts were reused
+
+### Exact-v0 preservation
+
+- editor remains Markdown-first
+- support UI remains collapsed, textual, and terminal-native
+- reader copy language stays terse and technical
+- renderer improvements change fidelity, not the public visual language
+
+### User-visible behavior difference
+
+- authors can now permanently delete a post from the editor
+- only the action actually in progress changes its label
+- uploaded images can be set or cleared as cover from the same assets block used for insertion
+- published math renders as math instead of escaped source
+- code-copy affordances now read `[yank]` and `[yanked]`
+
+### Proof / evidence
+
+- `pnpm test tests/unit/markdown-blocks.test.ts`
+- `pnpm test tests/unit/post-delete-action.test.ts`
+- `pnpm typecheck`
+
+### Cross-phase QA note
+
+- sub-agent QA re-audited H0-H3 docs vs implementation and reported no concrete mismatches on the requested surfaces; residual risk remains viewport-level visual confirmation rather than doc/implementation drift
+- a subsequent stricter H0-H4 audit initially flagged delete cleanup safety; the action was then hardened so storage cleanup now gates DB deletion and has direct unit proof
+
+---
+
+## H5 Audit Record — Profile/CV and resume management
+
+### Status
+
+- accepted
+
+### What changed
+
+- `components/v0/admin/profile-settings-editor.tsx` now edits Experience rows as `Period + Short Label` only, matching what Home actually renders
+- the same settings shell now exposes direct resume upload/remove management without leaving `/admin/settings`
+- `app/api/admin/profile/resume/route.ts` now owns admin-only resume override writes/removals
+- `app/resume.pdf/route.ts` now serves an uploaded private PDF override when present and falls back to generated profile output when absent
+- `lib/data/profile.ts`, `lib/contracts/profile.ts`, and `lib/actions/profile.actions.ts` now narrow the active Experience editor/runtime contract while keeping the existing Prisma schema compatible
+
+### Why it changed
+
+- the settings editor still exposed fields the public runtime did not truly use
+- `/resume.pdf` was generated-only, so direct resume-file management was missing
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` does not define direct resume-file upload management or a production-ready resume override workflow
+
+### Why the change is minimal
+
+- the public route remains `/resume.pdf`
+- no second resume page, asset manager, or separate profile subsystem was introduced
+- existing Prisma columns and existing file storage were reused instead of adding new schema
+
+### Exact-v0 preservation
+
+- settings UI stays inside the same shell, control tokens, and terminal support language
+- resume management is expressed as simple inline commands, not generic settings widgets
+- public profile rendering remains severe and minimal
+
+### User-visible behavior difference
+
+- admin Experience editing now directly matches what Home and generated resume output actually use
+- admins can upload a real PDF resume override or remove it without changing the public route
+- `/resume.pdf` now resolves to uploaded override first and generated fallback second
+
+### Proof / evidence
+
+- `pnpm test tests/unit/profile-editor-state.test.ts tests/unit/profile-resume-route.test.ts`
+- `pnpm typecheck`
+
+### Follow-up hardening closure
+
+- sub-agent H0-H5 readiness audit initially flagged two H5 blockers:
+  - generated `/resume.pdf` fallback text was not Unicode-safe
+  - resume override replacement deleted the prior file before replacement upload completed
+- H5 was then hardened so:
+  - generated fallback PDF text now uses a Unicode-safe Type0 font path
+  - resume override replacement now uses deterministic overwrite semantics instead of delete-then-upload replacement
+- H0-H5 readiness was re-audited after these fixes and no remaining blocker was reported
+
+### Residual risk
+
+- H5 proof currently covers route/contract behavior directly; browser-level settings-shell interaction remains part of broader H8 parity QA rather than a fresh e2e lock in this pass
+
+---
+
+## H6 Audit Record — Newsletter/subscriber/email hardening
+
+### Status
+
+- accepted
+
+### What changed
+
+- `lib/newsletter/topics.ts` is now the single newsletter topic authority and locks the public/admin taxonomy to:
+  - `All`
+  - `Project & Info`
+  - `Log`
+- alias normalization now preserves old stored topic names without forking the new product rule set
+- public subscribe surfaces and `lib/actions/subscriber.actions.ts` now use the explicit H6 lifecycle:
+  - verification sent
+  - confirmed
+  - subscribed/already active
+  - invalid
+  - expired
+  - unsubscribed
+- confirmation now sends a welcome email through the shared exact-v0 mail frame
+- `lib/email/templates/frame.ts` now owns the static Jitter banner, shared signature, and natural unsubscribe phrasing used by:
+  - confirmation
+  - welcome
+  - unsubscribe
+  - newsletter campaign
+  - test email
+  - contact acknowledgement
+- `prisma/schema.prisma` and `prisma/migrations/20260404190000_add_newsletter_h6_hardening/migration.sql` now add the minimum newsletter schema needed for:
+  - queue ordering
+  - selected-recipient targeting
+  - send-unsent-only reruns
+  - campaign markdown source
+  - newsletter assets/attachments
+- `components/v0/admin/newsletter-manager.tsx`, `lib/data/newsletter.ts`, and `lib/actions/newsletter.actions.ts` now turn `/admin/newsletter` into a real queue/preview/subscriber-management surface while keeping the same v0 shell language
+- `/api/admin/newsletter/uploads` now owns inline newsletter image/file writes
+- `/api/worker/newsletter` now sends attachment-enabled campaign emails from the same delivery queue
+
+### Why it changed
+
+- the old newsletter surface was still a partial prototype and could not manage real queueing, targeting, assets, or subscriber actions
+- the public subscribe lifecycle still exposed generic/raw error language
+- newsletter and transactional emails lacked a consistent xistoh.log mail identity
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` does not define a production newsletter queue, attachment-capable campaign sends, or a real email lifecycle with welcome/unsubscribe states
+
+### Why the change is minimal
+
+- newsletter work stays inside the existing `/admin/newsletter` route and v0 shell instead of adding a second mail-builder product
+- public subscribe affordances remain inline terminal strips on the existing public routes
+- email branding is expressed through one restrained static frame, not a marketing template system
+- new schema was limited to the minimum needed for queue ordering, recipient mode, targeted recipients, reruns, and assets
+
+### Exact-v0 preservation
+
+- admin newsletter management remains dense, textual, and terminal-native
+- the compose surface stays Markdown-first and avoids a SaaS WYSIWYG redesign
+- public subscribe copy remains terse and stateful instead of becoming generic marketing confirmation UI
+- the email banner is static and restrained, inheriting the same Jitter identity without trying to recreate runtime motion in email clients
+
+### User-visible behavior difference
+
+- public subscribe strips now show `All / Project & Info / Log`
+- repeat subscribe no longer resolves as `Already Subscribed`; it resolves as an already-active subscribed state
+- successful confirmation now sends a welcome email
+- unsubscribe language reads naturally inside the same xistoh.log voice
+- `/admin/newsletter` now supports queue save/start/rerun, selected recipients, file/image upload, attachment toggling, subscriber unsubscribe/delete, and paginated management views
+
+### Proof / evidence
+
+- `pnpm db:generate`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm build`
+- `pnpm test tests/unit/subscriber-actions.test.ts tests/unit/newsletter-topics.test.ts tests/unit/newsletter-worker.test.ts tests/unit/email-provider.test.ts tests/unit/profile-resume-route.test.ts tests/unit/profile-editor-state.test.ts tests/unit/post-delete-action.test.ts`
+- sub-agent follow-up audit:
+  - H0-H5 blocker remaining: no
+  - H6 design-context blocker: no
+
+### Minimal extension justification
+
+- production newsletter targeting, asset upload, and lifecycle email framing do not exist literally in `/v0app`
+- xistoh.log still needs a real publish/subscribe pipeline
+- the implementation keeps those additions inside:
+  - the same admin shell
+  - the same terminal control grammar
+  - the same Markdown-first authoring model
+  - the same restrained monochrome/Jitter-cinematic identity
+
+### Residual risk
+
+- H6 proof currently covers compile/build/unit/runtime contracts directly; browser-level admin newsletter interaction remains part of the broader H8 parity QA pass
+- `pnpm test:e2e e2e/newsletter.spec.ts --reporter=line` was attempted but could not complete in this local shell because the e2e web-server build path prerendered `/sitemap.xml` against an unreachable database endpoint (`127.0.0.1:54329`); this is an environment proof gap, not accepted newsletter-runtime failure
+
+---
+
+## H7 Audit Record — Admin performance, service log, final admin scroll close
+
+### Status
+
+- accepted with environment caveat
+
+### What changed
+
+- `lib/ops/readiness.ts` now projects a lightweight service log from existing persisted operational records:
+  - `AuditLog`
+  - `WebhookDelivery`
+  - `NewsletterCampaign`
+  - `NewsletterDelivery`
+- `components/v0/admin/analytics-screen.tsx` now renders that service log inside the same terminal diagnostics surface with no new monitoring widget language
+- `lib/ops/admin-performance.ts` now attributes server-side admin read cost across:
+  - posts index
+  - editor state
+  - settings editor state
+  - newsletter dashboard state
+  - community moderation state
+- `components/v0/admin/analytics-screen.tsx`, `components/v0/admin/manage-posts-screen.tsx`, `components/v0/admin/community-screen.tsx`, `components/v0/admin/newsletter-screen.tsx`, `components/v0/admin/settings-screen.tsx`, and `components/v0/admin/editor-screen.tsx` now use stricter wrapper containment (`min-h-0` plus bottom breathing room) so the shell primary pane remains the reachable scroll owner
+- `lib/actions/newsletter.actions.ts` now:
+  - reports admin-triggered unsubscribe email delivery failure without incorrectly pretending notification succeeded
+  - deletes campaigns before best-effort asset cleanup, avoiding the older partial-storage-delete while the campaign still remained live
+
+### Why it changed
+
+- analytics previously exposed readiness and a narrow timing snapshot but not an actual recent operational log
+- admin latency attribution still left too much of the route cost opaque
+- long admin surfaces still relied on slightly inconsistent wrapper containment
+- H0-H6 audit surfaced two remaining operational correctness risks in newsletter admin actions
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` does not define a real production operations log or multi-surface admin latency attribution
+
+### Why the change is minimal
+
+- all diagnostics stay on `/admin/analytics`
+- service rows are derived from existing tables instead of creating a new ops subsystem
+- scroll fixes are wrapper-containment corrections only
+- no dashboard widget family, modal flow, or alternate admin shell was introduced
+
+### Exact-v0 preservation
+
+- analytics still reads as dense terminal diagnostics rather than a monitoring dashboard
+- service log rows are terse inline operational traces
+- performance diagnostics remain textual measurements, not chart chrome
+- scroll fixes preserve the same admin shell grammar and simply make it more reliable
+
+### User-visible behavior difference
+
+- admins can now inspect recent webhook/newsletter/audit activity directly on `/admin/analytics`
+- performance diagnostics now show which admin surfaces are slow instead of one narrow slice
+- long admin screens keep the primary pane as the reachable scroll owner more consistently
+- newsletter admin unsubscribe/delete actions now communicate operational cleanup more accurately
+
+### Proof / evidence
+
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm build`
+- `pnpm test tests/unit/newsletter-admin-actions.test.ts tests/unit/readiness.test.ts tests/unit/admin-performance.test.ts tests/unit/subscriber-actions.test.ts tests/unit/newsletter-topics.test.ts tests/unit/newsletter-worker.test.ts`
+
+### Environment caveat
+
+- `pnpm test:e2e e2e/admin-analytics.spec.ts --reporter=line` was attempted but could not complete in this local shell because the e2e web-server build path prerendered `/sitemap.xml` against an unreachable database endpoint (`127.0.0.1:54329`)
+- this is recorded as a local environment proof gap rather than accepted failure of the H7 analytics/service-log implementation
+
+---
+
+## H8 Audit Record — Final QA, parity review, documentation lock
+
+### Status
+
+- accepted with environment caveat
+
+### What changed
+
+- reran final hardening proof on the implemented H0-H7 state:
+  - `pnpm db:validate`
+  - `pnpm db:generate`
+  - `pnpm lint`
+  - `pnpm typecheck`
+  - `pnpm build`
+  - `pnpm test`
+- ran local production-build smoke against `next start` and confirmed:
+  - `/`
+  - `/notes`
+  - `/projects`
+  - `/contact`
+  - `/guestbook`
+  - `/admin -> 307`
+  - `/admin/login`
+  - `/notes/rss.xml`
+  - `/projects/rss.xml`
+  - `/resume.pdf`
+- ran `pnpm ops:smoke` successfully against the live local production build
+- ran browser-level admin analytics QA against a local prod-like app using live production-style auth/data env:
+  - credential login succeeded
+  - `/admin/analytics` rendered both performance diagnostics and the service log
+- finalized the H0-H7 sub-agent production-readiness audit:
+  - blocker: no
+  - exact-v0 consistency blocker: no
+- `lib/profile/resume.ts` now makes read-only resume override lookup fail open:
+  - public `/resume.pdf` falls back to generated PDF when override storage cannot be read
+  - admin settings resume-state read falls back to `generated`
+  - admin upload/delete writes remain fail-closed
+- added direct proof for the new resume fallback behavior in:
+  - `tests/unit/profile-resume-route.test.ts`
+  - `tests/unit/profile-resume-storage.test.ts`
+
+### Why it changed
+
+- H8 final smoke exposed a real public runtime defect: `/resume.pdf` returned `500` when override storage was unconfigured or unreadable, even though the route is supposed to fall back to generated output
+- the final phase also had to convert the prior H0-H7 acceptance chain into a documented final readiness verdict instead of leaving H8 as an empty placeholder
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` does not define production release gating, environment-safe RSS/feed smoke, or a resume-file override fallback policy
+
+### Why the change is minimal
+
+- the H8 code change is confined to read-only resume override lookup
+- no route family, schema, or UI pattern changed
+- admin write paths still fail closed and expose storage misconfiguration through the existing operational surfaces
+
+### Exact-v0 preservation
+
+- this phase adds no new visual language
+- QA closure stays documentation-driven and leaves public/admin shells untouched except for the resume read fallback semantics
+- the production smoke confirms the existing exact-v0 surfaces rather than redefining them
+
+### User-visible behavior difference
+
+- `/resume.pdf` no longer fails if uploaded override storage is unavailable; it falls back to the generated resume PDF
+- admin settings can still open and show generated resume state even when override storage reads are unavailable
+- H0-H8 now has a documented final readiness record instead of a pending placeholder
+
+### Proof / evidence
+
+- `pnpm db:validate`
+- `pnpm db:generate`
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm build`
+- `pnpm test`
+- local production-build route smoke against `next start`
+- `APP_URL=http://127.0.0.1:3010 CRON_SECRET=<local-secret> pnpm ops:smoke`
+- browser-level `/admin/analytics` QA against a local prod-like app
+- sub-agent H0-H7 final audit:
+  - production blockers: no
+  - exact-v0 blocker: no
+
+### Environment caveat
+
+- full Playwright suite proof is still blocked in this local shell because the disposable test database endpoint configured in `.env.test.local` (`127.0.0.1:54329`) is not reachable, so:
+  - `pnpm test:db:prepare` fails
+  - Playwright global setup cannot complete a database-backed reset
+- the provided production-style database credentials were not substituted into Playwright global setup because that setup truncates tables and is meant for disposable test infrastructure only
+- this is recorded as a local environment/infrastructure proof gap, not as accepted runtime failure of the implemented H0-H8 code
 
 ---
 
@@ -911,8 +1502,6 @@ Why accepted:
 - still open after QA and carried forward explicitly:
   - R2 continuity is still visually approximated rather than a true field-to-field dither/Life transform
   - production-equivalent Supabase bucket creation/update remains unverified because real credentials are unavailable in this shell
-  - resume PDF still uses Courier/ASCII-era rendering, so full non-ASCII glyph support is not yet solved
-  - `/guestbook` remains capped by the default fetch limit and does not yet expose paging/archive controls
   - body embeds still depend on cached preview metadata and are not enriched eagerly on save
   - public detail routes still fetch detail data twice via metadata plus page render
   - duplicate shadow files such as `* 2.tsx` / `* 3.tsx` remain repo hygiene risk

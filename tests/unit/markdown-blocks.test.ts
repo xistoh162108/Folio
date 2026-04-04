@@ -7,6 +7,10 @@ describe("markdown block writer", () => {
 
 paragraph with $x^2$ and [link](https://example.com)
 
+\`\`\`ts
+const total = sum(2, 3)
+\`\`\`
+
 - first
 - second
 
@@ -24,6 +28,7 @@ https://github.com/openai/openai
     expect(payload.content.blocks.map((block) => block.type)).toEqual([
       "heading",
       "paragraph",
+      "code",
       "list",
       "math",
       "embed",
@@ -32,6 +37,9 @@ https://github.com/openai/openai
     expect(payload.htmlContent).toContain("<h1>")
     expect(payload.htmlContent).toContain('data-math-inline="true"')
     expect(payload.htmlContent).toContain('data-math-block="true"')
+    expect(payload.htmlContent).toContain('class="katex"')
+    expect(payload.htmlContent).toContain('class="language-ts"')
+    expect(payload.htmlContent).toContain('data-language="ts"')
     expect(payload.htmlContent).toContain('data-provider="github"')
     expect(payload.htmlContent).toContain("<figure data-block=\"image\">")
   })

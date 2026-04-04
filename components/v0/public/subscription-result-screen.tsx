@@ -12,6 +12,7 @@ interface SubscriptionResultScreenProps {
   title: string;
   eyebrow: string;
   body: string;
+  overlayValue?: string;
   actionLabel?: string;
   actions?: ReactNode;
 }
@@ -22,6 +23,7 @@ export function SubscriptionResultScreen({
   title,
   eyebrow,
   body,
+  overlayValue = "[READY]",
   actionLabel,
   actions,
 }: SubscriptionResultScreenProps) {
@@ -32,7 +34,7 @@ export function SubscriptionResultScreen({
   const runtimeDescriptor: V0RuntimeDescriptor = {
     mode: "dither",
     variant: "public-generic",
-    overlay: { label: `// ${eyebrow.toUpperCase()}`, value: "[COMPLETE]" },
+    overlay: { label: `// ${eyebrow.toUpperCase()}`, value: overlayValue },
   };
 
   return (
@@ -51,7 +53,7 @@ export function SubscriptionResultScreen({
             <p className={`text-sm leading-relaxed ${mutedText}`}>{body}</p>
             <div className={`pt-4 border-t ${borderColor} space-y-2`}>
               <p className={`text-xs ${mutedText}`}>
-                [{eyebrow.toUpperCase()}]
+                {overlayValue}
               </p>
               <p className={`text-xs ${mutedText}`}>// command result ready</p>
             </div>
