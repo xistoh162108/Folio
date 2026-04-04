@@ -2,8 +2,8 @@
 
 ## Status
 
-- Last updated: 2026-04-05
-- Current overall status: R1-R9 accepted baseline; H0-H8 complete
+- Last updated: 2026-04-04
+- Current overall status: R1-R9 accepted baseline; H0-H8 complete; T1 complete
 - Cross-phase QA follow-up for R2 continuity exactness and database-backed Playwright proof in this local environment is recorded in the audit log.
 
 ## Governance rule
@@ -49,6 +49,12 @@ No phase is complete unless:
 | H6    | Newsletter/subscriber/email hardening                     | done   | H0 + H1             |
 | H7    | Admin performance, service log, final admin scroll close  | done   | H3 + H4 + H5 + H6   |
 | H8    | Final QA, parity review, documentation lock               | done   | H1-H7               |
+
+## Targeted patch lineage summary
+
+| Line | Title                                              | Status | Blocking dependency |
+| ---- | -------------------------------------------------- | ------ | ------------------- |
+| T1   | Targeted production fix sprint (`T1-01` - `T1-08`) | done   | H0-H8 baseline      |
 
 ---
 
@@ -548,6 +554,75 @@ Re-run the full hardening proof set, close the last production-facing runtime ga
 - [x] final build/unit/runtime smoke recorded
 - [x] public resume fallback hardening recorded
 - [x] final documentation lock recorded
+
+---
+
+## T1 — Targeted production fix sprint (`T1-01` - `T1-08`)
+
+### Status
+
+- done
+
+### Objective
+
+Close the remaining narrowly-scoped production defects discovered after the accepted `H0-H8` line, without reopening redesign or schema-expansion work.
+
+### Scope
+
+- delete/create workflow correctness
+- public code-block renderer cleanup
+- project summary truth and editability
+- exact-v0 assets workflow cleanup
+- public comment moderation removal
+- contact webhook dispatch diagnostics and authority
+- Notes/Projects control-height parity
+- outgoing sender identity normalization
+
+### Sub-issue summary
+
+| Issue | Title                                      | Status |
+| ----- | ------------------------------------------ | ------ |
+| T1-01 | Delete Post create-side-effect removal     | done   |
+| T1-02 | Public code-block render corruption fix    | done   |
+| T1-03 | Canonical project summary editor/runtime   | done   |
+| T1-04 | Exact-v0 asset workflow cleanup            | done   |
+| T1-05 | Public admin-moderation affordance removal | done   |
+| T1-06 | `CONTACT_SUBMIT` webhook dispatch repair   | done   |
+| T1-07 | Notes/Projects search-reset control parity | done   |
+| T1-08 | Sender display-name normalization          | done   |
+
+### Concrete tasks
+
+- lock `CREATE_DRAFT_POST` to explicit navigation/create actions only
+- remove idle/hover prefetch of `/admin/content`
+- replace markup-mutating code highlighting with raw-code-only rendering
+- keep LaTeX on the current math path
+- expose `Post.excerpt` in the exact-v0 editor and remove project fallback prose injection
+- clarify `coverImageUrl` as the selected share image inside the single `[assets]` workflow
+- expand upload support only to the explicit safe text/document allowlist
+- remove `[admin remove]` from public comments while preserving admin/community moderation
+- align Notes/Projects reset controls to the shared inline control token
+- normalize outgoing sender identity to `xistoh <hello@xistoh.com>`
+- make webhook dispatch env-authoritative, timeout-bounded, and diagnostically classified
+
+### Acceptance criteria
+
+- deleting a post does not appear to recreate a replacement draft
+- public code blocks render clean code without leaked class/style text
+- LaTeX still renders correctly
+- project summary derives only from editable `excerpt`
+- share-image selection remains real and no dead cover UI remains
+- public comments expose no admin moderation affordance
+- `CONTACT_SUBMIT` dispatch uses the current env target and produces actionable diagnostics on failure
+- Notes/Projects search and reset controls share the same control height
+- outgoing sender identity renders as `xistoh <hello@xistoh.com>`
+
+### Post-implementation audit checklist
+
+- [x] T1 sub-issues recorded in canonical docs
+- [x] targeted renderer/editor/webhook tests passed
+- [x] lint/typecheck/build rerun after T1 implementation
+- [x] exact-v0 preservation note recorded in audit
 
 ---
 

@@ -2,7 +2,6 @@ import { V0CommentsLog } from "@/components/v0/public/comments-log"
 import { DetailProjectScreen } from "@/components/v0/public/detail-project-screen"
 import { formatBytes } from "@/components/v0/public/mappers"
 import { V0PostLikeButton } from "@/components/v0/public/post-like-button"
-import { getSession } from "@/lib/auth"
 import { collectBlockDocumentResources, normalizeContentResourceUrl } from "@/lib/content/post-content"
 import { getPublishedPostDetail } from "@/lib/data/posts"
 import type { PostDetailDTO } from "@/lib/contracts/posts"
@@ -17,8 +16,7 @@ export async function DetailProjectScreenBound({
   brandLabel?: string
   post?: PostDetailDTO
 }) {
-  const [session, resolvedPost, isDarkMode] = await Promise.all([
-    getSession(),
+  const [resolvedPost, isDarkMode] = await Promise.all([
     post ? Promise.resolve(post) : getPublishedPostDetail("PROJECT", slug),
     getV0ThemeIsDark(),
   ])
@@ -60,7 +58,6 @@ export async function DetailProjectScreenBound({
             postId={resolvedPost.id}
             initialComments={resolvedPost.comments}
             initialCommentsPagination={resolvedPost.commentsPagination}
-            canModerate={Boolean(session?.user?.id)}
             isDarkMode={isDarkMode}
           />
         </>

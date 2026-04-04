@@ -390,6 +390,16 @@ export function PostEditor({
             <p className={`text-xs ${mutedText}`}>// project details</p>
 
             <div className="space-y-2">
+              <label className={`text-xs ${mutedText}`}>Summary</label>
+              <input
+                value={form.excerpt ?? ""}
+                onChange={(event) => setForm((current) => ({ ...current, excerpt: event.target.value }))}
+                placeholder="short representative summary_"
+                className={fieldClass}
+              />
+            </div>
+
+            <div className="space-y-2">
               <label className={`text-xs ${mutedText}`}>Project URLs</label>
               {projectLinks.length === 0 ? <p className={`text-sm ${mutedText}`}>No project URLs yet.</p> : null}
               {projectLinks.map((link, index) => (
@@ -428,7 +438,7 @@ export function PostEditor({
                 [+] Add another URL
               </button>
             </div>
-            <p className={`text-xs ${mutedText}`}>cover image is selected from the uploaded image list in [assets]</p>
+            <p className={`text-xs ${mutedText}`}>share image is selected from the uploaded image list in [assets]</p>
           </div>
         ) : null}
 
@@ -436,7 +446,7 @@ export function PostEditor({
           <div className="space-y-1">
             <p className={`text-sm ${mutedText}`}>{isUploading ? "[ uploading_ ]" : "Upload images or files"}</p>
             <p className={`text-xs ${mutedText}`}>or click to browse files</p>
-            <p className={`text-xs ${mutedText}`}>uploaded assets become insertable below and images can be marked as the cover</p>
+            <p className={`text-xs ${mutedText}`}>uploaded assets become insertable below and images can be marked as the share image</p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
             <label className={`${buttonClass} cursor-pointer`}>
@@ -457,7 +467,7 @@ export function PostEditor({
               [file]
               <input
                 type="file"
-                accept=".pdf,.txt,text/plain,application/pdf"
+                accept=".pdf,.txt,.md,.csv,.json,.yml,.yaml,.xml,.log,text/plain,text/markdown,text/csv,application/json,text/yaml,application/xml,text/xml,application/pdf"
                 multiple
                 disabled={isUploading}
                 onChange={(event) => {
@@ -578,31 +588,16 @@ export function PostEditor({
         <details className={supportBlockClass}>
           <summary className={`cursor-pointer text-xs ${mutedText}`}>[assets]</summary>
           <div className="space-y-4 pt-4">
-            <div className={`border ${borderColor} px-3 py-3`}>
-              <p className={`text-xs ${mutedText}`}>// cover image</p>
-              {form.coverImageUrl ? (
-                <div className="mt-3 space-y-3">
-                  <img
-                    src={form.coverImageUrl}
-                    alt={form.title || "Cover image"}
-                    className={`h-40 w-full border ${borderColor} object-cover`}
-                  />
-                  <div className="flex flex-wrap items-center gap-3 text-xs">
-                    <span className={mutedText}>
-                      {coverImageAsset ? `${coverImageAsset.originalName} :: selected cover` : "external/manual cover selected"}
-                    </span>
-                    <button type="button" onClick={() => setCoverImageUrl(null)} className={compactButtonClass}>
-                      [clear cover]
-                    </button>
-                  </div>
-                  <p className={`text-xs ${mutedText} break-all`}>{form.coverImageUrl}</p>
-                  <p className={`text-xs ${mutedText}`}>recommended ratio :: 16:9 or 3:2</p>
-                </div>
-              ) : (
-                <p className={`mt-3 text-sm ${mutedText}`}>No cover selected. Choose one from an uploaded image below.</p>
-              )}
-            </div>
             {imageAssets.length === 0 && fileAssets.length === 0 ? <p className={`text-sm ${mutedText}`}>No uploaded assets yet.</p> : null}
+            {form.coverImageUrl && !coverImageAsset ? (
+              <div className={`flex flex-wrap items-center gap-3 border ${borderColor} px-3 py-3 text-xs`}>
+                <span className={mutedText}>external/manual share image selected</span>
+                <button type="button" onClick={() => setCoverImageUrl(null)} className={compactButtonClass}>
+                  [clear share image]
+                </button>
+                <span className={`min-w-0 break-all ${mutedText}`}>{form.coverImageUrl}</span>
+              </div>
+            ) : null}
             {imageAssets.length > 0 ? (
               <ul className="space-y-2 text-sm">
                 {imageAssets.map((asset) => (
@@ -612,7 +607,7 @@ export function PostEditor({
                       <div className="min-w-0 space-y-1">
                         <p className="break-words">{asset.originalName}</p>
                         <p className={`text-xs ${mutedText} break-all`}>{asset.url}</p>
-                        {form.coverImageUrl === asset.url ? <p className={`text-xs ${mutedText}`}>[cover image]</p> : null}
+                        {form.coverImageUrl === asset.url ? <p className={`text-xs ${mutedText}`}>[share image]</p> : null}
                       {asset.pendingDeleteAt ? <p className="text-xs text-amber-300">Queued for deletion</p> : null}
                     </div>
                     </div>
@@ -626,11 +621,11 @@ export function PostEditor({
                       </button>
                       {form.coverImageUrl === asset.url ? (
                         <button type="button" onClick={() => setCoverImageUrl(null)} className={compactButtonClass}>
-                          [clear cover]
+                          [clear share image]
                         </button>
                       ) : (
                         <button type="button" onClick={() => setCoverImageUrl(asset.url)} className={compactButtonClass}>
-                          [set cover]
+                          [set share image]
                         </button>
                       )}
                       <a href={asset.url} target="_blank" rel="noreferrer" className={compactButtonClass}>
@@ -896,7 +891,7 @@ export function PostEditor({
         <div className={panelClass}>
           <div className="space-y-1">
             <p className={isV0 ? "text-xs text-white/50" : "text-xs uppercase tracking-[0.18em] text-zinc-500"}>Image upload</p>
-            <p className={isV0 ? "text-sm text-white/60" : "text-sm text-zinc-400"}>JPEG, PNG, WEBP up to 8MB. Uploading an image also sets the cover URL.</p>
+            <p className={isV0 ? "text-sm text-white/60" : "text-sm text-zinc-400"}>JPEG, PNG, WEBP up to 8MB. Uploaded images become insertable assets and can be selected as the share image.</p>
           </div>
           <input
             type="file"
@@ -948,11 +943,11 @@ export function PostEditor({
         <div className={panelClass}>
           <div className="space-y-1">
             <p className={isV0 ? "text-xs text-white/50" : "text-xs uppercase tracking-[0.18em] text-zinc-500"}>File attachments</p>
-            <p className={isV0 ? "text-sm text-white/60" : "text-sm text-zinc-400"}>PDF and TXT only. Private in storage, signed for download through the app.</p>
+            <p className={isV0 ? "text-sm text-white/60" : "text-sm text-zinc-400"}>PDF, TXT, MD, CSV, JSON, YAML, XML, and LOG. Private in storage, signed for download through the app.</p>
           </div>
           <input
             type="file"
-            accept=".pdf,.txt,text/plain,application/pdf"
+            accept=".pdf,.txt,.md,.csv,.json,.yml,.yaml,.xml,.log,text/plain,text/markdown,text/csv,application/json,text/yaml,application/xml,text/xml,application/pdf"
             multiple
             disabled={isUploading}
             onChange={(event) => {

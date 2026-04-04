@@ -63,6 +63,7 @@ export function DetailProjectScreen({
           ),
       )
     : [];
+  const summary = post ? post.excerpt?.trim() ?? "" : sampleProjectContent.description
 
   const handleCopyLink = async () => {
     if (!navigator.clipboard) {
@@ -118,9 +119,11 @@ export function DetailProjectScreen({
                 <h1 className="text-xl">
                   {post?.title ?? sampleProjectContent.title}
                 </h1>
-                <p className={`text-sm ${mutedText} leading-relaxed`}>
-                  {post?.excerpt ?? sampleProjectContent.description}
-                </p>
+                {summary ? (
+                  <p className={`text-sm ${mutedText} leading-relaxed`}>
+                    {summary}
+                  </p>
+                ) : null}
               </div>
 
               {post?.tags.length ? (

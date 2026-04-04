@@ -147,7 +147,7 @@ describe("email provider", () => {
     })
 
     expect(emailsSendMock).toHaveBeenCalledWith({
-      from: "hello@xistoh.com",
+      from: "xistoh <hello@xistoh.com>",
       to: ["reader@example.com"],
       subject: "Hello",
       html: "<p>Hello</p>",
@@ -189,15 +189,24 @@ describe("email provider", () => {
     expect(emailsSendMock).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
+        from: "xistoh <hello@xistoh.com>",
         to: ["older@example.com"],
       }),
     )
     expect(emailsSendMock).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
+        from: "xistoh <hello@xistoh.com>",
         to: ["newer@example.com"],
       }),
     )
+  })
+
+  it("normalizes the live sender identity to xistoh while preserving the address", async () => {
+    const { normalizeSenderIdentity } = await import("@/lib/email/providers/resend")
+
+    expect(normalizeSenderIdentity("hello@xistoh.com")).toBe("xistoh <hello@xistoh.com>")
+    expect(normalizeSenderIdentity("hello <hello@xistoh.com>")).toBe("xistoh <hello@xistoh.com>")
   })
 })
 

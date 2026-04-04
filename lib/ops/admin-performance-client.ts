@@ -2,7 +2,7 @@ import type { AdminClientPerformanceEntry, AdminClientPerformanceSnapshot } from
 
 const NAV_START_STORAGE_KEY = "v0-admin-nav-start"
 const PERF_STORAGE_KEY = "v0-admin-performance"
-const ADMIN_PREFETCH_STRATEGY = "idle-neighbors + hover/focus"
+const ADMIN_PREFETCH_STRATEGY = "idle-neighbors + hover/focus (explicit-create excluded)"
 
 type MutableAdminClientPerformanceSnapshot = {
   recentNavigation: AdminClientPerformanceEntry | null

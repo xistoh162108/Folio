@@ -9,13 +9,11 @@ export function V0CommentsLog({
   postId,
   initialComments,
   initialCommentsPagination,
-  canModerate,
   isDarkMode,
 }: {
   postId: string
   initialComments: PostCommentDTO[]
   initialCommentsPagination: PaginatedCollectionStateDTO
-  canModerate: boolean
   isDarkMode: boolean
 }) {
   const [comments, setComments] = useState(initialComments)
@@ -137,29 +135,6 @@ export function V0CommentsLog({
     }
   }
 
-  async function moderateDelete(commentId: string) {
-    setDeletingId(commentId)
-    setError(null)
-
-    try {
-      const response = await fetch(`/api/admin/comments/${commentId}`, {
-        method: "POST",
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error ?? "Could not moderate comment.")
-      }
-
-      setComments((current) => current.filter((comment) => comment.id !== commentId))
-      updatePaginationTotal(pagination.total - 1)
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Could not moderate comment.")
-    } finally {
-      setDeletingId(null)
-    }
-  }
-
   return (
     <section className={`pt-8 border-t ${borderColor} space-y-4`}>
       <p className={`text-xs ${mutedText}`}>// comments</p>
@@ -254,18 +229,6 @@ export function V0CommentsLog({
                 >
                   {deletingId === comment.id ? "[...]" : "[delete]"}
                 </button>
-                {canModerate ? (
-                  <button
-                    type="button"
-                    onClick={() => void moderateDelete(comment.id)}
-                    disabled={deletingId === comment.id}
-                    className={`${hoverBg} px-2 py-1 ${isDarkMode ? "text-red-400" : "text-red-600"} ${
-                      deletingId === comment.id ? "opacity-50" : ""
-                    }`}
-                  >
-                    [admin remove]
-                  </button>
-                ) : null}
               </div>
             </div>
           </div>

@@ -185,7 +185,7 @@ export function NotesScreen({
               search
             </button>
             {(searchQuery || selectedTag) ? (
-              <Link href="/notes" className={`px-2 py-1 border ${borderColor} ${hoverBg}`}>
+              <Link href="/notes" className={`v0-control-inline-button ${borderColor} ${hoverBg}`}>
                 [reset]
               </Link>
             ) : null}

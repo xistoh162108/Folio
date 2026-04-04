@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 
 import { renderInlineMarkdownHtml } from "@/lib/content/markdown-blocks"
+import { extractFallbackBlocks, syntaxHighlight } from "@/lib/content/detail-render"
 import { renderBlockMathHtml, renderInlineMathHtml } from "@/lib/content/math-render"
 import { isBlockDocument } from "@/lib/content/post-content"
 import type { ContentBlock, EmbedBlock, ImageBlock } from "@/lib/contracts/content-blocks"
@@ -19,15 +20,6 @@ type ContentNode = {
   attrs?: Record<string, unknown>
   marks?: ContentMark[]
   content?: ContentNode[]
-}
-
-function decodeHtml(value: string) {
-  return value
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
 }
 
 function escapeHtml(value: string) {
@@ -53,40 +45,6 @@ function getPlainText(nodes: ContentNode[] = []): string {
       return ""
     })
     .join("")
-}
-
-function parseInlineHtml(html: string): string {
-  return decodeHtml(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())
-}
-
-function syntaxHighlight(code: string, isDarkMode: boolean) {
-  const accentClass = isDarkMode ? "text-[#D4FF00]" : "text-[#3F5200]"
-  const mutedClass = isDarkMode ? "text-white/35" : "text-black/40"
-  return escapeHtml(code)
-    .replace(
-      /\b(import|from|def|return|class|if|else|for|while|try|except|with|as|in|and|or|not|True|False|None)\b/g,
-      `<span class="${accentClass}">$1</span>`,
-    )
-    .replace(
-      /\b(np|numpy|math|os|sys)\b/g,
-      `<span class="${accentClass}">$1</span>`,
-    )
-    .replace(
-      /\b([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g,
-      `<span class="${accentClass}">$1</span>`,
-    )
-    .replace(
-      /(["'])(.*?)\1/g,
-      `<span class="${accentClass}">$1$2$1</span>`,
-    )
-    .replace(
-      /#.*$/gm,
-      `<span class="${mutedClass}">$&</span>`,
-    )
-    .replace(
-      /\b(\d+\.?\d*)\b/g,
-      `<span class="${accentClass}">$1</span>`,
-    )
 }
 
 function applyMarks(content: string, marks: ContentMark[] | undefined, isDarkMode: boolean): string {
@@ -136,69 +94,6 @@ function renderInlineHtml(nodes: ContentNode[] = [], isDarkMode: boolean): strin
       return ""
     })
     .join("")
-}
-
-function extractFallbackBlocks(html: string) {
-  const blocks: Array<
-    | { type: "paragraph"; html: string }
-    | { type: "heading"; text: string }
-    | { type: "blockquote"; lines: string[] }
-    | { type: "code"; language: string; code: string }
-  > = []
-
-  const codeRegex = /<pre[^>]*>\s*<code([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/gi
-  let lastIndex = 0
-
-  for (const match of html.matchAll(codeRegex)) {
-    const [fullMatch, attributes = "", rawCode = ""] = match
-    const matchIndex = match.index ?? 0
-    const languageMatch =
-      attributes.match(/class="[^"]*language-([^"\s]+)[^"]*"/i) ?? attributes.match(/data-language="([^"]+)"/i)
-    const language = languageMatch?.[1] ?? ""
-    const before = html.slice(lastIndex, matchIndex)
-    blocks.push(...extractTextBlocks(before))
-    blocks.push({
-      type: "code",
-      language,
-      code: decodeHtml(rawCode),
-    })
-    lastIndex = matchIndex + fullMatch.length
-  }
-
-  blocks.push(...extractTextBlocks(html.slice(lastIndex)))
-  return blocks
-}
-
-function extractTextBlocks(html: string) {
-  return html
-    .replace(/<(\/)?(ul|ol|li)[^>]*>/gi, "\n")
-    .replace(/<(\/)?(p|div|section|article|blockquote|h1|h2|h3|h4|h5|h6)[^>]*>/gi, "\n\n")
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      if (/^<h[1-6][^>]*>/i.test(block)) {
-        return {
-          type: "heading" as const,
-          text: parseInlineHtml(block),
-        }
-      }
-
-      if (/^<blockquote/i.test(block)) {
-        return {
-          type: "blockquote" as const,
-          lines: parseInlineHtml(block)
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean),
-        }
-      }
-
-      return {
-        type: "paragraph" as const,
-        html: parseInlineHtml(block),
-      }
-    })
 }
 
 function normalizeLinkKey(url: string) {

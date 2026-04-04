@@ -3,7 +3,7 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-04-05
+- Last updated: 2026-04-04
 - Canonical route/runtime ownership authority: this file
 
 ## Purpose
@@ -129,6 +129,37 @@ Ownership rules:
 - service diagnostics remain inside `/admin/analytics` and do not move into a separate monitoring route
 - admin shell fixes remain containment/scroll-owner corrections only
 - no modal/drawer/card workaround is introduced for long admin surfaces
+
+## 2026-04 targeted production patch route addendum (T1)
+
+### Admin create-route ownership correction
+
+- `/admin/content` remains an explicit create route only
+- `/admin/content` may create a draft only when reached by explicit user navigation or explicit create action
+- `/admin/content` must never be idle-prefetched, hover-prefetched, focus-prefetched, or hidden-route warmed by the admin shell
+
+### Published detail ownership correction
+
+- note/project detail routes own clean rendered code output and must not expose leaked class/style markup as visible code text
+- math rendering remains on the existing detail math path and is not reinterpreted by code-block fixes
+- public detail routes no longer own any admin moderation affordance for comments; moderation ownership remains exclusively on `/admin/community`
+
+### Project summary ownership correction
+
+- project detail and project list surfaces both derive summary text from `Post.excerpt` only
+- empty `excerpt` is an intentional no-summary state, not a cue for fallback prose injection
+
+### Editor asset ownership correction
+
+- the exact-v0 editor keeps one upload entry point and one `[assets]` panel
+- selected image ownership remains on `coverImageUrl`, but the user-facing meaning is now the route/share-preview image rather than a guaranteed visible hero
+- there is no second cover-manager or asset-manager route family
+
+### Webhook route ownership correction
+
+- `/api/worker/webhook` now treats the current validated env target as the authoritative dispatch destination for `CONTACT_SUBMIT`
+- stale stored destination fields remain diagnostic metadata only
+- placeholder or `.example` destinations are treated as configuration errors rather than retriable network destinations
 
 ## Current repository truth
 
@@ -310,11 +341,21 @@ The shell body must own the geometry so the Jitter slot fills the full intended 
 - admin shell + shared runtime
 - route owns list data/interactions
 - runtime owns right-panel continuity
+- route may prefetch adjacent safe admin destinations, but never the explicit create route `/admin/content`
 
 `/admin/posts/[postId]`
 - admin shell + shared runtime
 - route owns v0 content subtree and Markdown-first editor host
 - runtime owns right-panel continuity
+
+`/admin/content`
+- admin shell + shared runtime
+- explicit draft-creation route only
+- route is user-invoked, not shell-prefetched
+
+`/admin/content/[postId]`
+- legacy redirect alias
+- no independent create or editor ownership
 
 `/admin/settings`
 - admin shell + shared runtime
@@ -328,6 +369,22 @@ The shell body must own the geometry so the Jitter slot fills the full intended 
 - admin shell + shared runtime
 - route owns moderation content
 - route owns independent `commentPage` / `guestbookPage` query state for scalable moderation
+
+`/api/worker/webhook`
+- worker-only operational route
+- owns queued webhook dispatch, target validation, timeout handling, and diagnostic classification
+
+`/api/admin/uploads`
+- admin-only editor upload surface
+- owns the exact-v0 assets allowlist for image/file uploads
+
+`/api/admin/newsletter/uploads`
+- admin-only newsletter upload surface
+- owns the same safe file allowlist for newsletter image/file assets
+
+`/api/posts/[postId]/comments`
+- public comment read/write route
+- no public admin moderation affordance is exposed through this route family
 
 ## Ownership change sequence
 

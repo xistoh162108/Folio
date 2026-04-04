@@ -18,6 +18,8 @@ Existing accepted lineages:
   - post-P6 responsive/runtime baseline
 - `H0-H8`
   - post-P6 hardening and production-acceptance line
+- `T1`
+  - targeted post-hardening production fix sprint
 
 Future large workstreams must:
 
@@ -26,6 +28,12 @@ Future large workstreams must:
 3. keep one tracker and one audit thread per workstream
 
 Do not invent ad-hoc prefixes in commit messages only.
+
+Targeted correction sprints may use a short line prefix such as `T1`, `T2`, and so on when:
+
+1. the work is narrower than a multi-phase program
+2. the fixes are still load-bearing enough to require canonical doc updates
+3. issue-level tracking is required under one accepted correction thread
 
 ## Issue and feature naming
 

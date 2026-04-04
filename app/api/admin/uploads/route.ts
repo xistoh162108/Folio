@@ -26,6 +26,13 @@ const FALLBACK_MIME_BY_EXTENSION = {
   webp: "image/webp",
   pdf: "application/pdf",
   txt: "text/plain",
+  md: "text/markdown",
+  csv: "text/csv",
+  json: "application/json",
+  yml: "text/yaml",
+  yaml: "text/yaml",
+  xml: "application/xml",
+  log: "text/plain",
 } as const
 
 function resolveUploadMime(file: File, allowedMimes: readonly string[]) {

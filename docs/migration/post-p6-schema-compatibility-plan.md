@@ -3,7 +3,7 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-04-05
+- Last updated: 2026-04-04
 - Canonical schema and compatibility authority: this file
 
 ## Purpose
@@ -263,6 +263,53 @@ Compatibility rules:
 - H8 does not add a new resume table, field, or route
 - public contract for `/resume.pdf` remains stable while becoming more resilient to storage-read defects
 - storage readiness remains observable through analytics/admin operations rather than leaking as a public resume-route failure
+
+## 2026-04 targeted production patch compatibility addendum (T1)
+
+`T1` ships without a Prisma migration.
+
+Load-bearing compatibility behavior:
+
+- `Post.excerpt` remains the single canonical project summary field for both project lists and project detail pages
+- the exact-v0 editor now binds the existing `excerpt` field directly instead of relying on fallback prose at read time
+- empty `excerpt` remains a first-class state and now means:
+  - no summary line in project detail
+  - no summary block in project list
+  - no fixture or placeholder description injection
+- `coverImageUrl` remains the single persisted share/preview image pointer
+- user-facing copy may say `share image` or `preview image`, but the stored field stays `coverImageUrl`
+- the single editor assets workflow remains the only asset-management surface; no second asset-manager subsystem is introduced
+- safe file upload support is explicitly allowlisted to:
+  - `application/pdf`
+  - `text/plain`
+  - `text/markdown`
+  - `text/csv`
+  - `application/json`
+  - `text/yaml`
+  - `application/xml`
+  - `text/xml`
+  with matching extension fallback handling for:
+  - `.txt`
+  - `.md`
+  - `.csv`
+  - `.json`
+  - `.yml`
+  - `.yaml`
+  - `.xml`
+  - `.log`
+  - `.pdf`
+- public comment rendering no longer accepts a public admin-moderation contract
+- webhook worker dispatch now resolves the authoritative `CONTACT_SUBMIT` destination from the current validated env target
+- stale stored destination values remain readable for diagnostics/audit but are not authoritative for dispatch
+- outbound webhook failures now store classified runtime diagnostics instead of an undifferentiated `fetch failed`
+- email sender identity normalization happens at provider level and does not change the underlying configured sender address
+
+Compatibility rules:
+
+- old posts remain readable because the summary source is still `excerpt`
+- no backfill is required for posts with empty `excerpt`; they now simply render without a summary
+- older stored `WebhookDelivery.destination` values remain visible in service logs and diagnostics, but worker dispatch must prefer the current env target
+- sender normalization is output-only and requires no DB change
 
 ## Current repository truth
 

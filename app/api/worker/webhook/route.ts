@@ -3,6 +3,11 @@ import { prisma } from "../../../../lib/db/prisma"
 import type { ContactSubmitWebhookPayload } from "@/lib/contracts/webhooks"
 import { env } from "@/lib/env"
 import { appendJsonLine, TEST_WEBHOOK_SINK_PATH } from "@/lib/testing/sinks"
+import {
+  classifyWebhookDispatchError,
+  dispatchWebhookRequest,
+  resolveWebhookDispatchTarget,
+} from "@/lib/workers/webhook-delivery"
 
 const MAX_RETRIES = 5
 const BATCH_SIZE = 10
@@ -40,31 +45,36 @@ async function handleWebhookWorker(request: Request) {
 
     const results = await Promise.allSettled(
       claimedRows.map(async (job) => {
-        try {
-          console.log(`[WEBHOOK DISPATCH] Target: ${job.destination}`, job.payload)
+        let resolvedDestination = job.destination
+        let staleStoredDestination: string | null = null
 
-          if (job.destination.startsWith("console://")) {
+        try {
+          const dispatchTarget = resolveWebhookDispatchTarget(job.destination)
+          resolvedDestination = dispatchTarget.destination
+          staleStoredDestination = dispatchTarget.staleStoredDestination
+
+          console.log(`[WEBHOOK DISPATCH] Target: ${resolvedDestination}`, {
+            payload: job.payload,
+            source: dispatchTarget.source,
+            staleStoredDestination,
+          })
+
+          if (dispatchTarget.configError) {
+            throw new Error(dispatchTarget.configError)
+          }
+
+          if (resolvedDestination.startsWith("console://")) {
             console.info("[webhook:fallback]", job.payload)
-          } else if (job.destination.startsWith("test://")) {
+          } else if (resolvedDestination.startsWith("test://")) {
             await appendJsonLine(TEST_WEBHOOK_SINK_PATH, {
-              destination: job.destination,
+              destination: resolvedDestination,
               payload: job.payload,
               deliveredAt: new Date().toISOString(),
             })
-          } else if (job.destination.startsWith("config://")) {
+          } else if (resolvedDestination.startsWith("config://")) {
             throw new Error("Ops webhook delivery is not configured for production.")
           } else {
-            const response = await fetch(job.destination, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(job.payload),
-            })
-
-            if (!response.ok) {
-              throw new Error(`Webhook request failed with ${response.status}`)
-            }
+            await dispatchWebhookRequest(resolvedDestination, job.payload)
           }
 
           await prisma.webhookDelivery.update({
@@ -79,15 +89,18 @@ async function handleWebhookWorker(request: Request) {
           return { id: job.id, status: "SUCCESS" }
         } catch (err: any) {
           const nextAttempts = job.attempts + 1
-          const isConfigFailure = typeof err?.message === "string" && err.message.includes("not configured")
+          const isConfigFailure =
+            typeof err?.message === "string" &&
+            (err.message.includes("not configured") || err.message.includes("placeholder host"))
           const hasFailed = isConfigFailure || nextAttempts >= MAX_RETRIES
           const backoffMinutes = Math.pow(2, nextAttempts)
+          const lastError = classifyWebhookDispatchError(err, resolvedDestination, staleStoredDestination)
           
           await prisma.webhookDelivery.update({
             where: { id: job.id },
             data: {
               attempts: nextAttempts,
-              lastError: err.message || "Unknown execution error",
+              lastError,
               status: hasFailed ? "FAILED" : "RETRYING",
               nextRetryAt: hasFailed ? null : new Date(Date.now() + backoffMinutes * 60 * 1000)
             }

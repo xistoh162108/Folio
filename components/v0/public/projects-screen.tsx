@@ -127,7 +127,7 @@ export function ProjectsScreen({
               search
             </button>
             {(searchQuery || selectedTag) ? (
-              <Link href="/projects" className={`px-2 py-1 border ${borderColor} ${hoverBg}`}>
+              <Link href="/projects" className={`v0-control-inline-button ${borderColor} ${hoverBg}`}>
                 [reset]
               </Link>
             ) : null}

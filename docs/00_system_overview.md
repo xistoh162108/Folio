@@ -6,7 +6,7 @@ This is the fastest current-state map of `xistoh.log`.
 - Brand label in UI: `xistoh.log`
 - Canonical home route: `/`
 - Design authority: `v0app/` atmosphere and the accepted post-P6 hardening line in `docs/migration/post-p6-*.md`
-- Current implementation line: `R1-R9` baseline plus accepted `H0-H8`
+- Current implementation line: `R1-R9` baseline plus accepted `H0-H8` and accepted `T1`
 
 ## Runtime surfaces
 
@@ -33,6 +33,7 @@ This is the fastest current-state map of `xistoh.log`.
 - `/notes/[slug]`
   - published note detail
   - likes, paginated comments, assets, links, rendered code/math
+  - no public admin moderation affordance
 - `/notes/rss.xml`
 - `/projects`
   - search, tag filter, pagination
@@ -41,7 +42,9 @@ This is the fastest current-state map of `xistoh.log`.
   - inline RSS affordance
 - `/projects/[slug]`
   - published project detail
+  - summary from `Post.excerpt` only when present
   - likes, comments, assets, links, rendered code/math
+  - no public admin moderation affordance
 - `/projects/rss.xml`
 - `/subscribe/confirm`
   - explicit subscription lifecycle result states
@@ -67,7 +70,8 @@ This is the fastest current-state map of `xistoh.log`.
   - save/publish/archive/permanent delete
   - unified assets panel
 - `/admin/content`
-  - legacy alias that creates a draft then redirects to `/admin/posts/[postId]`
+  - explicit create route that creates a draft then redirects to `/admin/posts/[postId]`
+  - excluded from shell prefetch so hidden warm-up cannot create drafts
 - `/admin/content/[postId]`
   - legacy redirect alias
 - `/admin/community`
@@ -107,6 +111,7 @@ This is the fastest current-state map of `xistoh.log`.
   - `/api/admin/guestbook/[entryId]`
 - workers
   - `/api/worker/webhook`
+    - env-authoritative `CONTACT_SUBMIT` dispatch with classified diagnostics
   - `/api/worker/newsletter`
   - `/api/worker/asset-cleanup`
 - test helper

@@ -62,6 +62,29 @@ Meaning:
   - admin service log and performance diagnostics
   - final QA/documentation lock
 
+### T1 targeted production patch line
+
+Source of truth:
+
+- `docs/migration/post-p6-exact-v0-enhancement-spec.md`
+- `docs/migration/post-p6-schema-compatibility-plan.md`
+- `docs/migration/post-p6-route-ownership-plan.md`
+- `docs/migration/post-p6-phase-tracker.md`
+- `docs/migration/post-p6-audit-log.md`
+
+Meaning:
+
+- a narrow correction pass accepted after `H0-H8`
+- current repo truth additionally includes:
+  - explicit-only draft creation on `/admin/content`
+  - clean public code rendering without leaked style tokens
+  - canonical project summary editing through `Post.excerpt`
+  - clarified exact-v0 share-image semantics inside the single assets workflow
+  - public comments without admin moderation affordances
+  - env-authoritative webhook dispatch diagnostics for `CONTACT_SUBMIT`
+  - shared-height search/reset controls on Notes and Projects
+  - normalized sender identity `xistoh <hello@xistoh.com>`
+
 ## Current readiness summary
 
 As of the last final verification:
@@ -73,11 +96,11 @@ As of the last final verification:
 - unit/build/runtime smoke:
   - passed
 
-Remaining non-code readiness items from the last external verification:
+Remaining non-code readiness items are environment-specific:
 
-- target DB still needed migration `20260404190000_add_newsletter_h6_hardening`
-- `OPS_WEBHOOK_URL` still looked like a placeholder endpoint
-- local disposable Playwright DB at `127.0.0.1:54329` was unavailable, so full local Playwright proof remained an environment gap rather than a code blocker
+- production deployment must still run the latest migration set on the target DB
+- `OPS_WEBHOOK_URL` must point to a real ops relay target in the deployed env
+- local disposable Playwright DB at `127.0.0.1:54329` may still need to be restored before full local e2e proof
 
 ## How to extend history from here
 

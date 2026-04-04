@@ -50,7 +50,7 @@ describe("getAdminPerformanceDashboard", () => {
     const { getAdminPerformanceDashboard } = await import("@/lib/ops/admin-performance")
     const dashboard = await getAdminPerformanceDashboard()
 
-    expect(dashboard.navPrefetchStrategy).toBe("idle-neighbors + hover/focus")
+    expect(dashboard.navPrefetchStrategy).toBe("idle-neighbors + hover/focus (explicit-create excluded)")
     expect(dashboard.timings).toHaveLength(6)
     expect(dashboard.timings.map((metric) => metric.label)).toEqual([
       "SESSION_LOOKUP",

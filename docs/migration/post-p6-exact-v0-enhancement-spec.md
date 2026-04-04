@@ -3,7 +3,7 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-04-05
+- Last updated: 2026-04-04
 - Canonical enhancement authority: this file
 
 ## Authority and execution rule
@@ -90,6 +90,48 @@ Load-bearing product/runtime changes accepted in `H0-H8`:
   - settings resume-state reads fall back to `generated`
   - admin upload/delete writes remain fail-closed
 
+## 2026-04 targeted production patch addendum (T1)
+
+This addendum governs the accepted targeted production-fix sprint after `H0-H8`.
+
+Load-bearing product/runtime changes accepted in `T1`:
+
+- `CREATE_DRAFT_POST` is now locked to:
+  - explicit user navigation to `/admin/content`
+  - explicit create actions only
+- idle prefetch, hover/focus prefetch, and hidden route warm-up must never create drafts through `/admin/content`
+- public code blocks now highlight raw code text without leaking class/style markup into visible output
+- fallback `<pre><code>` extraction now strips nested legacy highlight tags before decoding code text
+- LaTeX remains on the existing successful math-render path
+- `Post.excerpt` remains the only canonical project summary source
+- the exact-v0 editor now exposes the project summary through the existing `excerpt` field
+- empty project `excerpt` now means:
+  - no project-detail summary line
+  - no project-list summary line
+  - no placeholder or fallback prose injection
+- the exact-v0 `[assets]` workflow remains the only editor asset surface and now clarifies `coverImageUrl` as the selected share/preview image rather than a visible hero promise
+- the editor upload allowlist is explicitly limited to:
+  - `.txt`
+  - `.md`
+  - `.csv`
+  - `.json`
+  - `.yml`
+  - `.yaml`
+  - `.xml`
+  - `.log`
+  - `.pdf`
+- public comments no longer expose `[admin remove]`; moderation remains admin-only on `/admin/community`
+- Notes and Projects reset actions now share the same inline control-height token as search submit
+- outgoing transactional and newsletter sender identity now normalizes to:
+  - `xistoh <hello@xistoh.com>`
+- `CONTACT_SUBMIT` webhook dispatch now uses the current validated env target as the authoritative destination
+- stale stored webhook destinations remain diagnostic metadata only and do not override the current env destination
+- webhook failures now classify:
+  - placeholder/configuration errors
+  - timeout failures
+  - non-2xx upstream responses
+  - thrown fetch/network failures
+
 ### Exact-v0 preservation rule for H0-H8
 
 These changes are non-literal extensions because literal `/v0app` does not define search, scalable pagination, RSS, production delete semantics, rendered math/code fidelity, direct resume-file management, a production-ready newsletter lifecycle, or an operational service log.
@@ -102,6 +144,20 @@ They are accepted because:
 - controls remain inline, monochrome, and terminal-native
 - newsletter/editor/email surfaces remain Markdown-first, terminal-dense, and inline rather than becoming SaaS card/dashboard UI
 - analytics/service diagnostics remain terminal rows and terse measurements rather than monitoring widgets
+
+### Exact-v0 preservation rule for T1
+
+`T1` is corrective, not expansive.
+
+These changes are accepted because:
+
+- each fix removes misleading or broken production behavior that escaped the earlier hardening line
+- no new route family, schema family, widget language, or visual system is introduced
+- editor, comments, publishing, and webhook behavior are corrected inside the existing exact-v0 shell grammar rather than being redesigned
+- the only user-facing wording changes are narrower and more truthful:
+  - `share image` replaces an over-promising `cover` label
+  - sender identity now reflects `xistoh`
+  - search/reset controls use the same shared token instead of ad-hoc padding
 
 ### User-visible behavior locked by H0-H8
 
@@ -125,6 +181,19 @@ They are accepted because:
 - admin analytics now shows recent operational rows from webhook/newsletter/audit activity in the same terminal language
 - admin performance diagnostics now expose the slower read paths by surface instead of collapsing them into one opaque metric
 - `/resume.pdf` now remains available even when resume-override storage cannot be read, by falling back to generated profile output instead of surfacing a public 500
+
+### User-visible behavior locked by T1
+
+- deleting a post from Manage Posts no longer appears to recreate a replacement draft unless the user explicitly enters the create route
+- public note/project code blocks no longer leak class/style token text into visible code
+- project detail summaries now render only from stored `excerpt` content
+- the exact-v0 editor now exposes the canonical project summary field directly
+- the editor assets workflow now describes the selected SEO/share image truthfully instead of implying a visible hero cover
+- uploaded safe text/document files now match the explicit allowlist above
+- public comments remain reader-facing and no longer expose admin moderation controls
+- Notes and Projects search/reset controls now share the same inline control height
+- outgoing mail now appears as `xistoh <hello@xistoh.com>`
+- contact webhook failures now produce actionable operational diagnostics instead of a generic `fetch failed`
 
 ## Non-negotiable rule
 

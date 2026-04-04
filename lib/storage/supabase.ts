@@ -21,7 +21,16 @@ export const IMAGE_UPLOAD_POLICY = {
 
 export const FILE_UPLOAD_POLICY = {
   bucket: "post-files",
-  allowedMimes: ["application/pdf", "text/plain"],
+  allowedMimes: [
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    "text/csv",
+    "application/json",
+    "text/yaml",
+    "application/xml",
+    "text/xml",
+  ],
   maxBytes: 20 * 1024 * 1024,
 } as const
 

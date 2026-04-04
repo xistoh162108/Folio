@@ -2,8 +2,8 @@
 
 ## Status
 
-- Last updated: 2026-04-05
-- Current implementation state: R1-R9 accepted baseline; H0-H8 accepted
+- Last updated: 2026-04-04
+- Current implementation state: R1-R9 accepted baseline; H0-H8 accepted; T1 accepted
 - Cross-phase follow-up remains open for R2 continuity exactness and database-backed Playwright proof in this local environment.
 
 ## Purpose
@@ -628,6 +628,100 @@ Canonical references:
   - Playwright global setup cannot complete a database-backed reset
 - the provided production-style database credentials were not substituted into Playwright global setup because that setup truncates tables and is meant for disposable test infrastructure only
 - this is recorded as a local environment/infrastructure proof gap, not as accepted runtime failure of the implemented H0-H8 code
+
+---
+
+## T1 Audit Record — Targeted production fix sprint (`T1-01` - `T1-08`)
+
+### Status
+
+- accepted
+
+### What changed
+
+- `components/v0/admin/admin-shell.tsx` and `lib/site/admin-nav.ts` now exclude `/admin/content` from idle and hover/focus prefetch so draft creation remains explicit
+- `components/v0/public/detail-content.tsx` now renders code through raw-code token highlighting backed by `lib/content/detail-render.ts`, preventing leaked class/style markup from appearing as visible code text
+- fallback `<pre><code>` extraction now strips nested highlight tags before decoding code text
+- `components/admin/post-editor.tsx` now exposes the canonical project summary field through `Summary` bound to `Post.excerpt`
+- `components/v0/public/detail-project-screen.tsx` now renders project summary only from trimmed stored `excerpt`; empty `excerpt` renders no summary line and no fallback prose
+- the exact-v0 `[assets]` workflow stays singular while clarifying `coverImageUrl` as the selected share image:
+  - dead in-panel cover preview was removed
+  - row actions now read `set share image` / `clear share image`
+- editor and newsletter upload allowlists were broadened only to the explicit safe text/document set:
+  - `.txt`
+  - `.md`
+  - `.csv`
+  - `.json`
+  - `.yml`
+  - `.yaml`
+  - `.xml`
+  - `.log`
+  - `.pdf`
+- `components/v0/public/comments-log.tsx` no longer exposes `[admin remove]`; public detail bound screens no longer pass moderation state into public comments
+- `components/v0/public/notes-screen.tsx` and `components/v0/public/projects-screen.tsx` now style reset links with the same inline control token as search submit
+- `lib/email/providers/resend.ts` now normalizes sender identity to `xistoh <hello@xistoh.com>` for both transactional and campaign sends
+- `app/api/worker/webhook/route.ts` now dispatches `CONTACT_SUBMIT` webhooks through env-authoritative target resolution with:
+  - placeholder detection
+  - timeout handling
+  - response-snippet capture
+  - classified fetch/network diagnostics
+
+### Why it changed
+
+- delete behavior was correct at the action layer but the admin shell still created drafts through hidden `/admin/content` prefetch
+- public code blocks were still mutating generated HTML and surfacing style tokens as visible code
+- project detail still injected fake prose when the real summary field was empty, and the exact-v0 editor did not expose the canonical field
+- the assets panel contained truthful functionality but misleading `cover` wording and an over-split support flow
+- public comments still leaked admin moderation affordances
+- `CONTACT_SUBMIT` worker diagnostics were too weak and trusted stale stored destinations too much
+- Notes/Projects control strips still had one remaining shared-token mismatch
+- outgoing sender identity still surfaced as a raw/bare address
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` does not define draft-creating route prefetch safeguards, production webhook diagnostics, or the exact storage/share-image semantics needed for the live authoring workflow
+- the accepted behavior here is correctional rather than expansive: the fixes remove misleading runtime states that literal parity alone would not catch
+
+### Why the change is minimal
+
+- no new route family, schema family, editor surface, or UI pattern was introduced
+- the fix scope stays inside existing route owners, existing fields (`excerpt`, `coverImageUrl`), and existing exact-v0 shell grammar
+- user-facing copy changes are limited to making existing controls truthful and consistent
+
+### Exact-v0 preservation
+
+- Manage Posts, public detail screens, and the editor keep their original dense terminal structure
+- code blocks keep the same terminal-native design and `[yank] / [yanked]` behavior
+- the assets workflow remains one `[assets]` panel rather than becoming a media manager
+- public comments remain linear reader-facing rows rather than gaining new moderation UI
+- Notes/Projects search strips use the shared control token instead of introducing a new button family
+
+### User-visible behavior difference
+
+- deleting a post no longer appears to create a replacement draft unless the user explicitly enters the create route
+- public code blocks render cleanly
+- LaTeX remains correct
+- project summary is editable in the v0 editor and only appears when actually stored
+- the selected metadata image is described truthfully as a share image
+- public comments no longer show `[admin remove]`
+- Notes/Projects search and reset controls now share the same height
+- outgoing mail now shows `xistoh <hello@xistoh.com>`
+- contact webhook failures now identify whether the problem is configuration, timeout, upstream response, or thrown network failure
+
+### Proof / evidence
+
+- `pnpm lint`
+- `pnpm typecheck`
+- `pnpm build`
+- `pnpm test tests/unit/admin-shell-prefetch.test.ts tests/unit/detail-content-render.test.ts tests/unit/detail-project-summary.test.tsx tests/unit/post-editor-v0.test.tsx tests/unit/storage-upload-policy.test.ts tests/unit/post-seo-images.test.ts tests/unit/public-comments-and-search.test.tsx tests/unit/webhook-worker.test.ts tests/unit/email-provider.test.ts tests/unit/post-delete-action.test.ts tests/unit/markdown-blocks.test.ts`
+
+### Load-bearing docs updated
+
+- `docs/migration/post-p6-exact-v0-enhancement-spec.md`
+- `docs/migration/post-p6-schema-compatibility-plan.md`
+- `docs/migration/post-p6-route-ownership-plan.md`
+- `docs/migration/post-p6-phase-tracker.md`
+- `docs/migration/post-p6-audit-log.md`
 
 ---
 

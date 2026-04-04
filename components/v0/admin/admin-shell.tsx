@@ -13,8 +13,13 @@ import {
 } from "@/components/v0/runtime/v0-experience-runtime"
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller"
 import { completeAdminNavigation, recordAdminNavigationStart } from "@/lib/ops/admin-performance-client"
+import {
+  getAdminIdlePrefetchTargets,
+  getAdminSectionHref,
+  shouldPrefetchAdminSection,
+  type V0AdminSection,
+} from "@/lib/site/admin-nav"
 
-export type V0AdminSection = "overview" | "content" | "manage-posts" | "newsletter" | "settings" | "community"
 type V0AdminSidebarSection = V0AdminSection
 
 interface AdminShellProps {
@@ -38,41 +43,6 @@ const adminItems: Array<{ key: V0AdminSidebarSection; label: string }> = [
   { key: "settings", label: "Profile / CV" },
   { key: "community", label: "Community" },
 ]
-
-function getAdminSectionHref(section: V0AdminSection) {
-  return section === "overview"
-    ? "/admin/analytics"
-    : section === "content"
-      ? "/admin/content"
-      : section === "manage-posts"
-        ? "/admin/posts"
-        : section === "newsletter"
-          ? "/admin/newsletter"
-          : section === "settings"
-            ? "/admin/settings"
-            : section === "community"
-              ? "/admin/community"
-              : "/admin/posts"
-}
-
-function getAdminIdlePrefetchTargets(currentSection: V0AdminSection | null): V0AdminSection[] {
-  switch (currentSection) {
-    case "overview":
-      return ["manage-posts", "settings"]
-    case "content":
-      return ["manage-posts", "settings"]
-    case "manage-posts":
-      return ["content", "settings"]
-    case "newsletter":
-      return ["overview", "settings"]
-    case "settings":
-      return ["overview", "manage-posts"]
-    case "community":
-      return ["overview", "manage-posts"]
-    default:
-      return ["overview", "manage-posts"]
-  }
-}
 
 export function AdminShell({
   children,
@@ -102,7 +72,10 @@ export function AdminShell({
     [currentSection, runtimeDescriptor],
   )
   const idlePrefetchTargets = useMemo(
-    () => getAdminIdlePrefetchTargets(currentSection).map((section) => getAdminSectionHref(section)),
+    () =>
+      getAdminIdlePrefetchTargets(currentSection)
+        .filter((section) => shouldPrefetchAdminSection(section))
+        .map((section) => getAdminSectionHref(section)),
     [currentSection],
   )
   const navigateSection =
@@ -230,12 +203,12 @@ export function AdminShell({
                     navigateSection(item.key)
                   }}
                   onMouseEnter={() => {
-                    if (!onNavigateSection) {
+                    if (!onNavigateSection && shouldPrefetchAdminSection(item.key)) {
                       router.prefetch(getAdminSectionHref(item.key))
                     }
                   }}
                   onFocus={() => {
-                    if (!onNavigateSection) {
+                    if (!onNavigateSection && shouldPrefetchAdminSection(item.key)) {
                       router.prefetch(getAdminSectionHref(item.key))
                     }
                   }}

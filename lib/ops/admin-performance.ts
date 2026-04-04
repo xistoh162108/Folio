@@ -123,7 +123,7 @@ export async function getAdminPerformanceDashboard(): Promise<AdminPerformanceDa
       newsletterMeasurement.metric,
       communityMeasurement.metric,
     ],
-    navPrefetchStrategy: "idle-neighbors + hover/focus",
+    navPrefetchStrategy: "idle-neighbors + hover/focus (explicit-create excluded)",
     notes: [
       "Admin navigation timing is captured client-side from nav click to route-ready shell mount.",
       "Runtime handoff timing is captured client-side from admin route registration to visible Jitter slot reuse.",

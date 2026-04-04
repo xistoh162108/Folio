@@ -17,6 +17,13 @@ function createConfigError(to: string, message: string): EmailSendResult {
   }
 }
 
+export function normalizeSenderIdentity(value: string) {
+  const explicitAddress = value.match(/<([^>]+)>/)?.[1]?.trim()
+  const address = explicitAddress || value.trim()
+
+  return `xistoh <${address}>`
+}
+
 async function sendSingle(client: Resend, input: EmailMessageInput): Promise<EmailSendResult> {
   if (!env.RESEND_API_KEY || !env.EMAIL_FROM) {
     return createConfigError(input.to, "Resend email delivery is not configured.")
@@ -24,7 +31,7 @@ async function sendSingle(client: Resend, input: EmailMessageInput): Promise<Ema
 
   try {
     const { data, error } = await client.emails.send({
-      from: env.EMAIL_FROM,
+      from: normalizeSenderIdentity(env.EMAIL_FROM),
       to: [input.to],
       subject: input.subject,
       html: input.html,
