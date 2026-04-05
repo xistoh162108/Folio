@@ -8,8 +8,9 @@ import type { PublicTagFilterOption } from "@/lib/data/posts";
 import { requestSubscription } from "@/lib/actions/subscriber.actions";
 
 import { digitalGardenNotes } from "@/components/v0/fixtures";
-import { mapPostCardToNoteRow } from "@/components/v0/public/mappers";
+import { mapFixtureNoteToNoteRow, mapPostCardToNoteRow } from "@/components/v0/public/mappers";
 import { PublicShell } from "@/components/v0/public/public-shell";
+import { getNotesSubscribeRenderState } from "@/components/v0/public/notes-subscribe-state";
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller";
 import { getV0RouteAccentPalette } from "@/lib/site/v0-route-palette";
 
@@ -106,21 +107,7 @@ export function NotesScreen({
   const noteRows = useMemo(
     () =>
       notes?.map((note) => mapPostCardToNoteRow(note)) ??
-      digitalGardenNotes.map((note) => ({
-        id: note.id,
-        href: "#",
-        title: note.title,
-        date: note.date,
-        tags: note.tags,
-        filterTags: note.tags,
-        views: note.views,
-        statusSymbol:
-          note.status === "seedling"
-            ? "[*]"
-            : note.status === "growing"
-              ? "[+]"
-              : "[>]",
-      })),
+      digitalGardenNotes.map((note) => mapFixtureNoteToNoteRow(note)),
     [notes],
   );
 
@@ -136,11 +123,12 @@ export function NotesScreen({
       [topic]: !previous[topic],
     }));
   };
-  const statusText = state?.success
-    ? `[ OK: ${state.message} ]`
-    : state?.error
-      ? `[ ERROR: ${state.error} ]`
-      : null;
+  const {
+    isSuccessState,
+    shouldRenderError,
+    statusText,
+    successLiveRegion,
+  } = getNotesSubscribeRenderState(state);
   const statusClassName = state?.error ? "text-[#FF3333]" : mutedText;
 
   return (
@@ -160,12 +148,6 @@ export function NotesScreen({
               </a>
             </div>
             <h2 className="text-lg">Notes &amp; Seeds</h2>
-            <p className={`text-sm ${mutedText}`}>
-              [*] seedling | [+] growing | [&gt;] evergreen
-            </p>
-            <p className={`text-xs ${mutedText}`}>
-              // seedling = new log, growing = active branch, evergreen = stable note
-            </p>
           </section>
 
           <form action="/notes" className="flex flex-wrap items-center gap-3 text-xs">
@@ -212,23 +194,18 @@ export function NotesScreen({
                   key={note.id}
                   href={note.href}
                   data-v0-note-row
-                  className={`-mx-2 grid w-full grid-cols-[11ch_4ch_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1 px-2 py-2 text-left text-sm transition-colors md:flex md:flex-nowrap ${hoverBg}`}
+                  className={`-mx-2 grid w-full grid-cols-[11ch_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1 px-2 py-2 text-left text-sm transition-colors md:flex md:flex-nowrap ${hoverBg}`}
                 >
                   <span
                     className={`${mutedText} col-start-1 row-start-1 w-[11ch] shrink-0 whitespace-nowrap md:w-20`}
                   >
                     {note.date}
                   </span>
-                  <span
-                    className={`${mutedText} col-start-2 row-start-1 w-[4ch] shrink-0 whitespace-nowrap md:w-8`}
-                  >
-                    {note.statusSymbol}
-                  </span>
-                  <span className="col-start-3 row-start-1 min-w-0 flex-1">
+                  <span className="col-start-2 row-start-1 min-w-0 flex-1">
                     {note.title}
                   </span>
                   <div
-                    className={`${mutedText} col-start-3 row-start-2 flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs md:hidden`}
+                    className={`${mutedText} col-start-2 row-start-2 flex min-w-0 flex-wrap items-baseline gap-x-2 text-xs md:hidden`}
                   >
                     <span className="shrink-0 whitespace-nowrap">
                       [v: {note.views.toLocaleString()}]
@@ -295,106 +272,124 @@ export function NotesScreen({
           data-v0-notes-subscribe
           className="max-w-lg space-y-2 lg:max-w-none"
         >
-          <div className="flex flex-col items-start gap-3 2xl:flex-row 2xl:items-center 2xl:gap-6">
-            <div className="flex min-w-0 w-full flex-wrap items-center gap-3 md:gap-4 2xl:flex-1 2xl:flex-nowrap">
+          <input
+            type="text"
+            name="_honey"
+            value={honey}
+            onChange={(event) => setHoney(event.target.value)}
+            style={{ display: "none" }}
+            tabIndex={-1}
+            autoComplete="off"
+            aria-hidden="true"
+          />
+          {isSuccessState ? (
+            <div
+              data-v0-notes-subscribe-success
+              className="space-y-2"
+            >
               <p
                 data-v0-stay-in-loop-label
-                className={`v0-control-inline-label ${mutedText} md:whitespace-nowrap`}
+                className={`v0-control-inline-label ${mutedText}`}
               >
                 // stay in the loop
               </p>
-              <input
-                type="text"
-                name="_honey"
-                value={honey}
-                onChange={(event) => setHoney(event.target.value)}
-                style={{ display: "none" }}
-                tabIndex={-1}
-                autoComplete="off"
-                aria-hidden="true"
-              />
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@email.com"
-                disabled={pending}
-                className={`v0-control-inline-input min-w-[12rem] flex-1 md:w-40 md:flex-none ${borderColor} ${
-                  isDarkMode
-                    ? "text-white placeholder:text-white/30"
-                    : "text-black placeholder:text-black/30"
-                } ${pending ? "opacity-50" : ""}`}
-              />
-              <button
-                type="submit"
-                disabled={pending}
-                className={`v0-control-inline-button shrink-0 ${borderColor} ${hoverBg} ${pending ? "opacity-50" : ""}`}
+              <p
+                aria-live={successLiveRegion}
+                className="text-xs break-words"
+                style={{ color: accentColor }}
               >
-                Subscribe
-              </button>
+                {statusText}
+              </p>
             </div>
-            <div
-              data-v0-notes-topic-strip
-              className="flex min-w-fit flex-wrap items-center gap-3 text-xs md:flex-nowrap md:gap-4 md:whitespace-nowrap 2xl:ml-auto"
-            >
-              <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
-                <button
-                  type="button"
-                  onClick={() => toggleTopic("all")}
-                  className={`v0-control-toggle ${borderColor} ${
-                    topics.all
-                      ? isDarkMode
-                        ? "bg-white/20"
-                        : "bg-black/20"
-                      : ""
-                  }`}
+          ) : (
+            <>
+              <div className="flex flex-col items-start gap-3 2xl:flex-row 2xl:items-center 2xl:gap-6">
+                <div className="flex min-w-0 w-full flex-wrap items-center gap-3 md:gap-4 2xl:flex-1 2xl:flex-nowrap">
+                  <p
+                    data-v0-stay-in-loop-label
+                    className={`v0-control-inline-label ${mutedText} md:whitespace-nowrap`}
+                  >
+                    // stay in the loop
+                  </p>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="you@email.com"
+                    disabled={pending}
+                    className={`v0-control-inline-input min-w-[12rem] flex-1 md:w-40 md:flex-none ${borderColor} ${
+                      isDarkMode
+                        ? "text-white placeholder:text-white/30"
+                        : "text-black placeholder:text-black/30"
+                    } ${pending ? "opacity-50" : ""}`}
+                  />
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className={`v0-control-inline-button shrink-0 ${borderColor} ${hoverBg} ${pending ? "opacity-50" : ""}`}
+                  >
+                    Subscribe
+                  </button>
+                </div>
+                <div
+                  data-v0-notes-topic-strip
+                  className="flex min-w-fit flex-wrap items-center gap-3 text-xs md:flex-nowrap md:gap-4 md:whitespace-nowrap 2xl:ml-auto"
                 >
-                  {topics.all ? "*" : ""}
-                </button>
-                <span className={mutedText}>All</span>
-              </label>
-              <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
-                <button
-                  type="button"
-                  onClick={() => toggleTopic("projectInfo")}
-                  className={`v0-control-toggle ${borderColor} ${
-                    topics.projectInfo
-                      ? isDarkMode
-                        ? "bg-white/20"
-                        : "bg-black/20"
-                      : ""
-                  }`}
-                >
-                  {topics.projectInfo ? "*" : ""}
-                </button>
-                <span className={mutedText}>Project &amp; Info</span>
-              </label>
-              <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
-                <button
-                  type="button"
-                  onClick={() => toggleTopic("log")}
-                  className={`v0-control-toggle ${borderColor} ${
-                    topics.log
-                      ? isDarkMode
-                        ? "bg-white/20"
-                        : "bg-black/20"
-                      : ""
-                  }`}
-                >
-                  {topics.log ? "*" : ""}
-                </button>
-                <span className={mutedText}>Log</span>
-              </label>
-              {statusText ? (
-                <span
-                  className={statusClassName}
-                  style={state?.success ? { color: accentColor } : undefined}
-                >
-                  {statusText}
-                </span>
+                  <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={() => toggleTopic("all")}
+                      className={`v0-control-toggle ${borderColor} ${
+                        topics.all
+                          ? isDarkMode
+                            ? "bg-white/20"
+                            : "bg-black/20"
+                          : ""
+                      }`}
+                    >
+                      {topics.all ? "*" : ""}
+                    </button>
+                    <span className={mutedText}>All</span>
+                  </label>
+                  <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={() => toggleTopic("projectInfo")}
+                      className={`v0-control-toggle ${borderColor} ${
+                        topics.projectInfo
+                          ? isDarkMode
+                            ? "bg-white/20"
+                            : "bg-black/20"
+                          : ""
+                      }`}
+                    >
+                      {topics.projectInfo ? "*" : ""}
+                    </button>
+                    <span className={mutedText}>Project &amp; Info</span>
+                  </label>
+                  <label className="flex shrink-0 items-center gap-1 whitespace-nowrap cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={() => toggleTopic("log")}
+                      className={`v0-control-toggle ${borderColor} ${
+                        topics.log
+                          ? isDarkMode
+                            ? "bg-white/20"
+                            : "bg-black/20"
+                          : ""
+                      }`}
+                    >
+                      {topics.log ? "*" : ""}
+                    </button>
+                    <span className={mutedText}>Log</span>
+                  </label>
+                </div>
+              </div>
+              {shouldRenderError && statusText ? (
+                <p className={statusClassName}>{statusText}</p>
               ) : null}
-            </div>
-          </div>
+            </>
+          )}
         </form>
       </div>
     </PublicShell>

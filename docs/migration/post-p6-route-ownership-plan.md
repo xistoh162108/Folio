@@ -3,7 +3,7 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-04-04
+- Last updated: 2026-04-05
 - Canonical route/runtime ownership authority: this file
 
 ## Purpose
@@ -160,6 +160,20 @@ Ownership rules:
 - `/api/worker/webhook` now treats the current validated env target as the authoritative dispatch destination for `CONTACT_SUBMIT`
 - stale stored destination fields remain diagnostic metadata only
 - placeholder or `.example` destinations are treated as configuration errors rather than retriable network destinations
+
+## 2026-04 post-T1 note navigation route addendum
+
+- `/notes` no longer owns any public note-maturity legend or status-symbol column
+- `/notes/[slug]` now owns terminal-native previous/next note navigation inside the existing `// end of note` footer block
+- public note detail navigation is resolved from:
+  - stored `previousNoteId`
+  - reverse lookup where `previousNoteId == current.id`
+- public route ownership rules:
+  - only published notes may appear in Prev/Next
+  - missing sides stay visible as dim terminal affordances
+  - no separate related-posts surface, series route, or navigation widget is introduced
+- `/admin/posts/[postId]` owns the single `previous note` selector inside the existing metadata stack
+- `/admin/posts/[postId]` must not expose series-management UI, ordering UI, or multi-link note chaining
 
 ## Current repository truth
 

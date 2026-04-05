@@ -2,7 +2,7 @@
 
 ## Status
 
-- Last updated: 2026-04-04
+- Last updated: 2026-04-05
 - Current overall status: R1-R9 accepted baseline; H0-H8 complete; T1 complete
 - Cross-phase QA follow-up for R2 continuity exactness and database-backed Playwright proof in this local environment is recorded in the audit log.
 
@@ -1499,3 +1499,60 @@ Finalize SEO, responsive parity evidence, and CI coverage for the integrated lin
   - rejected: replacing the existing brand/icon artwork itself
   - rejected: introducing a separate PWA shell or install-first UX
   - rejected: changing route-level visual identity to accommodate icon asset cleanup
+
+### Post-T1 follow-up — Notes footer subscribe success-state exclusivity (2026-04-05)
+
+- status: done
+- objective: prevent the Notes footer subscription success line from colliding with the inline control strip on desktop and narrow widths
+- execution notes:
+  - updated:
+    - `components/v0/public/notes-screen.tsx`
+    - `components/v0/public/notes-subscribe-state.ts`
+    - `tests/unit/notes-footer-subscribe-state.test.ts`
+  - extracted the success/render-state contract into `getNotesSubscribeRenderState()` so the live Notes footer and its tests share the same exclusivity rules
+  - moved success rendering out of the live inline control-strip contract and into its own dedicated footer block/row
+  - unmounted email input, submit button, and topic toggles in success state instead of letting them share the same row
+  - kept the existing inline strip unchanged for pre-submit and error states
+  - added `aria-live="polite"` to the success line without changing the visual design
+- explicit redesign rejections (this follow-up):
+  - rejected: solving the overlap with a toast, banner, or second UI surface
+  - rejected: keeping controls mounted in a second active row during the same success session
+  - rejected: broad footer restyling or spacing changes to mask a state-ownership bug
+
+### Post-T1 follow-up — Previous/next note navigation and dead maturity-display removal (2026-04-05)
+
+- status: done
+- objective: replace the dead public Notes maturity language with real note-to-note navigation while staying inside the existing exact-v0 list/detail grammar
+- execution notes:
+  - added:
+    - `prisma/migrations/20260405090000_add_note_previous_navigation/migration.sql`
+    - `lib/posts/note-navigation.ts`
+    - `tests/unit/note-navigation.test.ts`
+    - `tests/unit/note-detail-navigation-data.test.ts`
+    - `tests/unit/note-list-and-footer-state.test.ts`
+  - updated:
+    - `prisma/schema.prisma`
+    - `lib/contracts/posts.ts`
+    - `lib/data/posts.ts`
+    - `lib/actions/post.actions.ts`
+    - `components/admin/post-editor.tsx`
+    - `components/v0/admin/editor-screen-bound.tsx`
+    - `components/v0/admin/editor-screen.tsx`
+    - `components/v0/public/detail-note-screen.tsx`
+    - `components/v0/public/notes-screen.tsx`
+    - `components/v0/public/mappers.ts`
+    - `components/v0/fixtures.ts`
+  - removed the public `seedling / growing / evergreen` legend and row glyph because live runtime never owned a real note-maturity field
+  - introduced one optional `previousNoteId` self-relation only; `next` is reverse-derived and not stored separately
+  - added one minimal `previous note` selector below `Tags` in the existing admin editor metadata area
+  - added one terminal-native Prev/Next row inside the existing `// end of note` footer block with visible dim disabled states for missing sides
+  - locked validation for:
+    - note-only storage
+    - self-link rejection
+    - duplicate-next prevention
+    - cycle rejection
+    - published-only public navigation
+- explicit redesign rejections (this follow-up):
+  - rejected: full series system, series manager, or separate ordering model
+  - rejected: hiding missing sides entirely and leaving the footer visually unbalanced
+  - rejected: any Notes list redesign beyond removing dead maturity language

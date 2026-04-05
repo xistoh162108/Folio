@@ -9,7 +9,14 @@ export async function EditorScreenBound({
   postId: string
   brandLabel?: string
 }) {
-  const [post, isDarkMode] = await Promise.all([getAdminPostEditorState(postId), getV0ThemeIsDark()])
+  const [editorState, isDarkMode] = await Promise.all([getAdminPostEditorState(postId), getV0ThemeIsDark()])
 
-  return <EditorScreen brandLabel={brandLabel} isDarkMode={isDarkMode} post={post} />
+  return (
+    <EditorScreen
+      brandLabel={brandLabel}
+      isDarkMode={isDarkMode}
+      post={editorState.post}
+      previousNoteOptions={editorState.previousNoteOptions}
+    />
+  )
 }

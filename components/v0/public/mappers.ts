@@ -1,7 +1,5 @@
 import type { PostCardDTO, PostDetailDTO } from "@/lib/contracts/posts"
 
-import { getStatusSymbol } from "@/components/v0/fixtures"
-
 export interface V0LiveNoteRow {
   id: string
   href: string
@@ -10,7 +8,21 @@ export interface V0LiveNoteRow {
   tags: string[]
   filterTags: string[]
   views: number
-  statusSymbol: string
+}
+
+export interface DetailNoteNavigationState {
+  previous: {
+    label: "[< prev]"
+    href: string | null
+    title: string | null
+    disabled: boolean
+  }
+  next: {
+    label: "[next >]"
+    href: string | null
+    title: string | null
+    disabled: boolean
+  }
 }
 
 export function formatPostDate(publishedAt: string | null, updatedAt?: string) {
@@ -20,10 +32,6 @@ export function formatPostDate(publishedAt: string | null, updatedAt?: string) {
 export function formatV0Tag(tag: string) {
   if (tag.startsWith("#")) return tag
   return `#${tag.replace(/\s+/g, "")}`
-}
-
-export function getPostStatusSymbol() {
-  return getStatusSymbol("seedling")
 }
 
 export function mapPostCardToNoteRow(post: PostCardDTO): V0LiveNoteRow {
@@ -36,7 +44,25 @@ export function mapPostCardToNoteRow(post: PostCardDTO): V0LiveNoteRow {
     tags: formattedTags,
     filterTags: formattedTags,
     views: post.views,
-    statusSymbol: getPostStatusSymbol(),
+  }
+}
+
+export function mapFixtureNoteToNoteRow(note: {
+  id: string
+  title: string
+  date: string
+  tags: string[]
+  views: number
+  href?: string
+}): V0LiveNoteRow {
+  return {
+    id: note.id,
+    href: note.href ?? "#",
+    title: note.title,
+    date: note.date,
+    tags: note.tags,
+    filterTags: note.tags,
+    views: note.views,
   }
 }
 
@@ -51,6 +77,25 @@ export function formatDetailMeta(post: PostDetailDTO) {
     date: formatPostDate(post.publishedAt, post.updatedAt),
     readTime: estimateReadTimeFromHtml(post.htmlContent),
     tags: post.tags.map(formatV0Tag),
+  }
+}
+
+export function getDetailNoteNavigationState(
+  post?: Pick<PostDetailDTO, "previousNote" | "nextNote"> | null,
+): DetailNoteNavigationState {
+  return {
+    previous: {
+      label: "[< prev]",
+      href: post?.previousNote ? `/notes/${post.previousNote.slug}` : null,
+      title: post?.previousNote?.title ?? null,
+      disabled: !post?.previousNote,
+    },
+    next: {
+      label: "[next >]",
+      href: post?.nextNote ? `/notes/${post.nextNote.slug}` : null,
+      title: post?.nextNote?.title ?? null,
+      disabled: !post?.nextNote,
+    },
   }
 }
 

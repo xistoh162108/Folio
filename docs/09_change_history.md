@@ -94,6 +94,9 @@ Meaning:
   - project detail pages now expose the same published-date and estimated read-time metadata grammar already used on note detail pages
   - the change reuses the existing `formatDetailMeta()` contract instead of introducing a second detail-meta path
   - the root favicon/manifest set now includes multi-format browser, touch, Android, and Windows tile assets with live metadata wiring
+  - public Notes no longer expose the dead seedling/growing/evergreen display language
+  - note detail pages now use one minimal `previousNoteId` relation with reverse-derived next-note navigation inside the existing footer shell
+  - admin note editing now includes a single `previous note` selector instead of a broader series-management surface
 
 ## Current readiness summary
 

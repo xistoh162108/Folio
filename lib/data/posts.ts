@@ -9,7 +9,16 @@ import { inferLinkType } from "@/lib/content/link-preview"
 import { collectBlockDocumentResources, resolvePostContentMode } from "@/lib/content/post-content"
 import { parsePreviewMetadata } from "@/lib/content/preview-metadata"
 import type { PaginatedCollectionStateDTO, PostCommentDTO } from "@/lib/contracts/community"
-import type { PostAssetDTO, PostCardDTO, PostDetailDTO, PostEditorInput, PostKind, PostLinkDTO } from "@/lib/contracts/posts"
+import type {
+  AdminPostEditorState,
+  NoteNavigationLinkDTO,
+  PostAssetDTO,
+  PostCardDTO,
+  PostDetailDTO,
+  PostEditorInput,
+  PostKind,
+  PostLinkDTO,
+} from "@/lib/contracts/posts"
 import {
   type AdminPostsQuery,
   type AdminPostsQueryInput,
@@ -17,6 +26,7 @@ import {
 } from "@/lib/data/admin-posts-query"
 import { isMissingTableError } from "@/lib/db/errors"
 import { prisma } from "@/lib/db/prisma"
+import { buildNoteNavigationOption, isPublishedNoteRecord, toNoteNavigationLink } from "@/lib/posts/note-navigation"
 import { toLogSourceLabel } from "@/lib/utils/user-agent"
 
 function mapLegacyLinks(post: {
@@ -423,6 +433,8 @@ function mapPostDetail(post: {
   likeCount: number
   comments: PostCommentDTO[]
   commentsPagination: PaginatedCollectionStateDTO
+  previousNote?: NoteNavigationLinkDTO | null
+  nextNote?: NoteNavigationLinkDTO | null
 }): PostDetailDTO {
   return {
     ...mapPostCard(post),
@@ -440,6 +452,8 @@ function mapPostDetail(post: {
     likeCount: post.likeCount,
     comments: post.comments,
     commentsPagination: post.commentsPagination,
+    previousNote: post.previousNote ?? null,
+    nextNote: post.nextNote ?? null,
   }
 }
 
@@ -646,6 +660,49 @@ export async function getPublishedProjectIndexItems() {
   return posts.map(mapProjectIndexEntry)
 }
 
+async function getPublishedNoteNavigation(postId: string, previousNoteId: string | null) {
+  const [previousCandidate, nextCandidate] = await Promise.all([
+    previousNoteId
+      ? prisma.post.findFirst({
+          where: {
+            id: previousNoteId,
+            type: "NOTE",
+            status: "PUBLISHED",
+          },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            type: true,
+            status: true,
+            previousNoteId: true,
+          },
+        })
+      : Promise.resolve(null),
+    prisma.post.findFirst({
+      where: {
+        previousNoteId: postId,
+        type: "NOTE",
+        status: "PUBLISHED",
+      },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        type: true,
+        status: true,
+        previousNoteId: true,
+      },
+    }),
+  ])
+
+  return {
+    previousNote:
+      previousCandidate && isPublishedNoteRecord(previousCandidate) ? toNoteNavigationLink(previousCandidate) : null,
+    nextNote: nextCandidate && isPublishedNoteRecord(nextCandidate) ? toNoteNavigationLink(nextCandidate) : null,
+  }
+}
+
 const getPublishedPostDetailCached = cache(async (type: PostKind, slug: string) => {
   const post = await prisma.post.findFirst({
     where: {
@@ -658,6 +715,7 @@ const getPublishedPostDetailCached = cache(async (type: PostKind, slug: string) 
       slug: true,
       type: true,
       status: true,
+      previousNoteId: true,
       title: true,
       excerpt: true,
       tags: {
@@ -762,6 +820,10 @@ const getPublishedPostDetailCached = cache(async (type: PostKind, slug: string) 
   }
 
   const commentsResult = await getPostCommentsPage(post.id)
+  const noteNavigation =
+    post.type === "NOTE"
+      ? await getPublishedNoteNavigation(post.id, post.previousNoteId ?? null)
+      : { previousNote: null, nextNote: null }
 
   return mapPostDetail({
     ...post,
@@ -775,6 +837,8 @@ const getPublishedPostDetailCached = cache(async (type: PostKind, slug: string) 
     likeCount: post._count.likes,
     comments: commentsResult.comments,
     commentsPagination: commentsResult.pagination,
+    previousNote: noteNavigation.previousNote,
+    nextNote: noteNavigation.nextNote,
   })
 })
 
@@ -855,14 +919,16 @@ export async function getAdminPosts(input: AdminPostsQueryInput = {}): Promise<A
   }
 }
 
-export async function getAdminPostEditorState(postId: string) {
-  const post = await prisma.post.findUnique({
+export async function getAdminPostEditorState(postId: string): Promise<AdminPostEditorState> {
+  const [post, previousNoteCandidates] = await Promise.all([
+    prisma.post.findUnique({
     where: { id: postId },
     select: {
       id: true,
       slug: true,
       type: true,
       status: true,
+      previousNoteId: true,
       title: true,
       excerpt: true,
       contentVersion: true,
@@ -877,7 +943,23 @@ export async function getAdminPostEditorState(postId: string) {
         select: { name: true },
       },
     },
-  })
+    }),
+    prisma.post.findMany({
+      where: {
+        type: "NOTE",
+        id: { not: postId },
+      },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        status: true,
+        publishedAt: true,
+        updatedAt: true,
+      },
+      orderBy: [{ publishedAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
+    }),
+  ])
 
   if (!post) {
     notFound()
@@ -960,6 +1042,7 @@ export async function getAdminPostEditorState(postId: string) {
     slug: post.slug,
     type: post.type,
     status: post.status,
+    previousNoteId: post.previousNoteId ?? null,
     title: post.title,
     excerpt: post.excerpt ?? "",
     contentVersion: post.contentVersion,
@@ -986,5 +1069,8 @@ export async function getAdminPostEditorState(postId: string) {
     links: storedLinks.length > 0 ? mapStoredLinks(storedLinks, previewMap) : mapLegacyLinks(post),
   }
 
-  return editorInput
+  return {
+    post: editorInput,
+    previousNoteOptions: previousNoteCandidates.map(buildNoteNavigationOption),
+  }
 }

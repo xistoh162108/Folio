@@ -99,6 +99,12 @@ export interface PostCardDTO {
   updatedAt: string
 }
 
+export interface NoteNavigationLinkDTO {
+  id: string
+  slug: string
+  title: string
+}
+
 export interface PostDetailDTO extends PostCardDTO {
   contentVersion: number
   contentMode: PostContentMode
@@ -110,6 +116,8 @@ export interface PostDetailDTO extends PostCardDTO {
   likeCount: number
   comments: PostCommentDTO[]
   commentsPagination: PaginatedCollectionStateDTO
+  previousNote?: NoteNavigationLinkDTO | null
+  nextNote?: NoteNavigationLinkDTO | null
 }
 
 export interface PostEditorInput {
@@ -119,6 +127,7 @@ export interface PostEditorInput {
   excerpt?: string
   type: PostKind
   status: PostStatus
+  previousNoteId?: string | null
   contentVersion?: number
   contentMode?: PostContentMode
   markdownSource?: string
@@ -131,4 +140,15 @@ export interface PostEditorInput {
   docsUrl?: string
   assets: PostAssetDTO[]
   links: PostLinkDTO[]
+}
+
+export interface NoteNavigationOption {
+  id: string
+  slug: string
+  label: string
+}
+
+export interface AdminPostEditorState {
+  post: PostEditorInput
+  previousNoteOptions: NoteNavigationOption[]
 }

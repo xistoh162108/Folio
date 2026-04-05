@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 const transactionMock = vi.fn()
 const postFindUniqueMock = vi.fn()
+const postFindFirstMock = vi.fn()
 const requireUserMock = vi.fn()
 const deleteAssetMock = vi.fn()
 const revalidatePathMock = vi.fn()
@@ -36,6 +37,7 @@ beforeAll(async () => {
 beforeEach(() => {
   transactionMock.mockReset()
   postFindUniqueMock.mockReset()
+  postFindFirstMock.mockReset()
   requireUserMock.mockReset()
   deleteAssetMock.mockReset()
   revalidatePathMock.mockReset()
@@ -59,11 +61,13 @@ describe("deletePostPermanently", () => {
     const postDeleteMock = vi.fn().mockResolvedValue({ id: current.id })
     const auditCreateMock = vi.fn().mockResolvedValue(null)
     postFindUniqueMock.mockResolvedValue(current)
+    postFindFirstMock.mockResolvedValue(null)
 
     transactionMock.mockImplementation(async (callback) =>
       callback({
         post: {
           delete: postDeleteMock,
+          findFirst: postFindFirstMock,
         },
         auditLog: {
           create: auditCreateMock,
@@ -106,11 +110,13 @@ describe("deletePostPermanently", () => {
     const postDeleteMock = vi.fn().mockResolvedValue({ id: current.id })
     const auditCreateMock = vi.fn().mockResolvedValue(null)
     postFindUniqueMock.mockResolvedValue(current)
+    postFindFirstMock.mockResolvedValue(null)
 
     transactionMock.mockImplementation(async (callback) =>
       callback({
         post: {
           delete: postDeleteMock,
+          findFirst: postFindFirstMock,
         },
         auditLog: {
           create: auditCreateMock,

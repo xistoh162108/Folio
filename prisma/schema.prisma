@@ -82,6 +82,7 @@ model Post {
   slug           String         @unique
   type           PostType       @default(NOTE)
   status         PostStatus     @default(DRAFT)
+  previousNoteId String?        @unique
   
   title          String
   excerpt        String?        
@@ -107,6 +108,8 @@ model Post {
   links          PostLink[]
   likes          PostLike[]
   comments       PostComment[]
+  previousNote   Post?          @relation("NoteSequence", fields: [previousNoteId], references: [id], onDelete: SetNull)
+  nextNote       Post?          @relation("NoteSequence")
 
   @@index([status, type, publishedAt, id])
   @@index([status, updatedAt, id])

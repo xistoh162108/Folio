@@ -14,6 +14,7 @@ import { requireUser } from "@/lib/auth"
 import { POST_BLOCK_CONTENT_VERSION } from "@/lib/contracts/content-blocks"
 import type { PostEditorInput, PostLinkDTO, PostLinkType, PreviewMetadata } from "@/lib/contracts/posts"
 import { isMissingTableError } from "@/lib/db/errors"
+import { validatePreviousNoteSelection } from "@/lib/posts/note-navigation"
 import { deleteAssetFromSupabase } from "@/lib/storage/supabase"
 import { slugify } from "@/lib/utils/normalizers"
 import { kickWorkerRoute } from "@/lib/workers/dispatch"
@@ -29,6 +30,11 @@ const PostSchema = z.object({
   contentMode: z.enum(["legacy", "block"]).optional().default("legacy"),
   type: z.enum(["NOTE", "PROJECT"]).default("NOTE"),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).default("DRAFT"),
+  previousNoteId: z
+    .string()
+    .optional()
+    .nullable()
+    .transform((value) => value?.trim() || null),
   tags: z.array(z.string()).default([]),
   coverImageUrl: z.string().optional().default(""),
   githubUrl: z.string().optional().default(""),
@@ -295,6 +301,65 @@ function findWebsiteFallback(links: PreparedLink[]) {
   return links.find((link) => link.type === "WEBSITE" || link.type === "OTHER")?.url ?? null
 }
 
+async function resolvePreviousNoteId(
+  tx: Prisma.TransactionClient,
+  input: {
+    id?: string
+    type: "NOTE" | "PROJECT"
+    previousNoteId: string | null
+  },
+) {
+  return validatePreviousNoteSelection(
+    {
+      postId: input.id,
+      type: input.type,
+      previousNoteId: input.previousNoteId,
+    },
+    {
+      getPostById: async (id) =>
+        tx.post.findUnique({
+          where: { id },
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            type: true,
+            status: true,
+            previousNoteId: true,
+          },
+        }),
+      getPostByPreviousNoteId: async (previousNoteId) =>
+        tx.post.findUnique({
+          where: { previousNoteId },
+          select: { id: true },
+        }),
+    },
+  )
+}
+
+async function getNavigationNeighborSlugs(
+  tx: Prisma.TransactionClient,
+  input: {
+    postId: string
+    previousNoteId: string | null
+  },
+) {
+  const [previousNote, nextNote] = await Promise.all([
+    input.previousNoteId
+      ? tx.post.findUnique({
+          where: { id: input.previousNoteId },
+          select: { slug: true },
+        })
+      : Promise.resolve(null),
+    tx.post.findFirst({
+      where: { previousNoteId: input.postId },
+      select: { slug: true },
+    }),
+  ])
+
+  return [previousNote?.slug ?? null, nextNote?.slug ?? null]
+}
+
 function revalidatePublicPaths(slugs: Array<string | null | undefined>) {
   revalidatePath("/")
   revalidatePath("/notes")
@@ -376,8 +441,22 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
 
     const result = await prisma.$transaction(async (tx) => {
       const tagConnections = await connectTags(tx, validated.tags)
+      const nextPreviousNoteId = await resolvePreviousNoteId(tx, {
+        id: validated.id,
+        type: validated.type,
+        previousNoteId: validated.previousNoteId,
+      })
 
       if (!validated.id) {
+        const previousNoteSlug =
+          validated.type === "NOTE" && nextPreviousNoteId
+            ? (
+                await tx.post.findUnique({
+                  where: { id: nextPreviousNoteId },
+                  select: { slug: true },
+                })
+              )?.slug ?? null
+            : null
         const created = await tx.post.create({
           data: {
             title: validated.title,
@@ -389,6 +468,7 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
             htmlContent: resolvedHtmlContent,
             type: validated.type,
             status: validated.status,
+            previousNoteId: validated.type === "NOTE" ? nextPreviousNoteId : null,
             coverImageUrl: validated.coverImageUrl || null,
             githubUrl: findFirstLinkByType(preparedLinks, "GITHUB"),
             demoUrl: findWebsiteFallback(preparedLinks),
@@ -414,17 +494,45 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
 
         return {
           id: created.id,
-          slugs: [validated.slug],
+          slugs: [validated.slug, previousNoteSlug],
         }
       }
 
       const current = await tx.post.findUnique({
         where: { id: validated.id },
+        select: {
+          id: true,
+          slug: true,
+          type: true,
+          status: true,
+          title: true,
+          excerpt: true,
+          coverImageUrl: true,
+          content: true,
+          contentVersion: true,
+          markdownSource: true,
+          htmlContent: true,
+          previousNoteId: true,
+          publishedAt: true,
+        },
       })
 
       if (!current) {
         throw new Error("Target post not found.")
       }
+
+      const [[oldPreviousSlug, nextSlug], newPreviousSlug] = await Promise.all([
+        getNavigationNeighborSlugs(tx, {
+          postId: current.id,
+          previousNoteId: current.previousNoteId,
+        }),
+        nextPreviousNoteId
+          ? tx.post.findUnique({
+              where: { id: nextPreviousNoteId },
+              select: { slug: true },
+            })
+          : Promise.resolve(null),
+      ])
 
       const shouldSnapshot = current.status === "PUBLISHED" || validated.status === "PUBLISHED"
       const isEmptyDraft = isEffectivelyEmptyDraft({
@@ -477,6 +585,7 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
           type: validated.type,
           status: validated.status,
           contentVersion: usesBlockWriter ? POST_BLOCK_CONTENT_VERSION : nextVersion,
+          previousNoteId: validated.type === "NOTE" ? nextPreviousNoteId : null,
           coverImageUrl: assetSync.coverImageUrl,
           githubUrl: findFirstLinkByType(preparedLinks, "GITHUB"),
           demoUrl: findWebsiteFallback(preparedLinks),
@@ -504,7 +613,7 @@ export async function savePost(payload: PostEditorInput): Promise<PostActionResu
 
       return {
         id: updated.id,
-        slugs: [current.slug, validated.slug],
+        slugs: [current.slug, validated.slug, oldPreviousSlug, nextSlug, newPreviousSlug?.slug ?? null],
         removedAssetCount: assetSync.removedAssetCount,
       }
     })
@@ -537,11 +646,24 @@ export async function archivePost(postId: string): Promise<PostActionResult> {
 
   try {
     const archived = await prisma.$transaction(async (tx) => {
-      const current = await tx.post.findUnique({ where: { id: postId } })
+      const current = await tx.post.findUnique({
+        where: { id: postId },
+        select: {
+          id: true,
+          slug: true,
+          status: true,
+          previousNoteId: true,
+        },
+      })
 
       if (!current) {
         throw new Error("Target post not found.")
       }
+
+      const [previousSlug, nextSlug] = await getNavigationNeighborSlugs(tx, {
+        postId: current.id,
+        previousNoteId: current.previousNoteId,
+      })
 
       const updated = await tx.post.update({
         where: { id: postId },
@@ -561,11 +683,11 @@ export async function archivePost(postId: string): Promise<PostActionResult> {
 
       return {
         id: updated.id,
-        slug: current.slug,
+        slugs: [current.slug, previousSlug, nextSlug],
       }
     })
 
-    revalidatePublicPaths([archived.slug])
+    revalidatePublicPaths(archived.slugs)
 
     return { success: true, id: archived.id }
   } catch (error) {
@@ -583,7 +705,12 @@ export async function deletePostPermanently(postId: string): Promise<PostActionR
   try {
     const current = await prisma.post.findUnique({
       where: { id: postId },
-      include: {
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        status: true,
+        previousNoteId: true,
         assets: {
           select: {
             bucket: true,
@@ -602,6 +729,11 @@ export async function deletePostPermanently(postId: string): Promise<PostActionR
     }
 
     const deleted = await prisma.$transaction(async (tx) => {
+      const [previousSlug, nextSlug] = await getNavigationNeighborSlugs(tx, {
+        postId: current.id,
+        previousNoteId: current.previousNoteId,
+      })
+
       await tx.auditLog.create({
         data: {
           actorUserId: user.id,
@@ -618,13 +750,13 @@ export async function deletePostPermanently(postId: string): Promise<PostActionR
 
       return {
         id: current.id,
-        slug: current.slug,
+        slugs: [current.slug, previousSlug, nextSlug],
       }
     })
 
     revalidatePath("/admin/posts")
     revalidatePath(`/admin/posts/${deleted.id}`)
-    revalidatePublicPaths([deleted.slug])
+    revalidatePublicPaths(deleted.slugs)
 
     return { success: true, id: deleted.id }
   } catch (error) {

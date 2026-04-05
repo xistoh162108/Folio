@@ -2,7 +2,7 @@
 
 ## Status
 
-- Last updated: 2026-04-04
+- Last updated: 2026-04-05
 - Current implementation state: R1-R9 accepted baseline; H0-H8 accepted; T1 accepted
 - Cross-phase follow-up remains open for R2 continuity exactness and database-backed Playwright proof in this local environment.
 
@@ -2012,3 +2012,132 @@ Why accepted:
 
 - accepted: adding the standard multi-size icon bundle and manifest is a minimal production completion step for the existing exact-v0 site
 - rejected: adding PWA-specific UX chrome or changing the icon artwork itself in this follow-up
+
+---
+
+## Post-T1 Audit Addendum — Notes footer subscribe success-state exclusivity (2026-04-05)
+
+### Status
+
+- accepted
+
+### What changed
+
+- updated:
+  - `components/v0/public/notes-screen.tsx`
+  - `components/v0/public/notes-subscribe-state.ts`
+  - `tests/unit/notes-footer-subscribe-state.test.ts`
+- the live Notes footer now renders subscription success in its own dedicated footer block/row instead of keeping the success copy inside the inline control-strip row
+- the success state now unmounts the email input, submit button, and topic toggles for the rest of the current client session
+- the shared `getNotesSubscribeRenderState()` helper now locks the success-versus-controls exclusivity contract for the live implementation and its test coverage
+- the success line now exposes `aria-live="polite"` without changing the exact-v0 visual design
+
+### Why it changed
+
+- repo truth showed that the live overlap was caused by rendering the success copy inside the same inline footer strip contract while the input/button/topic controls stayed mounted
+- desktop nowrap behavior and shared strip width ownership were correct for the active form state, but wrong for a status state that should have exclusive ownership
+
+### Minimality and scope guardrails
+
+- state-ownership only:
+  - no schema, API, server action, or route changes
+- same shell grammar:
+  - retained the existing footer shell, typography rhythm, border contract, and terminal status voice
+- no redesign:
+  - rejected a toast, banner, card, or secondary product UI as the primary fix
+- explicit session rule:
+  - same-session success remains exclusive until refresh/navigation resets the strip
+
+### Verification performed
+
+- [x] `pnpm test tests/unit/notes-footer-subscribe-state.test.ts`
+- [x] `pnpm typecheck`
+- [x] `pnpm build`
+
+### Decisions / approvals / rejections
+
+- accepted: success must render in its own dedicated footer block/row instead of sharing the inline control strip
+- accepted: a polite live-region announcement is required because this is a state transition, not static copy
+- accepted: dormant or reusable Notes subscribe footer implementations must follow the same exclusivity contract
+- rejected: padding-only or wrap-only mitigation that leaves success and active controls mounted together
+
+---
+
+## Post-T1 Audit Addendum — Previous/next note navigation and maturity-display removal (2026-04-05)
+
+### Status
+
+- accepted
+
+### What changed
+
+- added:
+  - `prisma/migrations/20260405090000_add_note_previous_navigation/migration.sql`
+  - `lib/posts/note-navigation.ts`
+  - `tests/unit/note-navigation.test.ts`
+  - `tests/unit/note-detail-navigation-data.test.ts`
+  - `tests/unit/note-list-and-footer-state.test.ts`
+- updated:
+  - `prisma/schema.prisma`
+  - `lib/contracts/posts.ts`
+  - `lib/data/posts.ts`
+  - `lib/actions/post.actions.ts`
+  - `components/admin/post-editor.tsx`
+  - `components/v0/admin/editor-screen-bound.tsx`
+  - `components/v0/admin/editor-screen.tsx`
+  - `components/v0/public/detail-note-screen.tsx`
+  - `components/v0/public/notes-screen.tsx`
+  - `components/v0/public/mappers.ts`
+  - `components/v0/fixtures.ts`
+- removed the public seedling/growing/evergreen legend and per-row status glyph from `/notes`
+- added one optional `previousNoteId` self-relation on `Post`
+- public note detail now derives:
+  - `previousNote` from `previousNoteId`
+  - `nextNote` from reverse lookup where `previousNoteId == current.id`
+- public note detail now renders `[< prev]` and `[next >]` inside the existing `// end of note` footer block and keeps missing sides visible in a dim terminal-disabled style
+- admin note editing now exposes one restrained `previous note` selector below `Tags`
+- projects are forced back to `previousNoteId = null`
+
+### Why it changed
+
+- repo truth showed that the public maturity language was not a live feature; live notes effectively mapped to one fallback symbol and the legend described functionality the runtime did not own
+- the approved product direction needed real reading-flow navigation with the smallest exact-v0-consistent structural change
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` offered display-language maturity labels but no persisted note linkage, no validation model, and no public previous/next runtime
+
+### Why the change is minimal
+
+- one nullable self-relation
+- one selector in existing editor metadata
+- one footer row inside the existing note-detail shell
+- one removal of dead public display language
+- no series page, no series manager, no secondary navigation surface
+
+### Exact-v0 preservation
+
+- Notes list remains the same dense date/title/tag rhythm after removing the dead glyph column
+- note detail keeps the same reading surface and footer shell grammar
+- missing navigation sides stay visible as dim terminal affordances, matching existing disabled pagination language elsewhere in the repo
+
+### User-visible behavior difference
+
+- `/notes` no longer claims seedling/growing/evergreen maturity states it cannot actually back
+- note detail pages can now move backward/forward through an explicitly authored note chain
+- missing navigation sides remain visibly inactive rather than vanishing
+
+### Proof / evidence
+
+- [x] `pnpm db:generate`
+- [x] `pnpm test tests/unit/note-navigation.test.ts tests/unit/note-detail-navigation-data.test.ts tests/unit/note-list-and-footer-state.test.ts tests/unit/detail-meta.test.ts`
+- [x] `pnpm typecheck`
+- [x] `pnpm lint`
+- [x] `pnpm build`
+
+### Decisions / approvals / rejections
+
+- accepted: `previousNoteId` only, with reverse-derived next, is the smallest safe model for this codebase
+- accepted: public navigation must stay published-note-only even if admin may pre-link drafts
+- accepted: deletion uses `onDelete: SetNull` with no hidden relinking
+- rejected: full series model, `nextNoteId`, tag-based pseudo-series, or Notes list redesign

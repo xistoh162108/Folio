@@ -47,10 +47,8 @@ This document maps the current user-visible runtime to the active component owne
   - `app/notes/page.tsx`
   - `components/v0/public/notes-screen-bound.tsx`
   - `components/v0/public/notes-screen.tsx`
-  - `components/v0/public/notes-subscribe-footer.tsx`
 - behavior:
   - search + tag + page query state
-  - status legend
   - inline RSS affordance
   - terminal-native subscribe footer
 
@@ -63,6 +61,7 @@ This document maps the current user-visible runtime to the active component owne
   - `components/v0/public/comments-log.tsx`
 - behavior:
   - markdown/code/math detail rendering
+  - footer-native previous/next note navigation
   - likes
   - paginated comments
   - terminal-native code yank feedback
@@ -126,6 +125,7 @@ This document maps the current user-visible runtime to the active component owne
 - behavior:
   - paginated content list
   - Markdown-first editor
+  - note-only `previous note` selector in the metadata area
   - save/publish/archive/permanent delete
   - unified assets / cover workflow
 

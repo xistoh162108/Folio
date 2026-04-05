@@ -8,7 +8,10 @@ import type { PostDetailDTO } from "@/lib/contracts/posts";
 
 import { samplePostContent } from "@/components/v0/fixtures";
 import { V0DetailContent } from "@/components/v0/public/detail-content";
-import { formatDetailMeta } from "@/components/v0/public/mappers";
+import {
+  formatDetailMeta,
+  getDetailNoteNavigationState,
+} from "@/components/v0/public/mappers";
 import { PublicShell } from "@/components/v0/public/public-shell";
 import type { V0RuntimeDescriptor } from "@/components/v0/runtime/v0-experience-runtime";
 import { useV0ThemeController } from "@/components/v0/use-v0-theme-controller";
@@ -49,6 +52,7 @@ export function DetailNoteScreen({
   const borderColor = isDarkMode ? "border-white/20" : "border-black/20";
   const hoverBg = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5";
   const detailMeta = post ? formatDetailMeta(post) : null;
+  const navigation = getDetailNoteNavigationState(post);
   const runtimeDescriptor: V0RuntimeDescriptor = {
     mode: "dither",
     variant: "detail-note",
@@ -279,6 +283,34 @@ export function DetailNoteScreen({
 
               <div className={`pt-8 border-t ${borderColor} space-y-4`}>
                 <p className={`text-xs ${mutedText}`}>// end of note</p>
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  {!navigation.previous.disabled && navigation.previous.href ? (
+                    <Link
+                      href={navigation.previous.href}
+                      aria-label={`Previous note: ${navigation.previous.title}`}
+                      className={`${hoverBg} px-2 py-1`}
+                    >
+                      {navigation.previous.label}
+                    </Link>
+                  ) : (
+                    <span aria-disabled="true" className={`${mutedText} px-2 py-1 opacity-30`}>
+                      {navigation.previous.label}
+                    </span>
+                  )}
+                  {!navigation.next.disabled && navigation.next.href ? (
+                    <Link
+                      href={navigation.next.href}
+                      aria-label={`Next note: ${navigation.next.title}`}
+                      className={`${hoverBg} px-2 py-1`}
+                    >
+                      {navigation.next.label}
+                    </Link>
+                  ) : (
+                    <span aria-disabled="true" className={`${mutedText} px-2 py-1 opacity-30`}>
+                      {navigation.next.label}
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-4 text-xs">
                   <button
                     type="button"

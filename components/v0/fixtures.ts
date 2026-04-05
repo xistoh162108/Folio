@@ -1,10 +1,7 @@
-export type V0NoteStatus = "seedling" | "growing" | "evergreen"
-
 export interface V0NoteItem {
   id: string
   title: string
   tags: string[]
-  status: V0NoteStatus
   date: string
   isProject: boolean
   views: number
@@ -121,12 +118,12 @@ export const educationData = [
 ]
 
 export const digitalGardenNotes: V0NoteItem[] = [
-  { id: "1", title: "Building Secure APIs", tags: ["#AI", "#InfoSec"], status: "seedling", date: "2026-03-20", isProject: false, views: 312 },
-  { id: "2", title: "Neural Network Fundamentals", tags: ["#AI"], status: "evergreen", date: "2026-03-15", isProject: false, views: 423 },
-  { id: "3", title: "My Dev Environment Setup", tags: ["#Project"], status: "seedling", date: "2026-03-10", isProject: true, views: 156 },
-  { id: "4", title: "CTF Writeup: Web Exploitation", tags: ["#InfoSec"], status: "growing", date: "2026-03-05", isProject: false, views: 198 },
-  { id: "5", title: "Transformer Architecture Deep Dive", tags: ["#AI"], status: "evergreen", date: "2026-02-28", isProject: false, views: 287 },
-  { id: "6", title: "LifeXP - Gamified Task Manager", tags: ["#Project"], status: "growing", date: "2026-02-20", isProject: true, views: 89 },
+  { id: "1", title: "Building Secure APIs", tags: ["#AI", "#InfoSec"], date: "2026-03-20", isProject: false, views: 312 },
+  { id: "2", title: "Neural Network Fundamentals", tags: ["#AI"], date: "2026-03-15", isProject: false, views: 423 },
+  { id: "3", title: "My Dev Environment Setup", tags: ["#Project"], date: "2026-03-10", isProject: true, views: 156 },
+  { id: "4", title: "CTF Writeup: Web Exploitation", tags: ["#InfoSec"], date: "2026-03-05", isProject: false, views: 198 },
+  { id: "5", title: "Transformer Architecture Deep Dive", tags: ["#AI"], date: "2026-02-28", isProject: false, views: 287 },
+  { id: "6", title: "LifeXP - Gamified Task Manager", tags: ["#Project"], date: "2026-02-20", isProject: true, views: 89 },
 ]
 
 export const projectsData: V0ProjectListItem[] = [
@@ -193,19 +190,6 @@ export const analyticsData: {
 }
 
 export const tagFilters = ["All", "#AI", "#InfoSec", "#Project"] as const
-
-export function getStatusSymbol(status: V0NoteStatus) {
-  switch (status) {
-    case "seedling":
-      return "[*]"
-    case "growing":
-      return "[+]"
-    case "evergreen":
-      return "[>]"
-    default:
-      return "[-]"
-  }
-}
 
 export function renderProgressBar(percentage: number, width = 20) {
   const filled = Math.round((percentage / 100) * width)

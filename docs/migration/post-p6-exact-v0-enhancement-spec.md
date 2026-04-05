@@ -3,7 +3,7 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-04-04
+- Last updated: 2026-04-05
 - Canonical enhancement authority: this file
 
 ## Authority and execution rule
@@ -131,6 +131,12 @@ Load-bearing product/runtime changes accepted in `T1`:
   - timeout failures
   - non-2xx upstream responses
   - thrown fetch/network failures
+- the Notes footer subscribe success state now:
+  - renders in its own dedicated footer block/row
+  - never reuses the inline control-strip flex row
+  - exposes a polite live-region announcement without changing the visual design
+  - remains exclusive for the current client session until refresh/navigation resets the strip
+- any dormant or reusable Notes subscribe footer implementation must follow the same success-state exclusivity rule to prevent regression
 
 ### Exact-v0 preservation rule for H0-H8
 
@@ -194,6 +200,46 @@ These changes are accepted because:
 - Notes and Projects search/reset controls now share the same inline control height
 - outgoing mail now appears as `xistoh <hello@xistoh.com>`
 - contact webhook failures now produce actionable operational diagnostics instead of a generic `fetch failed`
+- Notes footer subscribe success now replaces the active controls with a dedicated terminal status block instead of colliding with the inline strip
+
+## 2026-04 post-T1 note navigation follow-up
+
+This follow-up replaces the dead public Notes maturity language with a real, minimal navigation model.
+
+Load-bearing product/runtime changes accepted here:
+
+- the public Notes list no longer exposes:
+  - `[*] seedling | [+] growing | [>] evergreen`
+  - a per-row status glyph column
+- this display was removed because live runtime never carried a real note-maturity field and effectively mapped live notes to one fallback symbol
+- note-to-note navigation now uses one optional relation only:
+  - `previousNoteId`
+- next-note navigation is reverse-derived from `previousNoteId == current.id`
+- no `nextNoteId`, series table, ordering model, or tag-based pseudo-series behavior is introduced
+- public note detail now renders terminal-native footer navigation inside the existing `// end of note` block:
+  - `[< prev]`
+  - `[next >]`
+- missing sides remain visible in a dim/disabled exact-v0 style instead of disappearing
+- admin note editing now exposes one minimal `previous note` selector below `Tags`
+- projects do not participate in note navigation and must persist `previousNoteId = null`
+- public Prev/Next only resolves to published notes; draft and archived notes stay invisible in public navigation
+
+### Why literal v0 was insufficient
+
+Literal `/v0app` shipped display language for note maturity but not a real runtime-backed model or reading-flow navigation.
+
+### Why this change is minimal
+
+- one nullable self-relation on `Post`
+- one admin selector
+- one footer row inside the existing note-detail shell
+- one removal of dead public legend/symbol language
+
+### Exact-v0 preservation
+
+- no new surface, sidebar, panel, widget family, or related-post card system
+- note navigation stays inside the existing dense terminal footer grammar
+- the Notes list remains the same list surface, minus dead status language
 
 ## Non-negotiable rule
 

@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { V0MarkdownEditor, type V0MarkdownEditorHandle } from "@/components/admin/v0-markdown-editor"
-import type { PostEditorInput } from "@/lib/contracts/posts"
+import type { NoteNavigationOption, PostEditorInput } from "@/lib/contracts/posts"
 import { archivePost, deletePostPermanently, savePost } from "@/lib/actions/post.actions"
 import { buildMarkdownWriterPayload, deriveMarkdownSource } from "@/lib/content/markdown-blocks"
 import { TiptapEditor } from "@/components/admin/tiptap-editor"
@@ -44,11 +44,13 @@ function stripAssetReferences(markdownSource: string, assetId: string) {
 
 export function PostEditor({
   initialPost,
+  previousNoteOptions = [],
   variant = "default",
   showHeader = true,
   isDarkMode = true,
 }: {
   initialPost: PostEditorInput
+  previousNoteOptions?: NoteNavigationOption[]
   variant?: "default" | "v0"
   showHeader?: boolean
   isDarkMode?: boolean
@@ -96,6 +98,21 @@ export function PostEditor({
     [tagsText],
   )
   const isBusy = pendingAction !== null || isUploading
+
+  const setPostType = (nextType: PostEditorInput["type"]) => {
+    setForm((current) => ({
+      ...current,
+      type: nextType,
+      previousNoteId: nextType === "NOTE" ? current.previousNoteId ?? null : null,
+    }))
+  }
+
+  const setPreviousNoteId = (nextPreviousNoteId: string) => {
+    setForm((current) => ({
+      ...current,
+      previousNoteId: nextPreviousNoteId || null,
+    }))
+  }
 
   const onSave = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -368,10 +385,7 @@ export function PostEditor({
             type="button"
             aria-label="Mark as Project"
             onClick={() =>
-              setForm((current) => ({
-                ...current,
-                type: current.type === "PROJECT" ? "NOTE" : "PROJECT",
-              }))
+              setPostType(form.type === "PROJECT" ? "NOTE" : "PROJECT")
             }
             className={`w-10 h-5 border ${borderColor} flex items-center transition-colors ${
               form.type === "PROJECT" ? "bg-white/20" : ""
@@ -504,6 +518,24 @@ export function PostEditor({
             className={fieldClass}
           />
         </div>
+
+        {form.type === "NOTE" ? (
+          <div>
+            <label className={`text-xs ${mutedText} block mb-2`}>Previous note</label>
+            <select
+              value={form.previousNoteId ?? ""}
+              onChange={(event) => setPreviousNoteId(event.target.value)}
+              className={fieldClass}
+            >
+              <option value="">None</option>
+              {previousNoteOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
           {form.id ? (
@@ -762,7 +794,7 @@ export function PostEditor({
           <span className={isV0 ? "text-xs text-white/50" : "text-xs uppercase tracking-[0.18em] text-zinc-500"}>Type</span>
           <select
             value={form.type}
-            onChange={(event) => setForm((current) => ({ ...current, type: event.target.value as PostEditorInput["type"] }))}
+            onChange={(event) => setPostType(event.target.value as PostEditorInput["type"])}
             className={fieldClass}
           >
             <option value="NOTE">Note</option>
@@ -810,6 +842,24 @@ export function PostEditor({
           className={fieldClass}
         />
       </label>
+
+      {form.type === "NOTE" ? (
+        <label className="block space-y-2">
+          <span className={isV0 ? "text-xs text-white/50" : "text-xs uppercase tracking-[0.18em] text-zinc-500"}>Previous note</span>
+          <select
+            value={form.previousNoteId ?? ""}
+            onChange={(event) => setPreviousNoteId(event.target.value)}
+            className={fieldClass}
+          >
+            <option value="">None</option>
+            {previousNoteOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
       <div className={panelClass}>
         <div className="flex items-center justify-between gap-4">

@@ -3,7 +3,7 @@
 ## Status
 
 - Approved for execution
-- Last updated: 2026-04-04
+- Last updated: 2026-04-05
 - Canonical schema and compatibility authority: this file
 
 ## Purpose
@@ -310,6 +310,31 @@ Compatibility rules:
 - no backfill is required for posts with empty `excerpt`; they now simply render without a summary
 - older stored `WebhookDelivery.destination` values remain visible in service logs and diagnostics, but worker dispatch must prefer the current env target
 - sender normalization is output-only and requires no DB change
+
+## 2026-04 post-T1 note navigation compatibility addendum
+
+This follow-up introduces one minimal Prisma change for note-to-note navigation.
+
+Added schema elements:
+
+- `Post.previousNoteId`
+- `Post.previousNote`
+- `Post.nextNote`
+
+Compatibility rules:
+
+- `previousNoteId` is nullable, so existing notes and projects remain valid without backfill
+- `next` is reverse-derived from `previousNoteId`; no stored `nextNoteId`, navigation table, or series model is introduced
+- projects share the physical field because `Post` is the unified content model, but runtime validation forces:
+  - `PROJECT -> previousNoteId = null`
+- deletion uses `onDelete: SetNull`
+  - no hidden relinking
+  - no neighbor rewrite
+  - manual repair stays in the editor
+- admin may set a previous note against any note status, but public navigation resolves only:
+  - `type = NOTE`
+  - `status = PUBLISHED`
+- removing the public `seedling / growing / evergreen` legend requires no migration because live runtime never stored a real note-maturity field
 
 ## Current repository truth
 
