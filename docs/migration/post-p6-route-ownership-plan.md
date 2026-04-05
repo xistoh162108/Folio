@@ -334,11 +334,20 @@ The shell body must own the geometry so the Jitter slot fills the full intended 
 - full guestbook log ownership lives here
 - paginated latest-first archive ownership lives here
 
+generic public fallbacks
+- public shell + shared runtime where the app is still alive
+- `app/not-found.tsx` owns arbitrary missing public-route handling
+- `app/error.tsx` owns app-level public runtime/render/data failures
+- `app/global-error.tsx` owns app-level global runtime failures that replace the root layout
+- `components/v0/public/public-fallback-content.tsx` owns the shared terminal-native fallback content grammar
+- scope explicitly stops at Next-app-level failures and does not cover process-down, proxy, host, or network outages
+
 `/notes/[slug]` and `/projects/[slug]`
 - public shell + shared runtime
 - route owns detail data and reading surface
 - route provides detail-mode descriptors
 - detail routes own the first page of comments while `/api/posts/[postId]/comments` owns older-page retrieval
+- `app/notes/[slug]/not-found.tsx` and `app/projects/[slug]/not-found.tsx` own route-aware exact-v0 missing-detail fallback states
 
 ### Admin routes
 

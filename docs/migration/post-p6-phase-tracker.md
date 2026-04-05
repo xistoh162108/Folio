@@ -1556,3 +1556,25 @@ Finalize SEO, responsive parity evidence, and CI coverage for the integrated lin
   - rejected: full series system, series manager, or separate ordering model
   - rejected: hiding missing sides entirely and leaving the footer visually unbalanced
   - rejected: any Notes list redesign beyond removing dead maturity language
+
+### Post-T1 follow-up — Public exact-v0 fallback coverage (2026-04-06)
+
+- status: done
+- objective: replace generic public framework fallbacks with exact-v0 app-level 404/runtime/global-error surfaces while keeping the existing public shell and Jitter identity
+- execution notes:
+  - added:
+    - `components/v0/public/public-fallback-content.tsx`
+    - `lib/site/public-fallback-state.ts`
+    - `app/not-found.tsx`
+    - `app/error.tsx`
+    - `app/global-error.tsx`
+    - `app/notes/[slug]/not-found.tsx`
+    - `app/projects/[slug]/not-found.tsx`
+    - `tests/unit/public-fallback-state.test.ts`
+  - updated public route ownership so generic public 404, public runtime error, global error, and note/project detail not-found states all stay inside the exact-v0 public shell grammar
+  - kept right-panel runtime ownership through explicit fallback descriptors instead of dropping to a blank or generic framework fallback
+  - locked scope to app-level failures only; infra/process-down scenarios remain outside Next runtime handling
+- explicit redesign rejections (this follow-up):
+  - rejected: maintenance mode, outage product UI, or install-first PWA treatment
+  - rejected: separate error cards, banners, illustrations, or a second public fallback design language
+  - rejected: route-scoped error boundaries for every public route when root `error.tsx` + `global-error.tsx` were sufficient

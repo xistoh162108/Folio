@@ -233,6 +233,44 @@ Literal `/v0app` shipped display language for note maturity but not a real runti
 - one nullable self-relation on `Post`
 - one admin selector
 - one footer row inside the existing note-detail shell
+
+## 2026-04 public fallback coverage follow-up
+
+This follow-up closes the remaining public exact-v0 fallback gap without widening the product model.
+
+Load-bearing product/runtime changes accepted here:
+
+- public exact-v0 fallback coverage now exists for:
+  - arbitrary missing public routes via `app/not-found.tsx`
+  - missing/unpublished note detail via `app/notes/[slug]/not-found.tsx`
+  - missing/unpublished project detail via `app/projects/[slug]/not-found.tsx`
+  - app-level public runtime/render/data failures via `app/error.tsx`
+  - app-level global faults that still reach the Next boundary via `app/global-error.tsx`
+- one shared public fallback content component now owns the content grammar:
+  - `components/v0/public/public-fallback-content.tsx`
+- the public shell remains the visual owner for these states so the split-shell and Jitter-centered world persist during failures
+- the fallback copy is intentionally restrained and terminal-native:
+  - `Route Missing`
+  - `Note Missing`
+  - `Project Missing`
+  - `Public Surface Fault`
+  - `Service Fault`
+- coverage explicitly stops at app-level failures and does not claim to handle:
+  - process-down
+  - reverse-proxy failure
+  - host/network unreachability
+  - build/start failure
+
+### Why literal v0 was insufficient
+
+Literal `/v0app` did not define a production-ready public 404/runtime/global-error layer, so missing content and app-level faults could fall back to generic framework UI.
+
+### Why this change is minimal
+
+- one shared fallback content component
+- root `not-found`, `error`, and `global-error`
+- two route-scoped detail `not-found` files
+- no maintenance mode, outage product, or second UI language
 - one removal of dead public legend/symbol language
 
 ### Exact-v0 preservation

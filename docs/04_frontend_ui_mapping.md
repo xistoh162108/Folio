@@ -4,6 +4,19 @@ This document maps the current user-visible runtime to the active component owne
 
 ## Public routes
 
+### Public fallback surfaces
+
+- owner:
+  - `app/not-found.tsx`
+  - `app/error.tsx`
+  - `app/global-error.tsx`
+  - `components/v0/public/public-fallback-content.tsx`
+- behavior:
+  - exact-v0 public 404 for arbitrary missing public routes
+  - exact-v0 public runtime error boundary for app-level render/data failures
+  - exact-v0 global error boundary for app-level faults that replace the root layout
+  - scope is app-level only; infra/process-down failures remain outside Next runtime coverage
+
 ### `/`
 
 - owner:
@@ -55,12 +68,14 @@ This document maps the current user-visible runtime to the active component owne
 ### `/notes/[slug]`
 
 - owner:
+  - `app/notes/[slug]/not-found.tsx`
   - `components/v0/public/detail-note-screen-bound.tsx`
   - `components/v0/public/detail-note-screen.tsx`
   - `components/v0/public/detail-content.tsx`
   - `components/v0/public/comments-log.tsx`
 - behavior:
   - markdown/code/math detail rendering
+  - route-scoped exact-v0 not-found surface for missing/unpublished notes
   - footer-native previous/next note navigation
   - likes
   - paginated comments
@@ -81,11 +96,13 @@ This document maps the current user-visible runtime to the active component owne
 ### `/projects/[slug]`
 
 - owner:
+  - `app/projects/[slug]/not-found.tsx`
   - `components/v0/public/detail-project-screen-bound.tsx`
   - `components/v0/public/detail-note-screen.tsx`
   - `components/v0/public/detail-content.tsx`
 - behavior:
   - same reader shell language as notes
+  - route-scoped exact-v0 not-found surface for missing/unpublished projects
   - code/math/assets/links
 
 ### `/subscribe/confirm` and `/unsubscribe`

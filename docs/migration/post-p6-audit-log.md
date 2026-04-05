@@ -2141,3 +2141,72 @@ Why accepted:
 - accepted: public navigation must stay published-note-only even if admin may pre-link drafts
 - accepted: deletion uses `onDelete: SetNull` with no hidden relinking
 - rejected: full series model, `nextNoteId`, tag-based pseudo-series, or Notes list redesign
+
+---
+
+## Post-T1 Audit Addendum — Public exact-v0 fallback coverage (2026-04-06)
+
+### Status
+
+- accepted
+
+### What changed
+
+- added:
+  - `components/v0/public/public-fallback-content.tsx`
+  - `lib/site/public-fallback-state.ts`
+  - `app/not-found.tsx`
+  - `app/error.tsx`
+  - `app/global-error.tsx`
+  - `app/notes/[slug]/not-found.tsx`
+  - `app/projects/[slug]/not-found.tsx`
+  - `tests/unit/public-fallback-state.test.ts`
+- public missing-route handling no longer falls back to the generic Next 404 UI
+- missing/unpublished note and project details now render route-aware exact-v0 not-found surfaces inside the public shell
+- app-level public runtime faults now render exact-v0 error UI with retry affordance via `app/error.tsx`
+- app-level global faults that still reach Next boundary handling now render exact-v0 global error UI via `app/global-error.tsx`
+
+### Why it changed
+
+- repo truth showed that public missing-content paths already used `notFound()` but the public app had no custom exact-v0 not-found/error/global-error layer, so framework fallback UI could leak into the live public surface
+
+### Why literal v0 was insufficient
+
+- literal `/v0app` did not define production-grade public fallback ownership for 404/runtime/global error states
+
+### Why the change is minimal
+
+- one shared public fallback content surface
+- three root-level fallback files
+- two detail-scoped not-found files
+- no maintenance mode, outage product UI, or broader runtime architecture rewrite
+
+### Exact-v0 preservation
+
+- fallback states stay inside the existing `PublicShell`
+- right-panel Jitter/system identity is retained through explicit fallback runtime descriptors
+- copy stays restrained, mono, and terminal-native instead of falling back to generic product error chrome
+
+### User-visible behavior difference
+
+- arbitrary missing public routes now show an exact-v0 404 instead of the generic framework default
+- missing note/project detail pages preserve route context while reporting unavailable content
+- app-level public runtime faults now stay inside the xistoh.log world instead of dropping to generic fallback UI
+
+### Proof / evidence
+
+- [x] `pnpm test`
+- [x] `pnpm lint`
+- [x] `rm -rf .next && pnpm build`
+- [x] `pnpm typecheck`
+- [x] manual route verification:
+  - `/does-not-exist`
+  - `/notes/__missing-note__`
+  - `/projects/__missing-project__`
+
+### Decisions / approvals / rejections
+
+- accepted: app-level public fallback coverage is a load-bearing runtime behavior and must be owned explicitly
+- accepted: generic 404, public runtime error, global error, and detail missing states can share one content grammar while keeping route-aware shell context
+- accepted: infra/process-down failures remain out of scope for this exact-v0 app-layer closure pass
+- rejected: maintenance mode or outage-specific product systems in this task

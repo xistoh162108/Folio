@@ -97,6 +97,12 @@ Meaning:
   - public Notes no longer expose the dead seedling/growing/evergreen display language
   - note detail pages now use one minimal `previousNoteId` relation with reverse-derived next-note navigation inside the existing footer shell
   - admin note editing now includes a single `previous note` selector instead of a broader series-management surface
+  - public fallback coverage now uses one shared exact-v0 fallback content surface for:
+    - generic public 404
+    - note/project detail not-found
+    - public runtime error
+    - global app-level error
+  - this fallback coverage intentionally stops at app-level failures and does not claim infra/process-down handling
 
 ## Current readiness summary
 
